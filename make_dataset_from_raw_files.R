@@ -64,7 +64,7 @@ brain1 <- dcast(
 
 brain2 <- fread(here(framingham_dir, "t_mrbrnm3_2019_a_1906d.csv"))
 
-vars <- Hmisc::Cz<- s(
+vars <- Hmisc::Cs(
   PID,
   IDTYPE,
   Cerebrum_tcv,
@@ -120,6 +120,7 @@ vars <- Cs(
   VRI,
   VRD,
   VRR,
+  PASD,
   HVOT,
   DSF,
   DSB,
@@ -127,21 +128,29 @@ vars <- Cs(
   BNT36_SEMANTIC,
   BNT36_PHONEMIC,
   SIM,
+  NP_DATE
 )
 
-# ....
+cog <- cog[, ..vars]
+cog <- setnames(cog, "NP_DATE", "COG_DATE")
+cog[, cog_assessment := 1:.N, by = c("PID", "IDTYPE")]
+cog <- dcast(
+  cog,
+  IDTYPE + PID ~ cog_assessment,
+  value.var = setdiff(names(cog), c("IDTYPE", "PID", "cog_assessment"))
+)
 
 ## Merge FOS data
 
 # Merge the brain and dem datasets
 fos <- merge(brain, dem, by = c("IDTYPE", "PID"), all = TRUE)
+fos <- merge(cog, fos, by = c("IDTYPE", "PID"), all = TRUE)
 
 ### SHHS variables
 
 ## date of PSG and link with FOS
 
 shhs_dir <- Sys.getenv("SHHS_DIR")
-link <- fread(here(shhs_dir, "ParentStudy_SHHSLink", "parent_shhs_public_2016.csv"))
 
 ## SHHS variables
 
@@ -185,12 +194,16 @@ psg <- merge(psg, ase, by = c("pptidr", "pptidu"), all = TRUE)
 
 # link SHHS data with Framingham PID
 
+link <- fread(here(shhs_dir, "ParentStudy_SHHSLink", "parent_shhs_public_2016.csv"))
 link <- link[!is.na(pid), ]
 
 setnames(link, "pid", "PID")
 
 shhs <- merge(link, psg, all.x = TRUE)
+## Adjust s2 date to be relative to recruitment
+shhs[, stdatep_s2 := stdatep_s2 + days_studyv1]
 
 ## join shhs and fos datasets
 
 df <- merge(shhs, fos, by = c("IDTYPE", "PID"), all.x = TRUE)
+df <- df[!is.na(stdatep_s2)]
