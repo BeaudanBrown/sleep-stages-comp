@@ -1,10 +1,8 @@
 {
   inputs = {
-    # nixpkgs.url = "github:cachix/devenv-nixpkgs/rolling";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:cachix/devenv-nixpkgs/rolling";
     systems.url = "github:nix-systems/default";
     devenv.url = "github:cachix/devenv";
-    devenv.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   nixConfig = {
