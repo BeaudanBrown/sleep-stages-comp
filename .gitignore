@@ -1,5 +1,9 @@
+.devenv
+.direnv
+.envrc
+.pre-commit-config.yaml
+
 data/
-docs/
 
 # History files
 .Rlib
@@ -55,6 +59,3 @@ rsconnect/
 
 # Lintr file
 .lintr
-
-.devenv
-.direnv
