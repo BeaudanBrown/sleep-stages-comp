@@ -27,6 +27,7 @@
             };
           };
         };
+
         devShells.default = pkgs.mkShell {
           inherit (self.checks.${system}.pre-commit-check) shellHook;
           env.R_LIBS_USER = "./.Rlib";
@@ -41,9 +42,12 @@
               quarto
             ] ++ (with pkgsUnstable; [
               air-formatter
-            ]) ++ (with rPackages; [
+            ]) ++ (with pkgs.rPackages; [
               languageserver
               dotenv
+              targets
+              tarchetypes
+
               data_table
               tidyverse
               here

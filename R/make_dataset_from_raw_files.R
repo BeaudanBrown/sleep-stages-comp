@@ -6,204 +6,236 @@ library(Hmisc)
 library(dotenv)
 load_dot_env()
 
-### FOS data
+create_dataset <- function(
+  framingham_dem_file,
+  framingham_dem_surv_file,
+  framingham_brain1_file,
+  framingham_brain2_file,
+  framingham_cog_file,
+  shhs_covar_file,
+  shhs_psg1_file,
+  shhs_psg2_file,
+  shhs_link_file
+) {
+  ### FOS data
 
-# dementia outcomes
+  # dementia outcomes
 
-## Read dementia outcomes from FOS data
+  ## Read dementia outcomes from FOS data
 
-# Read raw dementia outcomes data
-framingham_dir <- Sys.getenv("FRAMINGHAM_DIR")
-dem <- fread(here(framingham_dir, "vr_demrev_2018_a_1254d_v1.csv"))
+  # Read raw dementia outcomes data
+  dem <- fread(framingham_dem_file)
 
-# extract relevant columns from raw data
-dem <- dem[
-  ,
-  list(
-    idtype, review_date, normal_date, impairment_date, mild_date,
-    moderate_date, severe_date, eddd, PID
+  # extract relevant columns from raw data
+  dem <- dem[,
+    list(
+      idtype,
+      review_date,
+      normal_date,
+      impairment_date,
+      mild_date,
+      moderate_date,
+      severe_date,
+      eddd,
+      PID
+    )
+  ]
+
+  # expand to multiple columns for those with several reviews
+
+  dem[order(review_date), num := 1:.N, by = c("idtype", "PID")]
+
+  dem <- dcast(
+    dem,
+    idtype + PID ~ num,
+    value.var = setdiff(names(dem), c("idtype", "PID", "num"))
   )
-]
 
-# expand to multiple columns for those with several reviews
+  # dem survival dataset
 
-dem[order(review_date), num := 1:.N, by = c("idtype", "PID")]
+  dem2 <- fread(framingham_dem_surv_file)
 
-dem <- dcast(
-  dem,
-  idtype + PID ~ num,
-  value.var = setdiff(names(dem), c("idtype", "PID", "num"))
-)
+  dem <- merge(dem, dem2, by = c("PID", "idtype"), all = TRUE)
 
-# dem survival dataset
+  dem <- setnames(dem, "idtype", "IDTYPE")
 
-dem2 <- fread(here(framingham_dir, "vr_demsurv_2018_a_1281d.csv"))
+  # Brain outcomes
 
-dem <- merge(dem, dem2, by = c("PID", "idtype"), all = TRUE)
+  brain1 <- fread(framingham_brain1_file)
 
-dem <- setnames(dem, "idtype", "IDTYPE")
+  brain1 <- brain1[, list(PID, IDTYPE, FLAIR_wmh, DSE_wmh)]
 
+  brain1[, mri_assessment := 1:.N, by = c("PID", "IDTYPE")]
 
-# Brain outcomes
+  # pivot to wide
 
-brain1 <- fread(here(framingham_dir, "t_mrbrwmh_2019_a_1328d.csv"))
+  brain1 <- dcast(
+    brain1,
+    IDTYPE + PID ~ mri_assessment,
+    value.var = setdiff(names(brain1), c("IDTYPE", "PID", "mri_assessment"))
+  )
 
-brain1 <- brain1[, list(PID, IDTYPE, FLAIR_wmh, DSE_wmh)]
+  # more brain variables
 
-brain1[, mri_assessment := 1:.N, by = c("PID", "IDTYPE")]
+  brain2 <- fread(framingham_brain2_file)
 
-# pivot to wide
+  vars <- Hmisc::Cs(
+    PID,
+    IDTYPE,
+    Cerebrum_tcv,
+    Cerebrum_tcb,
+    Cerebrum_gray,
+    Cerebrum_white,
+    Cerebrum_tcc,
+    Left_lateralvent,
+    Right_lateralvent,
+    Lateralvent,
+    Thirdvent,
+    Left_hippo,
+    Right_hippo,
+    Hippo,
+    Total_csf,
+    Total_gray,
+    Total_white,
+    Total_brain,
+    Status,
+    mri_date
+  )
 
-brain1 <- dcast(
-  brain1,
-  IDTYPE + PID ~ mri_assessment,
-  value.var = setdiff(names(brain1), c("IDTYPE", "PID", "mri_assessment"))
-)
+  brain2 <- brain2[, ..vars]
 
-# more brain variables
+  brain2[, mri_assessment := 1:.N, by = c("PID", "IDTYPE")]
 
-brain2 <- fread(here(framingham_dir, "t_mrbrnm3_2019_a_1906d.csv"))
+  brain2 <- dcast(
+    brain2,
+    formula = PID + IDTYPE ~ mri_assessment,
+    value.var = setdiff(names(brain2), c("PID", "IDTYPE", "mri_assessment"))
+  )
 
-vars <- Hmisc::Cs(
-  PID,
-  IDTYPE,
-  Cerebrum_tcv,
-  Cerebrum_tcb,
-  Cerebrum_gray,
-  Cerebrum_white,
-  Cerebrum_tcc,
-  Left_lateralvent,
-  Right_lateralvent,
-  Lateralvent,
-  Thirdvent,
-  Left_hippo,
-  Right_hippo,
-  Hippo,
-  Total_csf,
-  Total_gray,
-  Total_white,
-  Total_brain,
-  Status,
-  mri_date
-)
+  # merge brain outcomes
 
-brain2 <- brain2[, ..vars]
+  brain <- merge(
+    brain1,
+    brain2,
+    by = c("IDTYPE", "PID"),
+    all = TRUE
+  )
 
-brain2[, mri_assessment := 1:.N, by = c("PID", "IDTYPE")]
+  # cognition variables
 
-brain2 <- dcast(
-  brain2,
-  formula = PID + IDTYPE ~ mri_assessment,
-  value.var = setdiff(names(brain2), c("PID", "IDTYPE", "mri_assessment"))
-)
+  cog <- fread(framingham_cog_file)
+  vars <- Cs(
+    PID,
+    IDTYPE,
+    TRAILSA,
+    TRAILSB,
+    LMI,
+    LMD,
+    LMR,
+    VRI,
+    VRD,
+    VRR,
+    PASD,
+    HVOT,
+    DSF,
+    DSB,
+    BNT36,
+    BNT36_SEMANTIC,
+    BNT36_PHONEMIC,
+    SIM,
+    NP_DATE
+  )
 
-# merge brain outcomes
+  cog <- cog[, ..vars]
+  cog <- setnames(cog, "NP_DATE", "COG_DATE")
+  cog[, cog_assessment := 1:.N, by = c("PID", "IDTYPE")]
+  cog <- dcast(
+    cog,
+    IDTYPE + PID ~ cog_assessment,
+    value.var = setdiff(names(cog), c("IDTYPE", "PID", "cog_assessment"))
+  )
 
-brain <- merge(
-  brain1,
-  brain2,
-  by = c("IDTYPE", "PID"),
-  all = TRUE
-)
+  ## Merge FOS data
 
-# cognition variables
+  # Merge the brain and dem datasets
+  fos <- merge(brain, dem, by = c("IDTYPE", "PID"), all = TRUE)
+  fos <- merge(cog, fos, by = c("IDTYPE", "PID"), all = TRUE)
 
-cog <- fread(here(framingham_dir, "vr_np_2018_a_1185d.csv"))
-vars <- Cs(
-  PID,
-  IDTYPE,
-  TRAILSA,
-  TRAILSB,
-  LMI,
-  LMD,
-  LMR,
-  VRI,
-  VRD,
-  VRR,
-  PASD,
-  HVOT,
-  DSF,
-  DSB,
-  BNT36,
-  BNT36_SEMANTIC,
-  BNT36_PHONEMIC,
-  SIM,
-  NP_DATE
-)
+  ### SHHS variables
 
-cog <- cog[, ..vars]
-cog <- setnames(cog, "NP_DATE", "COG_DATE")
-cog[, cog_assessment := 1:.N, by = c("PID", "IDTYPE")]
-cog <- dcast(
-  cog,
-  IDTYPE + PID ~ cog_assessment,
-  value.var = setdiff(names(cog), c("IDTYPE", "PID", "cog_assessment"))
-)
+  ## date of PSG and link with FOS
 
-## Merge FOS data
+  shhs_dir <- Sys.getenv("SHHS_DIR")
 
-# Merge the brain and dem datasets
-fos <- merge(brain, dem, by = c("IDTYPE", "PID"), all = TRUE)
-fos <- merge(cog, fos, by = c("IDTYPE", "PID"), all = TRUE)
+  ## SHHS variables
 
-### SHHS variables
+  # age, sex, and education
 
-## date of PSG and link with FOS
+  covs <- fread(shhs_covar_file)
 
-shhs_dir <- Sys.getenv("SHHS_DIR")
+  ase <- covs[, grep("age|gender|educ|id", names(covs)), with = FALSE]
 
-## SHHS variables
+  # PSG1
 
-# age, sex, and education
+  psg1 <- fread(shhs_psg1_file)
 
-covs <- fread(here(shhs_dir, "SHHS_1", "shhs1final_13jun2014_5839.csv"))
+  vars <- Cs(
+    pptidr,
+    pptidu,
+    slp_time,
+    WASO,
+    timest1,
+    timest2,
+    timest34,
+    timerem,
+    oahi
+  )
 
-ase <- covs[, grep("age|gender|educ|id", names(covs)), with = FALSE]
+  psg1 <- psg1[, ..vars]
 
-# PSG1
+  # PSG2
 
-psg1 <- fread(here(shhs_dir, "SHHS_1", "shhs1final_PSG_15jan2014_5839.csv"))
+  psg2 <- fread(shhs_psg2_file)
 
-vars <- Cs(
-  pptidr, pptidu, slp_time, WASO, timest1,
-  timest2, timest34, timerem, oahi
-)
+  vars <- Cs(
+    pptidr,
+    pptidu,
+    stdatep,
+    slp_time,
+    waso,
+    timest1,
+    timest2,
+    timest34,
+    timerem,
+    oahi
+  )
 
-psg1 <- psg1[, ..vars]
+  psg2 <- psg2[, ..vars]
 
-# PSG2
+  setnames(psg2, names(psg2)[-c(1, 2)], paste0(names(psg2)[-c(1, 2)], "_s2"))
 
-psg2 <- fread(here(shhs_dir, "SHHS_2", "shhs2final_PSG_15jan2014_4103.csv"))
+  # combine BL and FU psg data
 
-vars <- Cs(
-  pptidr, pptidu, stdatep, slp_time, waso, timest1,
-  timest2, timest34, timerem, oahi
-)
+  psg <- merge(psg1, psg2, by = c("pptidr", "pptidu"), all = TRUE)
 
-psg2 <- psg2[, ..vars]
+  # combine PSG and covariate data
 
-setnames(psg2, names(psg2)[-c(1, 2)], paste0(names(psg2)[-c(1, 2)], "_s2"))
+  psg <- merge(psg, ase, by = c("pptidr", "pptidu"), all = TRUE)
 
-# combine BL and FU psg data
+  # link SHHS data with Framingham PID
 
-psg <- merge(psg1, psg2, by = c("pptidr", "pptidu"), all = TRUE)
+  link <- fread(shhs_link_file)
+  link <- link[!is.na(pid), ]
 
-# combine PSG and covariate data
+  setnames(link, "pid", "PID")
 
-psg <- merge(psg, ase, by = c("pptidr", "pptidu"), all = TRUE)
+  shhs <- merge(link, psg, all.x = TRUE)
+  ## Adjust s2 date to be relative to recruitment
+  shhs[, stdatep_s2 := stdatep_s2 + days_studyv1]
 
-# link SHHS data with Framingham PID
+  ## join shhs and fos datasets
 
-link <- fread(here(shhs_dir, "ParentStudy_SHHSLink", "parent_shhs_public_2016.csv"))
-link <- link[!is.na(pid), ]
-
-setnames(link, "pid", "PID")
-
-shhs <- merge(link, psg, all.x = TRUE)
-## Adjust s2 date to be relative to recruitment
-shhs[, stdatep_s2 := stdatep_s2 + days_studyv1]
-
-## join shhs and fos datasets
-
-df <- merge(shhs, fos, by = c("IDTYPE", "PID"), all.x = TRUE)
-df <- df[!is.na(stdatep_s2)]
+  df <- merge(shhs, fos, by = c("IDTYPE", "PID"), all.x = TRUE)
+  df <- df[!is.na(stdatep_s2)]
+  df
+}
