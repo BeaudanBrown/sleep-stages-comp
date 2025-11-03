@@ -47,7 +47,7 @@ data_targets <- list(
   ),
 
   tar_target(
-    df_raw,
+    dt_raw,
     create_dataset(
       framingham_dem_file,
       framingham_dem_surv_file,
@@ -59,5 +59,39 @@ data_targets <- list(
       shhs_psg2_file,
       shhs_link_file
     )
-  )
+  ),
+
+  tar_target(v, {
+    # FIXME: Choose the SBP more carefully?
+    sbp <- matrix(
+      c(
+        1,
+        1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        1,
+        1,
+        0,
+        1,
+        -1,
+        1,
+        -1
+      ),
+      ncol = 5,
+      byrow = TRUE
+    )
+
+    compositions::gsi.buildilrBase(t(sbp))
+  }),
+
+  tar_target(dt, prepare_dataset(dt_raw, v))
 )

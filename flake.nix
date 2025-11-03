@@ -53,6 +53,7 @@
               here
               Hmisc
               dotenv
+              compositions
             ]);
         };
       }

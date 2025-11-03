@@ -16,16 +16,22 @@ Sys.setenv(OPENBLAS_NUM_THREADS = 1)
 # set target configs
 tar_config_set(store = cache_dir)
 
-source("data_targets.R")
-
 # Set target options:
 tar_option_set(
-  packages = c(),
-  format = "qs"
+  packages = c(
+    "data.table",
+    "Hmisc",
+    "compositions"
+  )
+  # ),
+  # FIXME: Need to add this package to the flake
+  # format = "qs"
 )
 
 # Run the R scripts in the R/ folder
 tar_source()
+
+source("data_targets.R")
 
 ## pipeline
 list(

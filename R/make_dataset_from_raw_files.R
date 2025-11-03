@@ -1,11 +1,3 @@
-## Libraries
-library(data.table)
-library(tidyverse)
-library(here)
-library(Hmisc)
-library(dotenv)
-load_dot_env()
-
 create_dataset <- function(
   framingham_dem_file,
   framingham_dem_surv_file,
@@ -43,7 +35,7 @@ create_dataset <- function(
 
   # expand to multiple columns for those with several reviews
 
-  dem[order(review_date), num := 1:.N, by = c("idtype", "PID")]
+  dem[order(review_date), num := seq_len(.N), by = c("idtype", "PID")]
 
   dem <- dcast(
     dem,
@@ -65,7 +57,7 @@ create_dataset <- function(
 
   brain1 <- brain1[, list(PID, IDTYPE, FLAIR_wmh, DSE_wmh)]
 
-  brain1[, mri_assessment := 1:.N, by = c("PID", "IDTYPE")]
+  brain1[, mri_assessment := seq_len(.N), by = c("PID", "IDTYPE")]
 
   # pivot to wide
 
@@ -104,7 +96,7 @@ create_dataset <- function(
 
   brain2 <- brain2[, ..vars]
 
-  brain2[, mri_assessment := 1:.N, by = c("PID", "IDTYPE")]
+  brain2[, mri_assessment := seq_len(.N), by = c("PID", "IDTYPE")]
 
   brain2 <- dcast(
     brain2,
@@ -148,7 +140,7 @@ create_dataset <- function(
 
   cog <- cog[, ..vars]
   cog <- setnames(cog, "NP_DATE", "COG_DATE")
-  cog[, cog_assessment := 1:.N, by = c("PID", "IDTYPE")]
+  cog[, cog_assessment := seq_len(.N), by = c("PID", "IDTYPE")]
   cog <- dcast(
     cog,
     IDTYPE + PID ~ cog_assessment,
@@ -235,7 +227,15 @@ create_dataset <- function(
 
   ## join shhs and fos datasets
 
-  df <- merge(shhs, fos, by = c("IDTYPE", "PID"), all.x = TRUE)
-  df <- df[!is.na(stdatep_s2)]
-  df
+  dt <- merge(shhs, fos, by = c("IDTYPE", "PID"), all.x = TRUE)
+  dt <- dt[!is.na(stdatep_s2)]
+  dt <- dt[
+    complete.cases(
+      timest1,
+      timest2,
+      timest34,
+      timerem
+    ),
+  ]
+  dt
 }
