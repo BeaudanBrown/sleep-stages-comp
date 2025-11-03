@@ -61,37 +61,7 @@ data_targets <- list(
     )
   ),
 
-  tar_target(v, {
-    # FIXME: Choose the SBP more carefully?
-    sbp <- matrix(
-      c(
-        1,
-        1,
-        -1,
-        -1,
-        -1,
-        -1,
-        -1,
-        1,
-        0,
-        0,
-        0,
-        0,
-        -1,
-        1,
-        1,
-        0,
-        1,
-        -1,
-        1,
-        -1
-      ),
-      ncol = 5,
-      byrow = TRUE
-    )
+  tar_target(dt, prepare_dataset(dt_raw)),
 
-    compositions::gsi.buildilrBase(t(sbp))
-  }),
-
-  tar_target(dt, prepare_dataset(dt_raw, v))
+  tar_target(comp_limits, make_comp_limits(dt))
 )

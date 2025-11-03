@@ -1,23 +1,12 @@
-prepare_dataset <- function(dt_raw, v) {
+prepare_dataset <- function(dt_raw) {
   # FIXME: is there a reason slp_time contains so many NA?
   # dt_raw <- tar_read(dt_raw)
   dt <- dt_raw[, `:=`(
-    slp_time = timest1 + timest2 + timest34 + timerem,
-    wake = 24 * 60 - (timest1 + timest2 + timest34 + timerem)
+    slp_time = n1 + n2 + n3 + rem,
+    wake = 24 * 60 - (n1 + n2 + n3 + rem)
   )]
 
-  comp <- compositions::acomp(dt[,
-    .(
-      wake,
-      timest1,
-      timest2,
-      timest34,
-      timerem
-    )
-  ])
-
-  ilr_vars <- ilr(comp, V = v) |>
-    as.data.table()
+  ilr_vars <- make_ilrs(dt)
 
   dt[, c("R1", "R2", "R3", "R4")] <- ilr_vars
 

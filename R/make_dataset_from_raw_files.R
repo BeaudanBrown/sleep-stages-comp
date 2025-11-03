@@ -116,7 +116,7 @@ create_dataset <- function(
   # cognition variables
 
   cog <- fread(framingham_cog_file)
-  vars <- Cs(
+  vars <- Hmisc::Cs(
     PID,
     IDTYPE,
     TRAILSA,
@@ -227,9 +227,9 @@ create_dataset <- function(
 
   ## join shhs and fos datasets
 
-  dt <- merge(shhs, fos, by = c("IDTYPE", "PID"), all.x = TRUE)
-  dt <- dt[!is.na(stdatep_s2)]
-  dt <- dt[
+  dt_raw <- merge(shhs, fos, by = c("IDTYPE", "PID"), all.x = TRUE)
+  dt_raw <- dt_raw[!is.na(stdatep_s2)]
+  dt_raw <- dt_raw[
     complete.cases(
       timest1,
       timest2,
@@ -237,5 +237,20 @@ create_dataset <- function(
       timerem
     ),
   ]
-  dt
+  setnames(
+    dt_raw,
+    c(
+      "timest1",
+      "timest2",
+      "timest34",
+      "timerem"
+    ),
+    c(
+      "n1",
+      "n2",
+      "n3",
+      "rem"
+    )
+  )
+  dt_raw
 }
