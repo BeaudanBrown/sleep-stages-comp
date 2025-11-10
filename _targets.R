@@ -21,11 +21,10 @@ tar_option_set(
   packages = c(
     "data.table",
     "Hmisc",
-    "compositions"
-  )
-  # ),
-  # FIXME: Need to add this package to the flake
-  # format = "qs"
+    "compositions",
+    "mice"
+  ),
+  format = "qs"
 )
 
 # Run the R scripts in the R/ folder

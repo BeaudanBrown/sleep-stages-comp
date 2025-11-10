@@ -31,7 +31,7 @@
         devShells.default = pkgs.mkShell {
           inherit (self.checks.${system}.pre-commit-check) shellHook;
           env.R_LIBS_USER = "./.Rlib";
-          buildInpus = [
+          buildInputs = [
             pkgs.bashInteractive
             self.checks.${system}.pre-commit-check.enabledPackages
           ];
@@ -47,6 +47,7 @@
               dotenv
               targets
               tarchetypes
+              qs2
 
               data_table
               tidyverse
@@ -54,13 +55,15 @@
               Hmisc
               dotenv
               compositions
+              rms
+              mice
             ]);
         };
       }
     );
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixpkgsUnstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     systems.url = "github:nix-systems/default";
     pre-commit-hooks.url = "github:cachix/git-hooks.nix";
