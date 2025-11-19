@@ -50,7 +50,6 @@
               qs2
 
               data_table
-              tidyverse
               here
               Hmisc
               dotenv
