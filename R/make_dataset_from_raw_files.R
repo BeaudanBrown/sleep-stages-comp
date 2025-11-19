@@ -121,62 +121,72 @@ create_dataset <- function(
   dt_raw
 }
 
-load_shhs_psg1 <- function(shhs_psg1_file) {
-  psg1 <- fread(shhs_psg1_file)
+load_framingham_dem <- function(framingham_dem_file) {
+  dem <- fread(framingham_dem_file)
 
-  vars <- Cs(
-    pptidr,
-    pptidu,
-    slp_time,
-    WASO,
-    timest1,
-    timest2,
-    timest34,
-    timerem,
-    oahi
+  # extract relevant columns from raw data
+  vars <- Hmisc::Cs(
+    idtype,
+    review_date,
+    normal_date,
+    impairment_date,
+    mild_date,
+    moderate_date,
+    severe_date,
+    eddd,
+    PID
+  )
+  dem <- dem[,
+    ..vars
+  ]
+
+  # expand to multiple columns for those with several reviews
+  dem[order(review_date), num := seq_len(.N), by = c("idtype", "PID")]
+
+  dem <- dcast(
+    dem,
+    idtype + PID ~ num,
+    value.var = setdiff(names(dem), c("idtype", "PID", "num"))
   )
 
-  psg1[, ..vars]
-}
-
-load_shhs_psg2 <- function(shhs_psg2_file) {
-  psg2 <- fread(shhs_psg2_file)
-
-  vars <- Cs(
-    pptidr,
-    pptidu,
-    stdatep,
-    slp_time,
-    waso,
-    timest1,
-    timest2,
-    timest34,
-    timerem,
-    oahi
-  )
-
-  psg2 <- psg2[, ..vars]
-
-  setnames(psg2, names(psg2)[-c(1, 2)], paste0(names(psg2)[-c(1, 2)], "_s2"))
-  psg2
-}
-
-load_shhs_covars <- function(shhs_covar_file) {
-  covs <- fread(shhs_covar_file)
-  covs[, grep("age|gender|educ|id", names(covs)), with = FALSE]
-}
-
-load_shhs_link <- function(shhs_link_file) {
-  link <- fread(shhs_link_file)
-  link <- link[!is.na(pid), ]
-  setnames(link, "pid", "PID")
-  link
+  setnames(dem, "idtype", "IDTYPE")
+  dem
 }
 
 load_framingham_dem_surv <- function(framingham_dem_surv_file) {
   dem_surv <- fread(framingham_dem_surv_file)
+
+  vars <- Cs(
+    idtype,
+    DEM_STATUS,
+    DEM_SURVDATE,
+    PID
+  )
+  dem_surv <- dem_surv[, ..vars]
   setnames(dem_surv, "idtype", "IDTYPE")
   dem_surv
+}
+
+load_framingham_brain1 <- function(framingham_brain1_file) {
+  brain1 <- fread(framingham_brain1_file)
+
+  vars <- Cs(
+    PID,
+    IDTYPE,
+    FLAIR_wmh,
+    DSE_wmh
+  )
+  brain1 <- brain1[, ..vars]
+
+  brain1[, mri_assessment := seq_len(.N), by = c("PID", "IDTYPE")]
+
+  # pivot to wide
+  brain1 <- dcast(
+    brain1,
+    IDTYPE + PID ~ mri_assessment,
+    value.var = setdiff(names(brain1), c("IDTYPE", "PID", "mri_assessment"))
+  )
+  brain1
 }
 
 load_framingham_brain2 <- function(framingham_brain2_file) {
@@ -217,24 +227,9 @@ load_framingham_brain2 <- function(framingham_brain2_file) {
   brain2
 }
 
-load_framingham_brain1 <- function(framingham_brain1_file) {
-  brain1 <- fread(framingham_brain1_file)
-
-  brain1 <- brain1[, list(PID, IDTYPE, FLAIR_wmh, DSE_wmh)]
-
-  brain1[, mri_assessment := seq_len(.N), by = c("PID", "IDTYPE")]
-
-  # pivot to wide
-  brain1 <- dcast(
-    brain1,
-    IDTYPE + PID ~ mri_assessment,
-    value.var = setdiff(names(brain1), c("IDTYPE", "PID", "mri_assessment"))
-  )
-  brain1
-}
-
 load_framingham_cog <- function(framingham_cog_file) {
   cog <- fread(framingham_cog_file)
+
   vars <- Hmisc::Cs(
     PID,
     IDTYPE,
@@ -256,7 +251,6 @@ load_framingham_cog <- function(framingham_cog_file) {
     SIM,
     NP_DATE
   )
-
   cog <- cog[, ..vars]
   cog <- setnames(cog, "NP_DATE", "COG_DATE")
   cog[, cog_assessment := seq_len(.N), by = c("PID", "IDTYPE")]
@@ -267,33 +261,69 @@ load_framingham_cog <- function(framingham_cog_file) {
   )
 }
 
-load_framingham_dem <- function(framingham_dem_file) {
-  dem <- fread(framingham_dem_file)
+load_shhs_covars <- function(shhs_covar_file) {
+  covs <- fread(shhs_covar_file)
+  covs[, grep("age|gender|educ|id", names(covs)), with = FALSE]
+}
 
-  # extract relevant columns from raw data
-  dem <- dem[,
-    list(
-      idtype,
-      review_date,
-      normal_date,
-      impairment_date,
-      mild_date,
-      moderate_date,
-      severe_date,
-      eddd,
-      PID
-    )
-  ]
+load_shhs_psg1 <- function(shhs_psg1_file) {
+  psg1 <- fread(shhs_psg1_file)
 
-  # expand to multiple columns for those with several reviews
-  dem[order(review_date), num := seq_len(.N), by = c("idtype", "PID")]
-
-  dem <- dcast(
-    dem,
-    idtype + PID ~ num,
-    value.var = setdiff(names(dem), c("idtype", "PID", "num"))
+  vars <- Cs(
+    pptidr,
+    pptidu,
+    slp_time,
+    WASO,
+    timest1,
+    timest2,
+    timest34,
+    timerem,
+    oahi
   )
 
-  setnames(dem, "idtype", "IDTYPE")
-  dem
+  psg1 <- psg1[, ..vars]
+
+  setnames(psg1, c("WASO"), c("waso"))
+  psg1
+}
+
+load_shhs_psg2 <- function(shhs_psg2_file) {
+  psg2 <- fread(shhs_psg2_file)
+
+  vars <- Cs(
+    pptidr,
+    pptidu,
+    stdatep,
+    slp_time,
+    waso,
+    timest1,
+    timest2,
+    timest34,
+    timerem,
+    oahi
+  )
+
+  psg2 <- psg2[, ..vars]
+
+  setnames(psg2, names(psg2)[-c(1, 2)], paste0(names(psg2)[-c(1, 2)], "_s2"))
+  psg2
+}
+
+load_shhs_link <- function(shhs_link_file) {
+  link <- fread(shhs_link_file)
+  # FIXME: Is this correct?
+  link <- link[permiss == 1, ]
+
+  vars <- Cs(
+    IDTYPE,
+    pid,
+    days_studyv1,
+    pptidr,
+    pptidu
+  )
+
+  link <- link[!is.na(pid), ]
+  link <- link[, ..vars]
+  setnames(link, "pid", "PID")
+  link
 }

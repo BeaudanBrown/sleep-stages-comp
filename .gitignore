@@ -2,6 +2,10 @@
 .direnv
 .envrc
 .pre-commit-config.yaml
+Analysis_plan/
+_targets
+_targets.yaml
+.Rprofile
 
 data/
 

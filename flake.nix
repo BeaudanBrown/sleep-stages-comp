@@ -49,6 +49,7 @@
               tarchetypes
               qs2
 
+              survival
               data_table
               here
               Hmisc
