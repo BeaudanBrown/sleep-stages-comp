@@ -4,7 +4,9 @@ create_dataset <- function(
   framingham_brain1_file,
   framingham_brain2_file,
   framingham_cog_file,
+  framingham_death_file,
   shhs_covar_file,
+  shhs_death_file,
   shhs_psg1_file,
   shhs_psg2_file,
   shhs_link_file
@@ -32,15 +34,19 @@ create_dataset <- function(
   # cognition variables
   cog <- load_framingham_cog(framingham_cog_file)
 
+  framingham_death <- load_framingham_death(framingham_death_file)
+
   ## Merge FOS data
   # Merge the brain and dem datasets
   fos <- merge(brain, dem, by = c("IDTYPE", "PID"), all = TRUE)
   fos <- merge(cog, fos, by = c("IDTYPE", "PID"), all = TRUE)
+  fos <- merge(framingham_death, fos, by = c("IDTYPE", "PID"), all = TRUE)
 
   ## SHHS variables
 
   # Covars
   covs <- load_shhs_covars(shhs_covar_file)
+  shhs_death <- load_shhs_death(shhs_death_file)
   # PSG1
   psg1 <- load_shhs_psg1(shhs_psg1_file)
   # PSG2
@@ -50,41 +56,20 @@ create_dataset <- function(
   psg <- merge(psg1, psg2, by = c("pptidr", "pptidu"), all = TRUE)
   # combine PSG and covariate data
   psg <- merge(psg, covs, by = c("pptidr", "pptidu"), all = TRUE)
+  psg <- merge(psg, shhs_death, by = c("pptidr", "pptidu"), all = TRUE)
 
   # link SHHS data with Framingham PID
   link <- load_shhs_link(shhs_link_file)
 
   shhs <- merge(link, psg, all.x = TRUE)
 
-  ## Adjust s2 date to be relative to recruitment
-  shhs[, stdatep_s2 := stdatep_s2 + days_studyv1]
-
   ## join shhs and fos datasets
-
   dt_raw <- merge(shhs, fos, by = c("IDTYPE", "PID"), all.x = TRUE)
-  dt_raw <- dt_raw[!is.na(stdatep_s2)]
-
-  ## Adjust cog dates to be relative to recruitment
-  mci_cols <- grep("^impairment_date_", names(dt_raw), value = TRUE)
-  mci_cols_adjusted <- paste0(mci_cols, "_adjusted")
-
-  cog_cols <- grep("^COG_DATE_", names(dt_raw), value = TRUE)
-  cog_cols_adjusted <- paste0(cog_cols, "_adjusted")
-
-  # Ensure all dates are relative to PSG2
-  dt_raw <- dt_raw[,
-    (cog_cols_adjusted) := lapply(.SD, function(x) x - dt_raw$stdatep_s2),
-    .SDcols = cog_cols
-  ]
-  dt_raw <- dt_raw[,
-    (mci_cols_adjusted) := lapply(.SD, function(x) x - dt_raw$stdatep_s2),
-    .SDcols = mci_cols
-  ]
-  dt_raw <- dt_raw[, DEM_SURVDATE := DEM_SURVDATE - dt_raw$stdatep_s2]
 
   ## Ensure that only participants with complete PSG data are included
   dt_raw <- dt_raw[
     complete.cases(
+      days_psg1_to_psg2,
       timest1,
       timest2,
       timest34,
@@ -227,6 +212,31 @@ load_framingham_brain2 <- function(framingham_brain2_file) {
   brain2
 }
 
+load_framingham_death <- function(framingham_death_file) {
+  death <- fread(framingham_death_file)
+  death <- setnames(
+    death,
+    c(
+      "DTHRVWD",
+      "DATEDTH"
+    ),
+    c(
+      "fram_death_status",
+      "fram_death_date"
+    )
+  )
+
+  vars <- Hmisc::Cs(
+    PID,
+    IDTYPE,
+    fram_death_status,
+    fram_death_date
+  )
+
+  death <- death[, ..vars]
+  death
+}
+
 load_framingham_cog <- function(framingham_cog_file) {
   cog <- fread(framingham_cog_file)
 
@@ -261,9 +271,48 @@ load_framingham_cog <- function(framingham_cog_file) {
   )
 }
 
+load_shhs_death <- function(shhs_death_file) {
+  death <- fread(shhs_death_file)
+
+  death <- setnames(
+    death,
+    c(
+      "vital",
+      "censdate"
+    ),
+    c(
+      "shhs_alive_status",
+      "shhs_cens_date"
+    )
+  )
+
+  vars <- Cs(
+    pptidr,
+    pptidu,
+    shhs_alive_status,
+    shhs_death_date,
+    shhs_cens_date
+  )
+
+  death <- death[,
+    shhs_death_date := ifelse(shhs_alive_status == 0, shhs_cens_date, NA)
+  ]
+
+  death <- death[, ..vars]
+  death
+}
+
 load_shhs_covars <- function(shhs_covar_file) {
   covs <- fread(shhs_covar_file)
-  covs[, grep("age|gender|educ|id", names(covs)), with = FALSE]
+  vars <- Cs(
+    pptidr,
+    pptidu,
+    age_s1,
+    gender,
+    educat
+  )
+  covs <- covs[, ..vars]
+  covs
 }
 
 load_shhs_psg1 <- function(shhs_psg1_file) {
@@ -306,6 +355,8 @@ load_shhs_psg2 <- function(shhs_psg2_file) {
   psg2 <- psg2[, ..vars]
 
   setnames(psg2, names(psg2)[-c(1, 2)], paste0(names(psg2)[-c(1, 2)], "_s2"))
+  setnames(psg2, c("stdatep_s2"), c("days_psg1_to_psg2"))
+
   psg2
 }
 
@@ -319,11 +370,12 @@ load_shhs_link <- function(shhs_link_file) {
     pid,
     days_studyv1,
     pptidr,
+    parent,
     pptidu
   )
 
   link <- link[!is.na(pid), ]
   link <- link[, ..vars]
-  setnames(link, "pid", "PID")
+  setnames(link, c("pid", "days_studyv1"), c("PID", "days_to_psg1"))
   link
 }

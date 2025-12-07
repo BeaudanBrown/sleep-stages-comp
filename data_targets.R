@@ -24,7 +24,17 @@ data_targets <- list(
     file.path(framingham_dir, "vr_np_2018_a_1185d.csv"),
     format = "file"
   ),
+  tar_target(
+    framingham_death_file,
+    file.path(framingham_dir, "vr_survdth_2019_a_1337d.csv"),
+    format = "file"
+  ),
 
+  tar_target(
+    shhs_death_file,
+    file.path(shhs_dir, "SHHS_2/shhs_status_08apr2014_5837.csv"),
+    format = "file"
+  ),
   tar_target(
     shhs_covar_file,
     file.path(shhs_dir, "SHHS_1/shhs1final_13jun2014_5839.csv"),
@@ -54,7 +64,9 @@ data_targets <- list(
       framingham_brain1_file,
       framingham_brain2_file,
       framingham_cog_file,
+      framingham_death_file,
       shhs_covar_file,
+      shhs_death_file,
       shhs_psg1_file,
       shhs_psg2_file,
       shhs_link_file
