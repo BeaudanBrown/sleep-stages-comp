@@ -304,13 +304,16 @@ load_shhs_death <- function(shhs_death_file) {
 
 load_shhs_covars <- function(shhs_covar_file) {
   covs <- fread(shhs_covar_file)
+
   vars <- Cs(
     pptidr,
     pptidu,
     age_s1,
+    bmi_s1,
     gender,
     educat
   )
+
   covs <- covs[, ..vars]
   covs
 }
@@ -323,6 +326,13 @@ load_shhs_psg1 <- function(shhs_psg1_file) {
     pptidu,
     slp_time,
     WASO,
+
+    timest1p,
+    timest2p,
+    times34p,
+    timeremp,
+    slp_lat,
+
     timest1,
     timest2,
     timest34,
@@ -345,6 +355,12 @@ load_shhs_psg2 <- function(shhs_psg2_file) {
     stdatep,
     slp_time,
     waso,
+
+    timest1p,
+    timest2p,
+    times34p,
+    timeremp,
+
     timest1,
     timest2,
     timest34,

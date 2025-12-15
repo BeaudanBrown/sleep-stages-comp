@@ -49,6 +49,7 @@
               tarchetypes
               qs2
 
+              psych
               survival
               data_table
               here
@@ -57,13 +58,16 @@
               compositions
               rms
               mice
+              MASS
+              MCMCpack
+              truncnorm
             ]);
         };
       }
     );
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgsUnstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     systems.url = "github:nix-systems/default";
     pre-commit-hooks.url = "github:cachix/git-hooks.nix";

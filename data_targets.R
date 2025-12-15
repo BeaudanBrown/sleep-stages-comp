@@ -75,5 +75,5 @@ data_targets <- list(
 
   tar_target(dt, prepare_dataset(dt_raw)),
 
-  tar_target(comp_limits, make_comp_limits(dt))
+  tar_target(imp, impute_data(dt = dt, m = 10, maxit = 10))
 )

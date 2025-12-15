@@ -1,3 +1,23 @@
+mice.impute.truncated_norm <- function(y, ry, x, wy = NULL, lower = -Inf, ...) {
+  if (is.null(wy)) wy <- !ry
+
+  # Only want lower for missing vars
+  lower <- lower[wy]
+
+  x <- cbind(1, as.matrix(x))
+  parm <- mice:::.norm.draw(y, ry, x, ...)
+  mean_prediction <- x[wy, ] %*% parm$beta
+
+  imputed_values <- truncnorm::rtruncnorm(
+    n = sum(wy),
+    a = lower,
+    mean = mean_prediction,
+    sd = parm$sigma
+  )
+
+  imputed_values
+}
+
 make_ilrs <- function(dt) {
   comp <- compositions::acomp(dt[,
     ..comp_vars
