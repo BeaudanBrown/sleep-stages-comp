@@ -2,7 +2,16 @@
 .direnv
 .envrc
 .pre-commit-config.yaml
-Analysis_plan/
+# LaTeX build artifacts
+Analysis_plan/*.aux
+Analysis_plan/*.bbl
+Analysis_plan/*.blg
+Analysis_plan/*.fdb_latexmk
+Analysis_plan/*.fls
+Analysis_plan/*.log
+Analysis_plan/*.out
+Analysis_plan/*.pdf
+Analysis_plan/*.synctex.gz
 _targets
 _targets.yaml
 .Rprofile

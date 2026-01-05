@@ -1,6 +1,0 @@
-PWD /S/Epi-Dementia/Pase-ED/Papers/Sleep_stages_compositional/Analysis_plan
-INPUT /usr/local/texlive/2024/texmf.cnf
-INPUT /usr/local/texlive/2024/texmf-dist/web2c/texmf.cnf
-INPUT /usr/local/texlive/2024/texmf-var/web2c/pdftex/pdflatex.fmt
-INPUT /S/Epi-Dementia/Pase-ED/Papers/Sleep_stages_compositional/Analysis_plan/analysis_plan.tex
-OUTPUT analysis_plan.log
