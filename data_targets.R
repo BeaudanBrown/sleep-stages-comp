@@ -29,7 +29,6 @@ data_targets <- list(
     file.path(framingham_dir, "vr_survdth_2019_a_1337d.csv"),
     format = "file"
   ),
-
   tar_target(
     shhs_death_file,
     file.path(shhs_dir, "SHHS_2/shhs_status_08apr2014_5837.csv"),
@@ -55,7 +54,6 @@ data_targets <- list(
     file.path(shhs_dir, "ParentStudy_SHHSLink/parent_shhs_public_2016.csv"),
     format = "file"
   ),
-
   tar_target(
     dt_raw,
     create_dataset(
@@ -72,8 +70,6 @@ data_targets <- list(
       shhs_link_file
     )
   ),
-
   tar_target(dt, prepare_dataset(dt_raw)),
-
   tar_target(imp, impute_data(dt = dt, m = 10, maxit = 10))
 )
