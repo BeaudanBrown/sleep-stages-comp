@@ -314,7 +314,7 @@ load_shhs_covars <- function(shhs_covar_file) {
     educat
   )
 
-  covs <- covs[, ..vars]
+  # covs <- covs[, ..vars]
   covs
 }
 
