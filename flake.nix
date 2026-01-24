@@ -47,6 +47,8 @@
               dotenv
               targets
               tarchetypes
+              crew
+              mirai
               qs2
 
               psych

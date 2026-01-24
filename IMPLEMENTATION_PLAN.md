@@ -1,67 +1,124 @@
 # Implementation Plan - Compositional Sleep Analysis
 
-## Priority 1: Core Infrastructure
+## Critical Issue: 4-part vs 5-part Composition
+- [x] **CRITICAL**: Refactor from 5-part (with wake) to 4-part composition (n1, n2, n3, rem only)
+- [x] Add wake time calculation: `wake = 24*60 - (n1 + n2 + n3 + rem)`
+- [x] Store wake separately, not in composition
+- [ ] Include TST as covariate in all models
 
-- [ ] Configure crew controller for parallel processing with optimal worker settings
-- [ ] Set up targets workflow with proper memory management for large compositional datasets
-- [ ] Implement robust ILR transformation functions with numerical stability checks
-- [ ] Create compositional data validation pipeline with comprehensive QC checks
+## Priority 1: Core Infrastructure & Parallelization
 
-## Priority 2: Data Pipeline
+- [x] **Add crew controller setup** in `_targets.R` with `parallel::detectCores() - 1` workers
+- [x] Configure targets with proper seed management (`tar_option_set(seed = 12345)`)
+- [x] Implement error handling strategy (`error = "continue"` for non-critical targets)
+- [x] Set up deployment strategies (`deployment = "worker"` vs `deployment = "main"`)
+- [x] Enable garbage collection (`garbage_collection = TRUE`)
 
-- [ ] Refactor data loading functions to use consistent naming conventions
-- [ ] Implement compositional-aware imputation for 250 iterations
-- [ ] Add multivariate density threshold functions for plausible compositions
-- [ ] Adjust composition to exclude wake time, include TST as covariate
-- [ ] Create data quality report generation target
+## Priority 2: Data Validation & QC Pipeline
 
-## Priority 3: Statistical Methods
+- [x] Create `R/validation.R` with comprehensive checks:
+  - [x] Sum constraint: TST components sum to TST ± 1 minute
+  - [x] Non-negativity: All sleep stages ≥ 0
+  - [x] Biological plausibility: Min sleep 180 min, max wake 1200 min
+  - [x] REM percentage: 10-25% of TST
+  - [ ] Age-related N3 decline validation
+- [x] Add missing indicators (`*_mis` variables) for all key variables
+- [x] Implement `valid_comp` density checking with Mahalanobis distance
+- [ ] Create QC report generation target with exclusion tracking
 
-- [ ] Implement isotemporal substitution function with proper g-computation
-- [ ] Add multivariate normal fitting for compositional distributions
-- [ ] Implement Rubin's rules for combining 250 imputations
-- [ ] Create exhaustive grid search for optimal composition (no optimization needed)
+## Priority 3: Imputation Layer
 
-## Priority 4: Analysis Targets
+- [ ] Implement compositional-aware imputation in `R/imputation.R`:
+  - [ ] Use truncated normal for compositional data
+  - [ ] Set m = 250 iterations (not 10)
+  - [ ] Add convergence monitoring (trace plots, R-hat < 1.05)
+  - [ ] Track max change in chain means < 0.05
+- [ ] Create dynamic branching target: `pattern = map(data_imputed)`
+- [ ] Add sensitivity analysis targets for m = 10, 20, 50, 250
 
-- [ ] Set up dynamic targets for substitution combinations (15, 30, 45, 60 mins)
-- [ ] Create targets for dementia/MCI combined endpoint
-- [ ] Create targets for MRI outcomes (brain_vol, hippo_vol, wmh_vol)
-- [ ] Ensure all targets return data.table with input metadata
+## Priority 4: Compositional Transformation
 
-## Priority 5: Visualization
+- [ ] Update ILR transformation for 4-part composition in `R/compositional.R`:
+  - [ ] New sequential binary partition for n1, n2, n3, rem
+  - [ ] Verify orthogonality and reversibility (error < 1e-10)
+  - [ ] Add numerical stability checks
+- [ ] Remove wake from composition calculations
+- [ ] Create density model fitting for plausibility checks
 
-- [ ] Implement risk ratio plots with x-axis as minutes substituted
-- [ ] Create cumulative risk curves for best/worst/typical compositions
-- [ ] Add comparison plots for different outcomes
-- [ ] Ensure all plots are publication-ready
+## Priority 5: Substitution Analysis
 
-## Priority 6: Output Generation
+- [ ] Implement G-computation framework in `R/substitution.R`:
+  - [ ] Counterfactual estimation
+  - [ ] Risk differences and ratios calculation
+  - [ ] Bootstrap uncertainty (1000 iterations minimum)
+- [ ] Update substitution increments to 15, 30, 45, 60 minutes (not 10, 30, 60)
+- [ ] Create all 48 scenarios (12 pairs × 4 increments)
+- [ ] Add optimal composition grid search (exhaustive over simplex)
 
-- [ ] Create publication-ready table formatting functions
-- [ ] Implement Quarto report template with dynamic results
-- [ ] Add figure export functions with consistent styling
-- [ ] Create supplementary material generation targets
+## Priority 6: Statistical Modeling
 
-## Technical Debt & Issues
+- [ ] Update `R/models.R` for proper outcome handling:
+  - [ ] Dementia/MCI combined endpoint with type tracking
+  - [ ] Brain MRI volumes with TIV adjustment
+  - [ ] Regional volumes (hippocampal, frontal, temporal)
+  - [ ] Log-transform WMH due to skewness
+- [ ] Add stratification functions for age/sex/APOE4
+- [ ] Implement Rubin's rules for combining imputed results
+- [ ] Add time-varying effects analysis
 
-- [ ] Investigate numerical precision issues in extreme compositions
-- [ ] Ensure nix environment has all required packages
-- [ ] Check targets seed handling for reproducibility
+## Priority 7: Visualization Suite
 
-## Future Enhancements
+- [ ] Create `R/visualization.R` with all required plots:
+  - [ ] Risk ratio plots (x-axis: minutes substituted)
+  - [ ] Cumulative risk curves
+  - [ ] Ternary diagrams for 3-component subcompositions
+  - [ ] Radar plots for optimal vs average compositions
+  - [ ] Heatmaps of substitution effects
+  - [ ] Forest plots for stratified analyses
+- [ ] Create `R/themes.R` for consistent styling
+- [ ] Add publication export functions (PDF/SVG at 300 DPI)
+- [ ] Implement color-blind safe palettes
 
-- [ ] Interactive Shiny app for exploring substitution effects
-- [ ] Machine learning approaches for optimal composition finding
-- [ ] Time-varying compositional models
-- [ ] Joint modeling of multiple outcomes
+## Priority 8: Model Diagnostics
+
+- [ ] Create `R/diagnostics.R` with:
+  - [ ] Residual plots for continuous outcomes
+  - [ ] Calibration plots for survival models
+  - [ ] Cook's distance and influential observations
+  - [ ] VIF for multicollinearity
+  - [ ] Cross-validation stability checks
+  - [ ] Bootstrap coefficient of variation
+
+## Priority 9: Output Generation
+
+- [ ] Create table formatting functions in `R/tables.R`
+- [ ] Implement Quarto report templates with dynamic results
+- [ ] Add supplementary material generation
+- [ ] Create interactive Shiny dashboard for exploration
+
+## Priority 10: Reproducibility Infrastructure
+
+- [ ] Add renv for package management
+- [ ] Implement comprehensive logging system
+- [ ] Document all exclusions at each stage
+- [ ] Create platform testing suite
+- [ ] Add numerical stability tests
+
+## Technical Debt Resolution
+
+- [ ] Fix numerical precision in extreme compositions
+- [ ] Ensure all required packages in flake.nix
+- [ ] Verify targets seed propagation
+- [ ] Add unit tests for critical functions
+
+## Completed Items
+- [x] Basic data loading infrastructure
+- [x] File targets for raw data
+- [x] Data merging functionality
 
 ## Notes
-
-- Sleep composition is 4-part (n1, n2, n3, rem) with wake excluded
-- Total sleep time (TST) included as covariate in all models
-- All functions should handle edge cases (zero values, extreme compositions)
-- Maintain reproducibility with explicit seed management
-- Document statistical assumptions in code comments
-- Use dynamic targets exclusively, returning data.table objects
-- Run all R code within nix shell environment
+- Old code in `old/R/` provides reference implementations but uses 5-part composition
+- All new functions must handle 4-part composition with TST as covariate
+- Maintain backward compatibility with existing data loading
+- Use dynamic targets exclusively for scalability
+- Document all statistical assumptions in code

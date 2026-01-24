@@ -31,3 +31,8 @@ Run these after implementing to get immediate feedback:
 - Targets defined in `_targets.R` and `*_targets.R` files  
 - Use `tar_source()` to load all R functions
 - Compositional data stored as data.table with class "coda"
+
+### Validation Targets
+- `data_validated_raw`: Raw data with validation flags and Mahalanobis distance
+- `data_clean`: Data filtered for valid records (positive components, sum constraints, plausible values)
+- `data_final`: Clean data with calculated `wake_time` (4-part composition + wake)

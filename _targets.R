@@ -1,5 +1,6 @@
 library(targets)
 library(tarchetypes)
+library(crew)
 
 dotenv::load_dot_env()
 cache_dir <- Sys.getenv("CACHE_DIR")
@@ -24,15 +25,23 @@ tar_option_set(
     "compositions",
     "mice"
   ),
-  format = "qs"
+  format = "qs",
+  seed = 12345,
+  error = "continue",
+  garbage_collection = TRUE,
+  controller = crew::crew_controller_local(
+    workers = max(1, parallel::detectCores() - 1)
+  )
 )
 
 # Run the R scripts in the R/ folder
 tar_source()
 
 source("data_targets.R")
+source("validation_targets.R")
 
 ## pipeline
 list(
-  data_targets
+  data_targets,
+  validation_targets
 )
