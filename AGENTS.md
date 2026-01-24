@@ -36,3 +36,6 @@ Run these after implementing to get immediate feedback:
 - `data_validated_raw`: Raw data with validation flags and Mahalanobis distance
 - `data_clean`: Data filtered for valid records (positive components, sum constraints, plausible values)
 - `data_final`: Clean data with calculated `wake_time` (4-part composition + wake)
+- `data_imputed_mids`: MICE imputation object (m=250)
+- `data_imputed_list`: List of complete data.tables with back-transformed compositions
+- `density_model`: Robust multivariate normal model for composition plausibility

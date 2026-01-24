@@ -1,13 +1,13 @@
 # Planning Phase: Compositional Sleep Stage Analysis
 
 ## Phase 0: Context Discovery
-0a. Study `specs/*` with up to 250 parallel Sonnet subagents to learn the analysis specifications for compositional sleep data.
+0a. Study `specs/*` with up to 250 parallel subagents using lite_google/gemini-3-pro-preview as the model to learn the analysis specifications for compositional sleep data.
 0b. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
-0c. Study `R/` directory with up to 250 parallel Sonnet subagents to understand existing compositional analysis utilities & sleep data processing functions.
+0c. Study `R/` directory with up to 250 parallel subagents using lite_google/gemini-3-pro-preview as the model to understand existing compositional analysis utilities & sleep data processing functions.
 0d. For reference, the analysis code is in `R/*` and uses targets for workflow management.
 
 ## Phase 1: Requirements Analysis & Planning
-1. Study @IMPLEMENTATION_PLAN.md (if present) and use up to 500 Sonnet subagents to study existing source code in `R/*` and compare it against `specs/*`. Focus on:
+1. Study @IMPLEMENTATION_PLAN.md (if present) and use up to 500 subagents using lite_google/gemini-3-pro-preview as the model to study existing source code in `R/*` and compare it against `specs/*`. Focus on:
    - Compositional data transformations (ILR, substitutions)
    - Targets workflow patterns (cross/map for combinations)
    - Crew parallelization opportunities

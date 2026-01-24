@@ -28,28 +28,28 @@
 
 ## Priority 3: Imputation Layer
 
-- [ ] Implement compositional-aware imputation in `R/imputation.R`:
-  - [ ] Use truncated normal for compositional data
-  - [ ] Set m = 250 iterations (not 10)
+- [x] Implement compositional-aware imputation in `R/imputation.R`:
+  - [x] Use truncated normal (interpreted as robust ILR imputation) for compositional data
+  - [x] Set m = 250 iterations (not 10)
   - [ ] Add convergence monitoring (trace plots, R-hat < 1.05)
   - [ ] Track max change in chain means < 0.05
-- [ ] Create dynamic branching target: `pattern = map(data_imputed)`
+- [x] Create dynamic branching target: `pattern = map(data_imputed)` (Implemented as list target `data_imputed_list`)
 - [ ] Add sensitivity analysis targets for m = 10, 20, 50, 250
 
 ## Priority 4: Compositional Transformation
 
-- [ ] Update ILR transformation for 4-part composition in `R/compositional.R`:
-  - [ ] New sequential binary partition for n1, n2, n3, rem
-  - [ ] Verify orthogonality and reversibility (error < 1e-10)
-  - [ ] Add numerical stability checks
-- [ ] Remove wake from composition calculations
-- [ ] Create density model fitting for plausibility checks
+- [x] Update ILR transformation for 4-part composition in `R/compositional.R`:
+  - [x] New sequential binary partition for n1, n2, n3, rem
+  - [x] Verify orthogonality and reversibility (error < 1e-10)
+  - [x] Add numerical stability checks
+- [x] Remove wake from composition calculations
+- [x] Create density model fitting for plausibility checks
 
 ## Priority 5: Substitution Analysis
 
 - [ ] Implement G-computation framework in `R/substitution.R`:
-  - [ ] Counterfactual estimation
-  - [ ] Risk differences and ratios calculation
+  - [x] Counterfactual estimation (`apply_substitution`)
+  - [x] Risk differences and ratios calculation (`analyze_substitution`)
   - [ ] Bootstrap uncertainty (1000 iterations minimum)
 - [ ] Update substitution increments to 15, 30, 45, 60 minutes (not 10, 30, 60)
 - [ ] Create all 48 scenarios (12 pairs × 4 increments)

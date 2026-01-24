@@ -39,9 +39,11 @@ tar_source()
 
 source("data_targets.R")
 source("validation_targets.R")
+source("imputation_targets.R")
 
 ## pipeline
 list(
   data_targets,
-  validation_targets
+  validation_targets,
+  imputation_targets
 )

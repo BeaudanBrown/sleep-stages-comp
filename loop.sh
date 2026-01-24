@@ -1,4 +1,3 @@
-#!/bin/bash
 # Usage: ./loop.sh [--model model_name] [plan] [max_iterations]
 # Examples:
 #   ./loop.sh              # Build mode, unlimited iterations
