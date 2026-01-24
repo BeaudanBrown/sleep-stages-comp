@@ -1,20 +1,116 @@
-0a. Study `specs/*` with up to 500 parallel Sonnet subagents to learn the application specifications.
-0b. Study @IMPLEMENTATION_PLAN.md.
-0c. For reference, the application source code is in `src/*`.
+# Build Phase: Compositional Sleep Stage Analysis Implementation
 
-1. Your task is to implement functionality per the specifications using parallel subagents. Follow @IMPLEMENTATION_PLAN.md and choose the most important item to address. Before making changes, search the codebase (don't assume not implemented) using Sonnet subagents. You may use up to 500 parallel Sonnet subagents for searches/reads and only 1 Sonnet subagent for build/tests. Use Opus subagents when complex reasoning is needed (debugging, architectural decisions).
-2. After implementing functionality or resolving problems, run the tests for that unit of code that was improved. If functionality is missing then it's your job to add it as per the application specifications. Ultrathink.
-3. When you discover issues, immediately update @IMPLEMENTATION_PLAN.md with your findings using a subagent. When resolved, update and remove the item.
-4. When the tests pass, update @IMPLEMENTATION_PLAN.md, then `git add -A` then `git commit` with a message describing the changes. After the commit, `git push`.
+## Phase 0: Context Loading
+0a. Study `specs/*` with up to 500 parallel Sonnet subagents to learn the compositional analysis specifications.
+0b. Study @IMPLEMENTATION_PLAN.md to understand current priorities.
+0c. Study existing `R/*` functions for compositional data analysis patterns.
+0d. Use Context7 library documentation for targets, crew, compositions, and other R packages.
+0e. All R code must be run within the nix environment: `nix develop -c Rscript`
 
-99999. Important: When authoring documentation, capture the why — tests and implementation importance.
-999999. Important: Single sources of truth, no migrations/adapters. If tests unrelated to your work fail, resolve them as part of the increment.
-9999999. As soon as there are no build or test errors create a git tag. If there are no git tags start at 0.0.0 and increment patch by 1 for example 0.0.1  if 0.0.0 does not exist.
-99999999. You may add extra logging if required to debug issues.
-999999999. Keep @IMPLEMENTATION_PLAN.md current with learnings using a subagent — future work depends on this to avoid duplicating efforts. Update especially after finishing your turn.
-9999999999. When you learn something new about how to run the application, update @AGENTS.md using a subagent but keep it brief. For example if you run commands multiple times before learning the correct command then that file should be updated.
-99999999999. For any bugs you notice, resolve them or document them in @IMPLEMENTATION_PLAN.md using a subagent even if it is unrelated to the current piece of work.
-999999999999. Implement functionality completely. Placeholders and stubs waste efforts and time redoing the same work.
-9999999999999. When @IMPLEMENTATION_PLAN.md becomes large periodically clean out the items that are completed from the file using a subagent.
-99999999999999. If you find inconsistencies in the specs/* then use an Opus 4.5 subagent with 'ultrathink' requested to update the specs.
-999999999999999. IMPORTANT: Keep @AGENTS.md operational only — status updates and progress notes belong in `IMPLEMENTATION_PLAN.md`. A bloated AGENTS.md pollutes every future loop's context.
+## Phase 1: Implementation
+1. Your task is to implement compositional analysis functionality per the specifications using parallel subagents. Follow @IMPLEMENTATION_PLAN.md and choose the most important item to address. 
+
+**Before implementation:**
+- Search the codebase using Sonnet subagents to confirm functionality doesn't exist
+- Review existing patterns in `R/*` for consistency
+- Check targets workflow for similar branching patterns
+- Verify required R packages are in flake.nix, add using nixos_nix MCP if needed
+
+**Implementation guidelines:**
+- Use targets cross() and map() for generating substitution combinations
+- Implement crew controllers for parallel execution
+- Follow functional programming patterns (pure functions, no side effects)
+- Use data.table for efficient data manipulation
+- Leverage compositions package for ILR transformations
+
+**Key patterns to follow:**
+```r
+# Use dynamic targets that return data.table with metadata
+tar_target(
+  substitution_results,
+  {
+    scenarios <- expand.grid(
+      from = c("n1", "n2", "n3", "rem"),
+      to = c("n1", "n2", "n3", "rem"),
+      minutes = c(15, 30, 45, 60)
+    ) %>% filter(from != to)
+    
+    # Return data.table with all inputs and results
+    map_dfr(seq_len(nrow(scenarios)), function(i) {
+      perform_substitution(
+        data = data,
+        from = scenarios$from[i],
+        to = scenarios$to[i],
+        minutes = scenarios$minutes[i]
+      )
+    })
+  },
+  pattern = map(data_imputed)
+)
+```
+
+## Phase 2: Testing & Validation
+2. After implementing functionality:
+   - Run targets pipeline: `nix develop -c Rscript -e "targets::tar_make()"`
+   - Validate plausibility thresholds for realistic substitutions
+   - Ensure reproducibility with set seeds
+   - Check Rubin's rules combination for 250 imputations
+
+Ultrathink about edge cases:
+   - Participants with extreme sleep compositions
+   - Missing data patterns  
+   - Numerical stability in ILR transformations (now 3 coordinates, not 4)
+   - Convergence in imputation models (250 iterations)
+
+## Phase 3: Documentation & Updates
+3. When you discover issues or complete tasks:
+   - Immediately update @IMPLEMENTATION_PLAN.md with findings
+   - Document any deviations from specs with rationale
+   - Add operational notes to @AGENTS.md for future runs
+   - Update specs if implementation reveals better patterns
+
+## Phase 4: Version Control
+4. When functionality is complete and tested:
+   - Stage all changes: `git add -A`
+   - Commit with descriptive message: `git commit -m "feat: implement isotemporal substitution for [specific functionality]"`
+   - Push to remote: `git push`
+   - Create semantic version tag if milestone reached
+
+## Important Implementation Notes
+
+**99999.** Document the WHY in comments - explain compositional constraints and statistical assumptions
+
+**999999.** Single source of truth - consolidate substitution logic in one place, not scattered
+
+**9999999.** Create git tag when major analysis components complete (e.g., "v0.1.0-substitutions-complete")
+
+**99999999.** Add diagnostic logging for:
+   - Number of valid compositions after substitution
+   - Convergence of statistical models
+   - Memory usage in parallel computation
+
+**999999999.** Keep @IMPLEMENTATION_PLAN.md current - future agents need accurate status
+
+**9999999999.** Update @AGENTS.md with discovered commands:
+   - How to run specific substitution analyses
+   - Memory settings for crew workers
+   - Troubleshooting targets cache issues
+
+**99999999999.** Resolve any bugs immediately, even if unrelated to current task
+
+**999999999999.** Implement completely - no placeholders in statistical functions
+
+**9999999999999.** Clean @IMPLEMENTATION_PLAN.md periodically, archiving completed items
+
+**99999999999999.** If specs conflict with compositional theory, use Opus 4.5 with 'ultrathink' to resolve
+
+**999999999999999.** CRITICAL: Keep @AGENTS.md operational only - implementation details belong in code comments or specs
+
+## Compositional Analysis Checklist
+- [ ] ILR transformations work with 4-part sleep composition (excluding wake)
+- [ ] Substitutions maintain realistic sleep patterns
+- [ ] Multivariate density threshold prevents impossible compositions  
+- [ ] Imputation respects compositional geometry
+- [ ] Results include back-transformation to interpretable units
+- [ ] Rubin's rules correctly combine 250 imputations
+- [ ] Total sleep time included as covariate

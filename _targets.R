@@ -31,10 +31,8 @@ tar_option_set(
 tar_source()
 
 source("data_targets.R")
-source("analysis_targets.R")
 
 ## pipeline
 list(
-  data_targets,
-  analysis_targets
+  data_targets
 )

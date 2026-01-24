@@ -1,10 +1,55 @@
-0a. Study `specs/*` with up to 250 parallel subagents to learn the application specifications.
+# Planning Phase: Compositional Sleep Stage Analysis
+
+## Phase 0: Context Discovery
+0a. Study `specs/*` with up to 250 parallel Sonnet subagents to learn the analysis specifications for compositional sleep data.
 0b. Study @IMPLEMENTATION_PLAN.md (if present) to understand the plan so far.
-0c. Study `src/lib/*` with up to 250 parallel Sonnet subagents to understand shared utilities & components.
-0d. For reference, the application source code is in `src/*`.
+0c. Study `R/` directory with up to 250 parallel Sonnet subagents to understand existing compositional analysis utilities & sleep data processing functions.
+0d. For reference, the analysis code is in `R/*` and uses targets for workflow management.
 
-1. Study @IMPLEMENTATION_PLAN.md (if present; it may be incorrect) and use up to 500 Sonnet subagents to study existing source code in `src/*` and compare it against `specs/*`. Use an Opus subagent to analyze findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink. Consider searching for TODO, minimal implementations, placeholders, skipped/flaky tests, and inconsistent patterns. Study @IMPLEMENTATION_PLAN.md to determine starting point for research and keep it up to date with items considered complete/incomplete using subagents.
+## Phase 1: Requirements Analysis & Planning
+1. Study @IMPLEMENTATION_PLAN.md (if present) and use up to 500 Sonnet subagents to study existing source code in `R/*` and compare it against `specs/*`. Focus on:
+   - Compositional data transformations (ILR, substitutions)
+   - Targets workflow patterns (cross/map for combinations)
+   - Crew parallelization opportunities
+   - Functional programming patterns
+   
+Use an Opus subagent to analyze findings, prioritize tasks, and create/update @IMPLEMENTATION_PLAN.md as a bullet point list sorted in priority of items yet to be implemented. Ultrathink about:
+   - Isotemporal substitution combinations needed (e.g., 10, 20, 30, 60 minute increments)
+   - Stratification variables (age groups, sex, baseline health)
+   - Outcome measures (dementia, cognition, MRI volumes)
+   - Cross-validation or sensitivity analyses required
+   - Publication output requirements (tables, figures, reports)
 
-IMPORTANT: Plan only. Do NOT implement anything. Do NOT assume functionality is missing; confirm with code search first. Treat `src/lib` as the project's standard library for shared utilities and components. Prefer consolidated, idiomatic implementations there over ad-hoc copies.
+## Phase 2: Specification Development
+2. For any missing analysis components, search first to confirm they don't exist, then create specifications:
+   - If compositional analysis methods are incomplete: `specs/compositional-methods.md`
+   - If visualization requirements are unclear: `specs/visualization-outputs.md`
+   - If targets workflow patterns need documentation: `specs/targets-patterns.md`
+   - If quality control procedures are missing: `specs/quality-validation.md`
 
-ULTIMATE GOAL: We want to achieve [project-specific goal]. Consider missing elements and plan accordingly. If an element is missing, search first to confirm it doesn't exist, then if needed author the specification at specs/FILENAME.md. If you create a new element then document the plan to implement it in @IMPLEMENTATION_PLAN.md using a subagent.
+IMPORTANT: Plan only. Do NOT implement anything. Do NOT assume functionality is missing; confirm with code search first. Treat existing R functions as the project's foundation for compositional analysis.
+
+## Phase 3: Functional Design
+3. When planning the implementation, consider:
+   - **Targets branching**: How to efficiently generate all substitution combinations
+   - **Crew clusters**: Optimal worker allocation for parallel computation
+   - **Memory efficiency**: Compositional data can be large with many substitutions
+   - **Reproducibility**: Setting seeds, caching strategies
+   - **Extensibility**: Easy addition of new outcomes or stratifications
+
+## Ultimate Goal
+We want to achieve a complete compositional data analysis pipeline that:
+1. Performs isotemporal substitutions of sleep stages (N1, N2, N3, REM, Wake)
+2. Estimates effects on cognitive and brain health outcomes
+3. Finds optimal sleep compositions for each outcome
+4. Generates publication-ready tables and figures
+5. Uses functional programming with targets for full reproducibility
+
+Consider missing elements and plan accordingly. Document all analysis decisions in specs for consistency across agents.
+
+## Context Management Guidelines
+- Each spec file should be self-contained with necessary variable definitions
+- Avoid duplicating information across specs
+- Reference other specs when needed rather than repeating
+- Keep implementation details out of specs - focus on WHAT not HOW
+- Include example data structures and expected outputs where helpful
