@@ -2,6 +2,7 @@ prepare_dataset <- function(dt_raw) {
   ## Adjust cog dates to be relative to recruitment
   mci_cols <- grep("^impairment_date_", names(dt_raw), value = TRUE)
   cog_cols <- grep("^COG_DATE_", names(dt_raw), value = TRUE)
+  mri_cols <- grep("^mri_date_", names(dt_raw), value = TRUE)
 
   # Merge death status
   dt_raw <- dt_raw[,
@@ -13,7 +14,13 @@ prepare_dataset <- function(dt_raw) {
   ]
 
   # Ensure all dates are relative to PSG2
-  fram_cols <- c(mci_cols, cog_cols, "fram_death_date", "DEM_SURVDATE")
+  fram_cols <- c(
+    mci_cols,
+    mri_cols,
+    cog_cols,
+    "fram_death_date",
+    "DEM_SURVDATE"
+  )
   shhs_cols <- c("shhs_death_date", "shhs_cens_date")
 
   dt_raw <- dt_raw[,
@@ -21,12 +28,12 @@ prepare_dataset <- function(dt_raw) {
   ]
 
   dt_raw <- dt_raw[,
-    (shhs_cols) := lapply(.SD, function(x) x - dt_raw$days_psg1_to_psg2),
+    (shhs_cols) := lapply(.SD, \(x) x - dt_raw$days_psg1_to_psg2),
     .SDcols = shhs_cols
   ]
 
   dt_raw <- dt_raw[,
-    (fram_cols) := lapply(.SD, function(x) x - days_to_psg2),
+    (fram_cols) := lapply(.SD, \(x) x - days_to_psg2),
     .SDcols = fram_cols
   ]
 
