@@ -29,17 +29,22 @@ stages_compositional/
 ├── _targets.R           # Main pipeline orchestration
 ├── data_targets.R       # Data loading and preparation targets
 ├── analysis_targets.R   # Analysis targets (models, substitutions)
+├── simulation_targets.R # Simulated data targets (for dev/validation)
+├── IMPLEMENTATION_PLAN.md  # Detailed implementation roadmap
 ├── R/
 │   ├── constants.R      # Composition variables, SBP matrix
 │   ├── make_dataset_from_raw_files.R  # Raw data loading functions
 │   ├── prepare_dataset.R              # Data cleaning, ILR creation
+│   ├── simulate_data.R  # Simulated data generation functions
+│   ├── validate_simulation.R  # Validation of simulation results
 │   └── utils.R          # Model fitting, prediction, substitution functions
 ├── specs/               # Detailed specifications for each analysis component
 │   ├── data.md          # Variables, cleaning, exclusions
 │   ├── composition.md   # ILR transformation, SBP choice
 │   ├── models.md        # Model specifications, formulas
 │   ├── outcomes.md      # Outcome definitions and timing
-│   └── analysis.md      # Isotemporal substitution and ideal composition methods
+│   ├── analysis.md      # Isotemporal substitution and ideal composition methods
+│   └── simulation.md    # Simulated data specification
 ├── Analysis_plan/       # LaTeX analysis plan (DO NOT MODIFY)
 └── .env                 # Environment variables for data paths (not in git)
 ```
@@ -110,29 +115,57 @@ stages_compositional/
 ### To understand the analysis methods:
 → Read `specs/analysis.md`
 
+### To understand simulated data (for dev/validation):
+→ Read `specs/simulation.md`
+
+### To see implementation status and roadmap:
+→ Read `IMPLEMENTATION_PLAN.md`
+
 ### To modify the pipeline:
 1. Check which targets are affected: `tar_visnetwork()`
 2. Modify functions in `R/` 
-3. Update target definitions in `data_targets.R` or `analysis_targets.R`
+3. Update target definitions in `data_targets.R`, `analysis_targets.R`, or `simulation_targets.R`
 4. Run `tar_make()` to rebuild
 
 ---
 
-## Current Implementation Status
+## Simulated Data
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Data loading (SHHS + Framingham) | ✅ Complete | Includes Omni |
-| Exclusion criteria | ⚠️ Partial | MCI/dementia exclusion done; CVD exclusion needed |
-| Composition variables | ⚠️ Needs update | Currently 5 components; should be 4 (N1,N2,N3,REM) |
-| ILR transformation | ⚠️ Needs update | Currently uses SHHS-1; should use SHHS-2 |
-| Confounders | ❌ Not implemented | Need to add from data dictionary |
-| Dementia outcome model | ⚠️ Partial | Structure exists; needs confounders and interactions |
-| MRI outcome models | ❌ Not implemented | |
-| Death competing risk | ✅ Complete | For dementia outcome |
-| Isotemporal substitutions | ✅ Complete | With density checking |
-| Ideal composition search | ❌ Not implemented | |
-| Bootstrap inference | ❌ Not implemented | |
+For **privacy-safe development** and **pipeline validation**, simulated data is available.
+
+### Why Use Simulated Data?
+1. **Privacy:** Agents can freely query, display, and manipulate simulated data without confidentiality concerns
+2. **Validation:** Known causal effects are baked into the data - the pipeline should recover them
+3. **Iteration:** Smaller sample sizes enable faster development cycles
+
+### Working with Simulated Data
+- Use `sim_dt` targets instead of `dt` for development
+- True effects are defined in `sim_specs` target
+- Check `validation_results` to verify pipeline recovers known effects
+- See `specs/simulation.md` for full specification
+
+### Predefined Scenarios
+| Scenario | Description | Key Parameters |
+|----------|-------------|----------------|
+| `null_effect` | No sleep composition effects | All β = 0 |
+| `protective_n3` | N3/SWS is protective | effect_R2_dem = -0.3 |
+| `age_interaction` | Effect varies by age | interaction term |
+
+---
+
+## Implementation Status
+
+See `IMPLEMENTATION_PLAN.md` for detailed status and roadmap.
+
+**Phase Overview:**
+- **Phase 0:** Simulated data infrastructure *(enables safe development)*
+- **Phase 1:** Fix core composition and ILR
+- **Phase 2:** Update model specifications  
+- **Phase 3:** Fix multiple imputation
+- **Phase 4:** Fix isotemporal substitutions
+- **Phase 5:** Implement MRI outcomes
+- **Phase 6:** Bootstrap inference and ideal composition
+- **Phase 7:** Reporting |
 
 ---
 
