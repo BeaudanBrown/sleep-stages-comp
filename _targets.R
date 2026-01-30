@@ -32,9 +32,11 @@ tar_source()
 
 source("data_targets.R")
 source("analysis_targets.R")
+source("simulation_targets.R")
 
 ## pipeline
 list(
   data_targets,
-  analysis_targets
+  analysis_targets,
+  simulation_targets
 )
