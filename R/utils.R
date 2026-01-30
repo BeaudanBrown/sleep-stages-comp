@@ -39,6 +39,31 @@ make_comp_limits <- function(dt) {
   }) |>
     setNames(comp_vars)
 }
+
+apply_substitution <- function(dt, from_var, to_var, duration, comp_limits) {
+  lower_from <- comp_limits[[from_var]]$lower
+  upper_to <- comp_limits[[to_var]]$upper
+
+  max_from_change <- dt[[from_var]] - lower_from
+  max_to_change <- upper_to - dt[[to_var]]
+  can_substitute <- (max_from_change >= duration) & (max_to_change >= duration)
+
+  sub <- copy(dt)
+  sub[[from_var]] <- sub[[from_var]] - (can_substitute * duration)
+  sub[[to_var]] <- sub[[to_var]] + (can_substitute * duration)
+  sub[["substituted"]] <- can_substitute
+
+  ilr_vars <- make_ilrs(sub)
+
+  sub[, c("R1", "R2", "R3", "R4")] <- ilr_vars
+
+  data.table(
+    results = list(sub),
+    from_var = from_var,
+    to_var = to_var,
+    duration = duration
+  )
+}
 get_primary_formula <- function(dt) {
   knots_r1 <- quantile(
     dt[["R1"]],
