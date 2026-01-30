@@ -5,12 +5,13 @@
 This plan addresses the gaps between the current codebase and the specifications, organized into 8 phases with clear milestones. Each phase builds on the previous one.
 
 **Current State Summary:**
-- Composition uses wrong variables (5-part with wake, SHHS-1 instead of 4-part SHHS-2)
-- ILR produces 4 coordinates instead of 3
-- SBP matrix doesn't match specification
+- ✅ Simulated data infrastructure implemented (Phase 0 Tier 1 core)
+- ✅ Composition updated to 4-part SHHS-2 variables (n1_s2, n2_s2, n3_s2, rem_s2)
+- ✅ SBP matrix updated to "restorative vs light" partition (4×3 → 3 ILRs)
+- ✅ ILR utilities updated (R1-R3 instead of R1-R4, df=3 for density)
+- ✅ Phase 0: Model fitting on simulated data working (make_cuts/survSplit guardrails)
 - Missing: full confounders, ILR×Time interactions, ILR×Age interactions, TST covariate
 - Missing: proper MI pooling, MRI outcomes, bootstrap inference, ideal composition search
-- Missing: simulated data for privacy-safe development and pipeline validation
 
 ---
 
@@ -22,7 +23,7 @@ This plan addresses the gaps between the current codebase and the specifications
 
 ### Tier 1: Core Implementation
 
-- [ ] **0.1** Create `R/simulate_data.R` - Core simulation functions
+- [x] **0.1** Create `R/simulate_data.R` - Core simulation functions
   - Function: `make_sim_spec()` - Create simulation specification with defaults
     - Parameters: n, seed, true causal effects (effect_R1_dem, effect_R2_dem, effect_R3_dem, etc.)
     - Default effects: null (all zeros) for baseline scenario
@@ -30,7 +31,7 @@ This plan addresses the gaps between the current codebase and the specifications
     - Calls sub-functions for each data component
     - Returns data.table matching structure of real `dt`
 
-- [ ] **0.2** Implement `simulate_baseline()` - Demographics and confounders
+- [x] **0.2** Implement `simulate_baseline()` - Demographics and confounders
   - Generate: age_s1 (truncated normal, μ=65, σ=10, range [40,90])
   - Generate: gender (Bernoulli, p=0.5)
   - Generate: bmi_s1 (normal, μ=28, σ=5, correlated with age)
@@ -38,14 +39,14 @@ This plan addresses the gaps between the current codebase and the specifications
   - Generate: educat (ordinal, age-dependent)
   - Include correlations between variables
 
-- [ ] **0.3** Implement `simulate_sleep_stages()` - SHHS-1 and SHHS-2 compositions
+- [x] **0.3** Implement `simulate_sleep_stages()` - SHHS-1 and SHHS-2 compositions
   - Use Dirichlet distribution for compositional data
   - SHHS-1: Base composition with age effect (older → less N3, more N1)
   - SHHS-2: Autocorrelated with S1 (ρ≈0.6), plus additional aging
   - Generate total sleep time (normal, μ=400, σ=60 minutes)
   - Compute stage minutes from proportions × TST
 
-- [ ] **0.4** Implement `simulate_outcomes()` - Dementia and death from known DGP
+- [x] **0.4** Implement `simulate_outcomes()` - Dementia and death from known DGP
   - Dementia hazard model (discrete-time):
     ```
     logit(h_dem) = baseline + β_R1*R1 + β_R2*R2 + β_R3*R3 + β_age*age + ...
@@ -57,29 +58,37 @@ This plan addresses the gaps between the current codebase and the specifications
   - Generate events sequentially respecting competing risks
   - Track survival times and event indicators
 
-- [ ] **0.5** Create `prepare_simulated_dataset()` - Match real data preparation
+- [x] **0.5** Create `prepare_simulated_dataset()` - Match real data preparation
   - Apply same transformations as `prepare_dataset()`
   - Create ILR coordinates, derived variables
   - Ensure column names and types match real data
 
-- [ ] **0.6** Create `simulation_targets.R` - Pipeline integration
+- [x] **0.6** Create `simulation_targets.R` - Pipeline integration
   - Define `sim_specs` target with predefined scenarios:
     - `null_effect`: All sleep effects = 0
     - `protective_n3`: effect_R2_dem = -0.3 (N3 protective)
   - Map simulated data generation over specs
   - Run analysis pipeline on simulated data (branched targets)
 
-- [ ] **0.7** Create `R/validate_simulation.R` - Validation functions
+- [x] **0.7** Create `R/validate_simulation.R` - Validation functions (skeleton)
   - Function: `validate_simulation(estimated, true_spec)` - Compare estimated vs true
   - Check: Effect direction correct
   - Check: True effect within confidence interval
   - Return: Validation summary table
+  - **NOTE:** Skeleton implemented, needs full logic for comparing estimated to true effects
 
 - [ ] **0.8** Add validation targets to `simulation_targets.R`
   - Target: `validation_results` - Run validation for each scenario
   - Target: `validation_summary` - Aggregate pass/fail status
+  - **BLOCKED:** Waiting for isotemporal substitution targets to work
 
 **Milestone 0.1:** Basic simulation generates data, pipeline runs on it, validation checks pass for null and protective_n3 scenarios.
+
+**Notes for Next Agent:**
+- Simulation targets `sim_specs` through `sim_comp_limits` all work correctly
+- `sim_fitted_models` now works; if it fails again, re-check `make_cuts()`/`survSplit()` cutpoints
+- To test: `./nixr.R "targets::tar_make(names = starts_with('sim_'))"`
+- Fixed during testing: `targets::map()` → `map()`, `rDirichlet()` → `rDirichlet.acomp()`, named list handling, survival time minimum safeguard
 
 ### Tier 2: Essential Extensions
 
@@ -120,11 +129,11 @@ This plan addresses the gaps between the current codebase and the specifications
 
 **Goal:** Correct the fundamental composition setup so all downstream analysis uses the right exposure variables.
 
-- [ ] **1.1** Update `R/constants.R` - Composition Variables
+- [x] **1.1** Update `R/constants.R` - Composition Variables
   - Change `comp_vars` from `c("wake", "n1", "n2", "n3", "rem")` to `c("n1_s2", "n2_s2", "n3_s2", "rem_s2")`
   - Rationale: Specs require 4-part composition (N1, N2, N3, REM) from SHHS-2, excluding wake
 
-- [ ] **1.2** Update `R/constants.R` - SBP Matrix
+- [x] **1.2** Update `R/constants.R` - SBP Matrix
   - Replace current 5×4 SBP with specified 4×3 "restorative vs light" partition:
     ```r
     # Component order: (N1, N2, N3, REM)
@@ -137,10 +146,11 @@ This plan addresses the gaps between the current codebase and the specifications
     ```
   - Rebuild ILR basis: `v <- gsi.buildilrBase(t(sbp))`
 
-- [ ] **1.3** Update `R/utils.R` - `make_ilrs()` function
+- [~] **1.3** Update `R/utils.R` - `make_ilrs()` function
   - Function should use `comp_vars` (now SHHS-2 variables)
   - Output: 3 ILR coordinates (R1, R2, R3), not 4
   - Ensure `compositions::acomp()` handles any zero values
+  - **STATUS:** Function not yet updated but downstream functions now expect R1-R3 only
 
 - [ ] **1.4** Update `R/prepare_dataset.R` - ILR creation
   - Update to assign 3 ILR columns: `c("R1", "R2", "R3")`
@@ -155,13 +165,23 @@ This plan addresses the gaps between the current codebase and the specifications
   - Location: In `prepare_dataset()` function
   - Use: Will be covariate in models
 
-- [ ] **1.7** Update all downstream functions using ILR columns
+- [x] **1.7** Update all downstream functions using ILR columns
   - Files affected: `R/utils.R`
   - Functions: `apply_substitution()`, `fit_density_model()`, `check_density()`, `get_primary_formula()`
   - Change: Replace `c("R1", "R2", "R3", "R4")` → `c("R1", "R2", "R3")`
   - Update density df: Chi-squared df from 4 to 3
+  - **FIXED:** Also updated `death_date` → `death_surv_date` in `expand_surv_dt()`
 
 **Milestone 1:** Pipeline runs with corrected 4-part SHHS-2 composition producing 3 ILR coordinates.
+
+**Notes for Next Agent - CRITICAL:**
+Previously `sim_fitted_models` failed with a "fewer than 3 unique knots" error due to degenerate `timegroup` after `survSplit()`.
+
+**Resolved:** Updated `make_cuts()`/`survSplit()` usage to avoid including 0 as a cutpoint and to enforce minimum follow-up/unique cutpoints.
+
+If this resurfaces, confirm that:
+1. `cut` passed to `survSplit()` excludes 0 and excludes `max_time`
+2. `timegroup` has sufficient variation for `rcs(timegroup, ...)`
 
 ---
 
@@ -558,3 +578,60 @@ These items are noted but deferred for later implementation:
 - **Testing:** After each phase, run `tar_make()` and verify pipeline completes without errors.
 - **Git:** Commit after each milestone with descriptive message.
 - **Validation:** For simulation scenarios, check `validation_summary` target to verify pipeline recovers known effects.
+
+---
+
+## Recent Changes & Notes for Next Agent
+
+### Completed (Last Session)
+
+1. **Phase 0 Tier 1 Core - Simulated Data Infrastructure:**
+   - Created `R/simulate_data.R` with full simulation functions
+   - Created `R/validate_simulation.R` (skeleton)
+   - Created `simulation_targets.R` with branched targets for multiple scenarios
+   - Created `nixr.R` wrapper script for running R through nix environment
+
+2. **Phase 1 Partial - Core Composition Fixes:**
+   - Updated `R/constants.R` to use 4-part SHHS-2 composition (n1_s2, n2_s2, n3_s2, rem_s2)
+   - Updated SBP matrix to "restorative vs light" partition
+   - Updated `R/utils.R` functions to use R1-R3 instead of R1-R4
+   - Fixed various bugs discovered during testing
+
+3. **Bug Fixes:**
+   - `targets::map()` → `map()` in simulation_targets.R
+   - `rDirichlet()` → `rDirichlet.acomp()` for Dirichlet sampling
+   - Named list handling in targets branching (targets passes named sublists)
+   - Survival time minimum safeguard (pmax(..., 1) to avoid zero times)
+   - Column name `death_date` → `death_surv_date` in `expand_surv_dt()`
+
+### Previously Blocking Issue (Resolved)
+
+**Problem:** `sim_fitted_models` failed with an RCS knot error because `timegroup` was constant (often all zeros) after `survSplit()`.
+
+**Fix:**
+- `make_cuts()` now drops 0, enforces minimum follow-up, and guarantees ≥3 unique cutpoints.
+- `survSplit()` now receives only internal cutpoints (`< max_time`) to avoid edge-case degeneracy.
+
+**Regression test:** `./nixr.R "targets::tar_make(names = 'sim_fitted_models')"`
+
+### Quick Commands for Next Agent
+
+```bash
+# Run all simulation targets
+./nixr.R "targets::tar_make(names = starts_with('sim_'))"
+
+# Check what's outdated
+./nixr.R "targets::tar_outdated()"
+
+# Load and inspect simulated data
+./nixr.R "targets::tar_load(sim_dt); print(names(sim_dt))"
+
+# Run specific target with debug
+./nixr.R "targets::tar_make(names = 'sim_fitted_models', callr_function = NULL)"
+```
+
+### Priority Order for Next Work
+
+1. Complete Phase 1 items 1.3-1.6 (prepare_dataset.R updates)
+2. Resume Phase 0 items 0.8 (validation targets)
+3. Move to Phase 2 (model specifications with confounders)
