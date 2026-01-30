@@ -67,7 +67,19 @@ get_primary_formula <- function(dt) {
       rcs(timegroup, knots_time)
   )
 
-  return(primary_formula)
+  primary_formula
+}
+
+fit_model <- function(dt) {
+  # Fit linear regression
+  model_formula <- get_primary_formula(dt)
+  dem_model_formula <- update(model_formula, dem_or_mci_status ~ .)
+  death_model_formula <- update(model_formula, death ~ .)
+
+  dem_model <- lm(dem_model_formula, dt)
+  death_model <- lm(death_model_formula, dt)
+
+  list(dem = strip_lm(dem_model), death = strip_lm(death_model))
 }
 
 make_cuts <- function(dt) {
@@ -104,20 +116,70 @@ expand_surv_dt <- function(dt, timegroup_cuts) {
 
   surv_dt[,
     death := fcase(
-      death_status == 1 & end > death_date , 1 ,
+      death_status == 1 & end >= death_date ,
+                                          1 ,
       default = 0
     )
   ]
 
-  surv_dt[, death := fifelse(dem_or_mci == 1, NA_integer_, death)]
-
-  # remove rows after death
-  surv_dt[, sumdeath := cumsum(death), by = "PID"]
-  surv_dt <- surv_dt[sumdeath < 2 | is.na(sumdeath), ]
-  surv_dt[, sumdeath := NULL]
+  # dem_or_mci_surv_date is EITHER dem/mci or censoring or death
+  # Therefore death and dem_or_mci all always exclusive
 
   surv_dt
 }
+
+expand_for_prediction <- function(dt, timegroup_cuts) {
+  dt_pred <- copy(dt)
+
+  # Force full follow-up for everyone
+  max_time <- max(timegroup_cuts)
+  dt_pred[, dem_or_mci_surv_date := max_time]
+  dt_pred[, dem_or_mci_status := 0]
+
+  surv_dt <- survSplit(
+    Surv(time = dem_or_mci_surv_date, event = dem_or_mci_status) ~ .,
+    data = dt_pred,
+    cut = timegroup_cuts,
+    episode = "timegroup",
+    end = "end",
+    event = "dem_or_mci",
+    start = "start"
+  )
+  setDT(surv_dt)
+
+  surv_dt[, timegroup := timegroup - 1]
+  surv_dt
+}
+
+predict_risks <- function(dt, models, timegroup_cuts) {
+  surv_dt <- expand_for_prediction(dt, timegroup_cuts)
+
+  # Predict probabilities
+  surv_dt[,
+    haz_dem := predict(models$dem, newdata = surv_dt, type = "response")
+  ]
+  surv_dt[,
+    haz_death := predict(models$death, newdata = surv_dt, type = "response")
+  ]
+
+  setorder(surv_dt, PID, timegroup)
+
+  surv_dt[,
+    risk := cumsum(
+      haz_dem *
+        (1 - haz_death) *
+        cumprod(
+          (1 - lag(haz_dem, default = 0)) * (1 - lag(haz_death, default = 0))
+        )
+    ),
+    by = PID
+  ]
+  surv_dt[,
+    .(risk = mean(risk)),
+    by = timegroup
+  ]
+}
+
 fit_models <- function(dt, timegroup_cuts) {
   surv_dt <- expand_surv_dt(dt, timegroup_cuts)
 
@@ -135,7 +197,7 @@ fit_models <- function(dt, timegroup_cuts) {
 
   model_dem <- glm(
     dem_model_formula,
-    data = surv_dt[death == 0 | is.na(death), ],
+    data = surv_dt[death == 0, ],
     family = binomial()
   )
 
@@ -143,7 +205,7 @@ fit_models <- function(dt, timegroup_cuts) {
 
   model_death <- glm(
     death_model_formula,
-    data = surv_dt[dem_or_mci == 0, ],
+    data = surv_dt,
     family = binomial()
   )
 
