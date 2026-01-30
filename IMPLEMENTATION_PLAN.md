@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan addresses the gaps between the current codebase and the specifications, organized into 7 phases with clear milestones. Each phase builds on the previous one.
+This plan addresses the gaps between the current codebase and the specifications, organized into 8 phases with clear milestones. Each phase builds on the previous one.
 
 **Current State Summary:**
 - Composition uses wrong variables (5-part with wake, SHHS-1 instead of 4-part SHHS-2)
@@ -10,6 +10,109 @@ This plan addresses the gaps between the current codebase and the specifications
 - SBP matrix doesn't match specification
 - Missing: full confounders, ILR×Time interactions, ILR×Age interactions, TST covariate
 - Missing: proper MI pooling, MRI outcomes, bootstrap inference, ideal composition search
+- Missing: simulated data for privacy-safe development and pipeline validation
+
+---
+
+## Phase 0: Simulated Data Infrastructure
+
+**Goal:** Create simulated data capability for privacy-safe development and pipeline validation. This allows agents to work with data freely and enables testing that the pipeline recovers known causal effects.
+
+**Specification:** See `specs/simulation.md` for full details.
+
+### Tier 1: Core Implementation
+
+- [ ] **0.1** Create `R/simulate_data.R` - Core simulation functions
+  - Function: `make_sim_spec()` - Create simulation specification with defaults
+    - Parameters: n, seed, true causal effects (effect_R1_dem, effect_R2_dem, effect_R3_dem, etc.)
+    - Default effects: null (all zeros) for baseline scenario
+  - Function: `simulate_dataset(spec)` - Main entry point
+    - Calls sub-functions for each data component
+    - Returns data.table matching structure of real `dt`
+
+- [ ] **0.2** Implement `simulate_baseline()` - Demographics and confounders
+  - Generate: age_s1 (truncated normal, μ=65, σ=10, range [40,90])
+  - Generate: gender (Bernoulli, p=0.5)
+  - Generate: bmi_s1 (normal, μ=28, σ=5, correlated with age)
+  - Generate: IDTYPE (Bernoulli, p=0.9 for Offspring)
+  - Generate: educat (ordinal, age-dependent)
+  - Include correlations between variables
+
+- [ ] **0.3** Implement `simulate_sleep_stages()` - SHHS-1 and SHHS-2 compositions
+  - Use Dirichlet distribution for compositional data
+  - SHHS-1: Base composition with age effect (older → less N3, more N1)
+  - SHHS-2: Autocorrelated with S1 (ρ≈0.6), plus additional aging
+  - Generate total sleep time (normal, μ=400, σ=60 minutes)
+  - Compute stage minutes from proportions × TST
+
+- [ ] **0.4** Implement `simulate_outcomes()` - Dementia and death from known DGP
+  - Dementia hazard model (discrete-time):
+    ```
+    logit(h_dem) = baseline + β_R1*R1 + β_R2*R2 + β_R3*R3 + β_age*age + ...
+    ```
+  - Death hazard model (competing risk):
+    ```
+    logit(h_death) = baseline + γ_age*age + γ_bmi*bmi + ...
+    ```
+  - Generate events sequentially respecting competing risks
+  - Track survival times and event indicators
+
+- [ ] **0.5** Create `prepare_simulated_dataset()` - Match real data preparation
+  - Apply same transformations as `prepare_dataset()`
+  - Create ILR coordinates, derived variables
+  - Ensure column names and types match real data
+
+- [ ] **0.6** Create `simulation_targets.R` - Pipeline integration
+  - Define `sim_specs` target with predefined scenarios:
+    - `null_effect`: All sleep effects = 0
+    - `protective_n3`: effect_R2_dem = -0.3 (N3 protective)
+  - Map simulated data generation over specs
+  - Run analysis pipeline on simulated data (branched targets)
+
+- [ ] **0.7** Create `R/validate_simulation.R` - Validation functions
+  - Function: `validate_simulation(estimated, true_spec)` - Compare estimated vs true
+  - Check: Effect direction correct
+  - Check: True effect within confidence interval
+  - Return: Validation summary table
+
+- [ ] **0.8** Add validation targets to `simulation_targets.R`
+  - Target: `validation_results` - Run validation for each scenario
+  - Target: `validation_summary` - Aggregate pass/fail status
+
+**Milestone 0.1:** Basic simulation generates data, pipeline runs on it, validation checks pass for null and protective_n3 scenarios.
+
+### Tier 2: Essential Extensions
+
+- [ ] **0.9** Add effect modification by age
+  - Parameter: `effect_interaction_age_R2` in spec
+  - Implement in DGP: age × R2 interaction term
+  - Add scenario: `age_interaction`
+
+- [ ] **0.10** Add additional predefined scenarios
+  - `harmful_n1`: effect_R3_dem = 0.2 (more N1 relative to N2 harmful)
+  - `competing_death`: Higher death hazard to test competing risk handling
+
+- [ ] **0.11** Implement non-linear effects in DGP (optional)
+  - Allow quadratic terms: `effect_R2_squared_dem`
+  - Enables U-shaped relationship testing
+
+**Milestone 0.2:** Simulation supports effect modification, multiple scenarios validated.
+
+### Tier 3: Advanced (If Needed)
+
+- [ ] **0.12** Simulate SHHS-1 battery failure missingness
+  - ~10% MCAR missingness in S1 stage minutes
+  - Set slp_time to NA for affected rows
+  - Test imputation pipeline
+
+- [ ] **0.13** Add MRI outcome simulation
+  - Generate brain volumes with known ILR effects
+  - Include time-to-MRI variation
+
+- [ ] **0.14** Time-varying effects in DGP
+  - Allow effect_R2_dem to change over follow-up time
+
+**Milestone 0.3:** Full simulation capability including missingness and MRI.
 
 ---
 
@@ -389,6 +492,9 @@ This plan addresses the gaps between the current codebase and the specifications
 ## Dependency Graph
 
 ```
+Phase 0 (Simulation) ←──── Can run in parallel with real data phases
+    ↓                      (uses same pipeline code)
+    ↓
 Phase 1 (Composition) 
     ↓
 Phase 2 (Models)
@@ -404,6 +510,11 @@ Phase 6 (Bootstrap + Ideal) ────┘
 Phase 7 (Reporting)
 ```
 
+**Note:** Phase 0 (Simulation) should be implemented first as it enables:
+1. Privacy-safe development - agents can query simulated data freely
+2. Pipeline validation - verify code works before running on real data
+3. Faster iteration - smaller sample sizes for quick testing
+
 ---
 
 ## Configuration Parameters
@@ -417,6 +528,8 @@ These should be easily configurable (e.g., in `R/constants.R` or via environment
 | `MI_MAXIT` | 10 | 5 | Max iterations for mice |
 | `GRID_RESOLUTION` | 15 | 30 | Minutes resolution for ideal composition grid |
 | `CREW_WORKERS` | 4 | 2 | Number of parallel workers |
+| `SIM_N` | 1500 | 500 | Sample size for simulated data |
+| `SIM_SEED` | 42 | 42 | Random seed for simulation reproducibility |
 
 ---
 
@@ -434,10 +547,14 @@ These items are noted but deferred for later implementation:
 
 5. **Additional sensitivity analyses:** Dementia-only (excluding MCI), different follow-up windows, MRI restricted to pre-dementia scans
 
+6. **Advanced simulation features:** Time-varying effects, covariate-dependent censoring, complex missingness patterns (Tier 3 items)
+
 ---
 
 ## Notes
 
 - **Data confidentiality:** Never print, display, or log individual-level data. Only aggregated statistics allowed.
+- **Simulated data:** Use `sim_dt` targets for development and testing. Agents can freely query simulated data without privacy concerns.
 - **Testing:** After each phase, run `tar_make()` and verify pipeline completes without errors.
 - **Git:** Commit after each milestone with descriptive message.
+- **Validation:** For simulation scenarios, check `validation_summary` target to verify pipeline recovers known effects.
