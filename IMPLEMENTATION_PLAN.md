@@ -87,7 +87,7 @@ This plan addresses the gaps between the current codebase and the specifications
 **Notes for Next Agent:**
 - Simulation targets `sim_specs` through `sim_comp_limits` all work correctly
 - `sim_fitted_models` now works; if it fails again, re-check `make_cuts()`/`survSplit()` cutpoints
-- To test: `./nixr.R "targets::tar_make(names = starts_with('sim_'))"`
+- To test: `./nixr.sh "targets::tar_make(names = starts_with('sim_'))"`
 - Fixed during testing: `targets::map()` → `map()`, `rDirichlet()` → `rDirichlet.acomp()`, named list handling, survival time minimum safeguard
 
 ### Tier 2: Essential Extensions
@@ -589,7 +589,7 @@ These items are noted but deferred for later implementation:
    - Created `R/simulate_data.R` with full simulation functions
    - Created `R/validate_simulation.R` (skeleton)
    - Created `simulation_targets.R` with branched targets for multiple scenarios
-   - Created `nixr.R` wrapper script for running R through nix environment
+   - Created `nixr.sh` wrapper script for running R through nix environment
 
 2. **Phase 1 Partial - Core Composition Fixes:**
    - Updated `R/constants.R` to use 4-part SHHS-2 composition (n1_s2, n2_s2, n3_s2, rem_s2)
@@ -612,22 +612,22 @@ These items are noted but deferred for later implementation:
 - `make_cuts()` now drops 0, enforces minimum follow-up, and guarantees ≥3 unique cutpoints.
 - `survSplit()` now receives only internal cutpoints (`< max_time`) to avoid edge-case degeneracy.
 
-**Regression test:** `./nixr.R "targets::tar_make(names = 'sim_fitted_models')"`
+**Regression test:** `./nixr.sh "targets::tar_make(names = 'sim_fitted_models')"`
 
 ### Quick Commands for Next Agent
 
 ```bash
 # Run all simulation targets
-./nixr.R "targets::tar_make(names = starts_with('sim_'))"
+./nixr.sh "targets::tar_make(names = starts_with('sim_'))"
 
 # Check what's outdated
-./nixr.R "targets::tar_outdated()"
+./nixr.sh "targets::tar_outdated()"
 
 # Load and inspect simulated data
-./nixr.R "targets::tar_load(sim_dt); print(names(sim_dt))"
+./nixr.sh "targets::tar_load(sim_dt); print(names(sim_dt))"
 
 # Run specific target with debug
-./nixr.R "targets::tar_make(names = 'sim_fitted_models', callr_function = NULL)"
+./nixr.sh "targets::tar_make(names = 'sim_fitted_models', callr_function = NULL)"
 ```
 
 ### Priority Order for Next Work
