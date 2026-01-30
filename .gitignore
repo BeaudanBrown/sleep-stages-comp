@@ -63,3 +63,7 @@ rsconnect/
 
 # Lintr file
 .lintr
+
+# Development scripts folder (keep README.md for documentation)
+scripts/*.R
+!scripts/README.md

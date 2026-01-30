@@ -31,13 +31,17 @@ stages_compositional/
 ├── analysis_targets.R   # Analysis targets (models, substitutions)
 ├── simulation_targets.R # Simulated data targets (for dev/validation)
 ├── IMPLEMENTATION_PLAN.md  # Detailed implementation roadmap
-├── R/
+├── nixr.sh              # Nix wrapper for running R commands
+├── R/                   # R functions and utilities
 │   ├── constants.R      # Composition variables, SBP matrix
 │   ├── make_dataset_from_raw_files.R  # Raw data loading functions
 │   ├── prepare_dataset.R              # Data cleaning, ILR creation
 │   ├── simulate_data.R  # Simulated data generation functions
 │   ├── validate_simulation.R  # Validation of simulation results
 │   └── utils.R          # Model fitting, prediction, substitution functions
+├── scripts/             # Reusable development scripts (gitignored)
+│   ├── README.md        # Documentation for available scripts
+│   └── *.R              # Individual scripts for debugging/inspection
 ├── specs/               # Detailed specifications for each analysis component
 │   ├── data.md          # Variables, cleaning, exclusions
 │   ├── composition.md   # ILR transformation, SBP choice
@@ -61,6 +65,82 @@ stages_compositional/
 | Imputation | `{mice}` |
 | Regression | `{Hmisc}` (rcs), base R glm/lm |
 | Storage format | `{qs}` (fast serialization) |
+
+---
+
+## Development Environment (Nix)
+
+This project uses **Nix** for reproducible development environments. All R packages and dependencies are managed through `flake.nix`.
+
+### Running R Commands
+
+Use the **`nixr.sh`** wrapper script to run R commands through the nix environment:
+
+```bash
+# Run R commands directly
+./nixr.sh "library(targets); tar_make()"
+
+# Run a script file
+./nixr.sh -f my_script.R
+
+# Load targets and check status
+./nixr.sh "targets::tar_visnetwork()"
+
+# Run specific simulation targets
+./nixr.sh "targets::tar_make(names = starts_with('sim_'))"
+```
+
+### Why Use the Wrapper?
+
+- Ensures all required R packages are available
+- Maintains reproducibility across different machines
+- Handles nix environment setup automatically
+
+### Alternative: Manual Nix Shell
+
+If you need an interactive R session:
+
+```bash
+nix develop
+R
+```
+
+---
+
+## Development Scripts (`scripts/`)
+
+The `scripts/` directory contains reusable R scripts for common debugging and inspection tasks. This prevents clogging the context window with repeated diagnostic commands.
+
+### Available Scripts
+
+See `scripts/README.md` for the full list of available scripts and their purposes.
+
+### Common Usage
+
+```bash
+# Inspect simulated data structure
+./nixr.sh -f scripts/inspect_sim_data.R
+
+# Test make_cuts() function
+./nixr.sh -f scripts/test_make_cuts.R
+
+# Check ILR coordinates are valid
+./nixr.sh -f scripts/check_ilrs.R
+
+# Interactive session with everything loaded
+./nixr.sh -i
+```
+
+### Creating New Scripts
+
+When you find yourself repeating the same diagnostic commands:
+
+1. Create a new script in `scripts/` following the naming convention: `verb_noun.R`
+2. Add header documentation explaining purpose and usage
+3. Update `scripts/README.md` to document it
+4. Use `./nixr.sh -f scripts/your_script.R` to run it
+
+**Note:** The `scripts/` directory is gitignored (except `README.md`). Scripts are for local development only.
 
 ---
 
