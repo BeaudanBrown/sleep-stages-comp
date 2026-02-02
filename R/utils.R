@@ -373,7 +373,8 @@ plot_bootstrap_substitutions <- function(summary_dt, from, to) {
     n1_s2 = "N1",
     n2_s2 = "N2",
     n3_s2 = "N3",
-    rem_s2 = "REM"
+    rem_s2 = "REM",
+    waso_s2 = "WASO"
   )
 
   dt_all <- data.table::copy(summary_dt)
@@ -499,7 +500,8 @@ write_bootstrap_substitution_plots <- function(plot_dt, dir_path) {
     n1_s2 = "N1",
     n2_s2 = "N2",
     n3_s2 = "N3",
-    rem_s2 = "REM"
+    rem_s2 = "REM",
+    waso_s2 = "WASO"
   )
 
   dir.create(dir_path, showWarnings = FALSE, recursive = TRUE)
