@@ -350,3 +350,49 @@ run_bootstrap_rep <- function(dt, substitutions, seed) {
 
   data.table::rbindlist(res_list)
 }
+
+summarize_bootstrap_substitutions <- function(boot_substituted_risk) {
+  dt <- copy(boot_substituted_risk)
+  dt[, risk_ratio := mean_risk_substituted / mean_risk_baseline]
+
+  dt[, max_timegroup := max(timegroup), by = bootstrap_id]
+  dt <- dt[timegroup == max_timegroup]
+
+  dt[,
+    .(
+      risk_ratio_mean = mean(risk_ratio),
+      risk_ratio_lo = quantile(risk_ratio, 0.025),
+      risk_ratio_hi = quantile(risk_ratio, 0.975)
+    ),
+    by = .(from, to, duration)
+  ]
+}
+
+plot_bootstrap_substitutions <- function(summary_dt) {
+  ggplot2::ggplot(
+    summary_dt,
+    ggplot2::aes(
+      x = duration,
+      y = risk_ratio_mean,
+      ymin = risk_ratio_lo,
+      ymax = risk_ratio_hi
+    )
+  ) +
+    ggplot2::geom_ribbon(alpha = 0.2) +
+    ggplot2::geom_line() +
+    ggplot2::geom_point() +
+    ggplot2::facet_grid(from ~ to) +
+    ggplot2::theme_minimal() +
+    ggplot2::labs(
+      x = "Minutes shifted",
+      y = "Risk ratio",
+      title = "Bootstrap risk ratio by substitution",
+      subtitle = "CI: 2.5th and 97.5th percentiles"
+    )
+}
+
+write_bootstrap_substitution_plot <- function(plot, path) {
+  dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
+  ggplot2::ggsave(path, plot = plot, width = 12, height = 8)
+  path
+}

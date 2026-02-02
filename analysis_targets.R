@@ -81,14 +81,49 @@ analysis_targets <- list(
           boot_baseline_risk
         )
       })
-      data.table::rbindlist(res_list)
+      out <- data.table::rbindlist(res_list)
+      out[, bootstrap_seed := bootstrap_seeds]
+      out
     },
     pattern = map(
       boot_dt,
       boot_comp_limits,
       boot_fitted_models,
       boot_timegroup_cuts,
-      boot_baseline_risk
+      boot_baseline_risk,
+      bootstrap_seeds
     )
+  ),
+
+  # 9. Combine bootstrap substituted risks
+  tar_combine(
+    boot_substituted_risk_tbl,
+    boot_substituted_risk,
+    command = data.table::rbindlist(
+      boot_substituted_risk,
+      idcol = "bootstrap_id"
+    )
+  ),
+
+  # 10. Summarize bootstrap distribution (max timegroup)
+  tar_target(
+    boot_substituted_summary,
+    summarize_bootstrap_substitutions(boot_substituted_risk_tbl)
+  ),
+
+  # 11. Summary plot (ggplot)
+  tar_target(
+    boot_substituted_plot,
+    plot_bootstrap_substitutions(boot_substituted_summary)
+  ),
+
+  # 12. Save summary plot to PDF
+  tar_target(
+    boot_substituted_plot_pdf,
+    write_bootstrap_substitution_plot(
+      boot_substituted_plot,
+      file.path("results", "bootstrap_substitution_risk_ratio.pdf")
+    ),
+    format = "file"
   )
 )
