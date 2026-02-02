@@ -320,6 +320,7 @@ load_shhs_covars <- function(shhs_covar_file) {
 
 load_shhs_psg1 <- function(shhs_psg1_file) {
   psg1 <- fread(shhs_psg1_file)
+  psg1[, WASO := as.integer(WASO)]
 
   vars <- Cs(
     pptidr,
@@ -348,6 +349,7 @@ load_shhs_psg1 <- function(shhs_psg1_file) {
 
 load_shhs_psg2 <- function(shhs_psg2_file) {
   psg2 <- fread(shhs_psg2_file)
+  psg2[, waso := as.integer(waso)]
 
   vars <- Cs(
     pptidr,
@@ -360,6 +362,7 @@ load_shhs_psg2 <- function(shhs_psg2_file) {
     timest2p,
     times34p,
     timeremp,
+    slp_lat,
 
     timest1,
     timest2,
