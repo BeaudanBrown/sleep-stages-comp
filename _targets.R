@@ -1,10 +1,12 @@
 library(targets)
+library(crew)
 library(tarchetypes)
 
 dotenv::load_dot_env()
 cache_dir <- Sys.getenv("CACHE_DIR")
 framingham_dir <- Sys.getenv("FRAMINGHAM_DIR")
 shhs_dir <- Sys.getenv("SHHS_DIR")
+ncpus <- future::availableCores() - 1
 
 # Ensure single threaded within targets
 Sys.setenv(R_DATATABLE_NUM_THREADS = 1)
@@ -23,7 +25,12 @@ tar_option_set(
     "Hmisc",
     "compositions",
     "mice",
-    "ggplot2"
+    "ggplot2",
+    "rms",
+    "survival"
+  ),
+  controller = crew_controller_local(
+    workers = ncpus
   ),
   format = "qs",
   seed = 20260202
