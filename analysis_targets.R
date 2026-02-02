@@ -98,21 +98,16 @@ analysis_targets <- list(
   tar_target(
     boot_risk_summary,
     {
-      boot_substituted_risk[,
-        .(
-          mean_risk_ratio = mean(mean_risk_substituted / mean_risk_baseline),
-          lower_ci = quantile(
-            mean_risk_substituted / mean_risk_baseline,
-            0.025
-          ),
-          upper_ci = quantile(
-            mean_risk_substituted / mean_risk_baseline,
-            0.975
-          ),
-          n_intervened = first(n_intervened),
-          n_total = first(n_total)
-        ),
-        by = .(bootstrap_seed, from, to, duration, timegroup)
+      dt <- data.table::copy(boot_substituted_risk)
+      dt[, risk_ratio := mean_risk_substituted / mean_risk_baseline]
+      dt[, ratio_substituted := n_intervened / n_total]
+
+      dt[, max_timegroup := max(timegroup), by = bootstrap_seed]
+      dt <- dt[timegroup == max_timegroup]
+
+      dt[,
+        .(risk_ratio, ratio_substituted),
+        by = .(bootstrap_seed, from, to, duration)
       ]
     }
   ),
@@ -121,9 +116,10 @@ analysis_targets <- list(
     boot_risk_overall,
     boot_risk_summary[,
       .(
-        mean_risk_ratio = mean(mean_risk_ratio),
-        lower_ci = mean(lower_ci),
-        upper_ci = mean(upper_ci)
+        mean_risk_ratio = mean(risk_ratio),
+        lower_ci = quantile(risk_ratio, 0.025),
+        upper_ci = quantile(risk_ratio, 0.975),
+        ratio_substituted = mean(ratio_substituted)
       ),
       by = .(from, to, duration)
     ]
@@ -132,17 +128,16 @@ analysis_targets <- list(
   tar_target(
     plot_boot_substitutions,
     {
-      splits <- split(boot_risk_overall, by = c("from", "to"))
-      lapply(splits, plot_bootstrap_substitutions)
+      make_bootstrap_substitution_plots(boot_risk_overall)
     }
   ),
 
-  # 12. Save summary plot to PDF
+  # 12. Save summary plots to PNG
   tar_target(
-    boot_substituted_plot_pdf,
-    write_bootstrap_substitution_plot(
-      boot_substituted_plot,
-      file.path("results", "bootstrap_substitution_risk_ratio.pdf")
+    boot_substituted_plot_png,
+    write_bootstrap_substitution_plots(
+      plot_boot_substitutions,
+      file.path("results", "bootstrap_substitution_risk_ratio")
     ),
     format = "file"
   )
