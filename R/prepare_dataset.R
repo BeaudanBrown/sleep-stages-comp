@@ -87,7 +87,7 @@ prepare_dataset <- function(dt_raw) {
   dt <- dt[is.na(dem_or_mci_surv_date) | dem_or_mci_surv_date > 0, ]
 
   ilr_vars <- make_ilrs(dt)
-  dt[, c("R1", "R2", "R3", "R4")] <- ilr_vars
+  dt[, (ilr_names) := ilr_vars]
   dt
 }
 

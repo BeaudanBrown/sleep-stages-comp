@@ -16,30 +16,30 @@ analysis_targets <- list(
 
   # 6. Define Substitutions Grid
   tar_target(
-    substitution_grid,
-    expand.grid(
-      from = c("wake", "n1", "n2", "n3", "rem"),
-      to = c("wake", "n1", "n2", "n3", "rem"),
-      duration = c(10, 30, 60), # Minutes
-      stringsAsFactors = FALSE
-    ) |>
-      subset(from != to) |>
-      as.data.table()
+    substitutions,
+    {
+      pairs <- t(combn(comp_vars, 2))
+      pair_dt <- data.table(from = pairs[, 1], to = pairs[, 2])
+      pair_dt[,
+        .(duration = seq(-60, 60, by = 15)),
+        by = .(from, to)
+      ]
+    }
   ),
 
-  # 7. Perform Isotemporal Substitutions (Mapped)
+  # 7. Substituted Risk (Per substitution)
   tar_target(
-    isotemporal_results,
-    perform_isotemporal_substitution(
-      imp,
-      fitted_models,
-      density_model,
-      timegroup_cuts,
+    substituted_risk,
+    compute_substituted_risk(
+      dt,
+      substitutions$from,
+      substitutions$to,
+      substitutions$duration,
       comp_limits,
-      substitution_grid$from,
-      substitution_grid$to,
-      substitution_grid$duration
+      fitted_models,
+      timegroup_cuts,
+      baseline_risk
     ),
-    pattern = map(substitution_grid)
+    pattern = map(substitutions)
   )
 )
