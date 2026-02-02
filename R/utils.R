@@ -368,31 +368,164 @@ summarize_bootstrap_substitutions <- function(boot_substituted_risk) {
   ]
 }
 
-plot_bootstrap_substitutions <- function(summary_dt) {
-  ggplot2::ggplot(
-    summary_dt,
-    ggplot2::aes(
-      x = duration,
-      y = mean_risk_ratio,
-      ymin = lower_ci,
-      ymax = upper_ci
+plot_bootstrap_substitutions <- function(summary_dt, from, to) {
+  stage_labels <- c(
+    n1_s2 = "N1",
+    n2_s2 = "N2",
+    n3_s2 = "N3",
+    rem_s2 = "REM"
+  )
+
+  dt_all <- data.table::copy(summary_dt)
+  data.table::setorder(dt_all, duration)
+
+  dt_ratio <- dt_all[is.finite(ratio_substituted)]
+  dt_risk <- dt_all[
+    ratio_substituted >= 0.75 &
+      is.finite(mean_risk_ratio) &
+      is.finite(lower_ci) &
+      is.finite(upper_ci)
+  ]
+
+  from_label <- stage_labels[from]
+  to_label <- stage_labels[to]
+
+  if (nrow(dt_ratio) == 0) {
+    return(
+      ggplot2::ggplot() +
+        cowplot::theme_cowplot() +
+        ggplot2::theme(
+          plot.background = ggplot2::element_rect(fill = "white", color = NA),
+          panel.background = ggplot2::element_rect(fill = "white", color = NA)
+        ) +
+        ggplot2::labs(
+          title = sprintf("Shift %s → %s", from_label, to_label),
+          subtitle = "No data available for ratio substituted",
+          x = "Minutes shifted",
+          y = "Risk ratio"
+        ) +
+        ggplot2::annotate("text", x = 0, y = 1, label = "No data")
     )
-  ) +
-    ggplot2::geom_ribbon(alpha = 0.2) +
-    ggplot2::geom_line() +
-    ggplot2::geom_point() +
-    ggplot2::facet_grid(from ~ to) +
-    ggplot2::theme_minimal() +
+  }
+
+  rr_min <- min(dt_all$mean_risk_ratio, na.rm = TRUE)
+  rr_max <- max(dt_all$mean_risk_ratio, na.rm = TRUE)
+  rs_min <- 0
+  rs_max <- 1
+
+  if (!is.finite(rr_min) || !is.finite(rr_max)) {
+    rr_min <- 0
+    rr_max <- 1
+  }
+
+  if (!is.finite(rs_min) || !is.finite(rs_max) || rs_min == rs_max) {
+    rs_min <- 0
+    rs_max <- 1
+  }
+
+  ratio_to_rr <- function(ratio) {
+    (ratio - rs_min) / (rs_max - rs_min) * (rr_max - rr_min) + rr_min
+  }
+
+  rr_to_ratio <- function(rr) {
+    (rr - rr_min) / (rr_max - rr_min) * (rs_max - rs_min) + rs_min
+  }
+
+  dt_ratio[, ratio_substituted_scaled := ratio_to_rr(ratio_substituted)]
+
+  ggplot2::ggplot() +
+    ggplot2::geom_ribbon(
+      data = dt_risk,
+      ggplot2::aes(
+        x = duration,
+        ymin = pmin(lower_ci, upper_ci),
+        ymax = pmax(lower_ci, upper_ci)
+      ),
+      alpha = 0.2,
+      color = NA,
+      fill = "grey70"
+    ) +
+    ggplot2::geom_smooth(
+      data = dt_risk,
+      ggplot2::aes(x = duration, y = mean_risk_ratio),
+      method = "loess",
+      se = FALSE,
+      formula = y ~ x,
+      linewidth = 0.9
+    ) +
+    ggplot2::geom_point(
+      data = dt_ratio,
+      ggplot2::aes(x = duration, y = ratio_substituted_scaled),
+      size = 1.6,
+      color = "steelblue"
+    ) +
+    cowplot::theme_cowplot() +
+    ggplot2::theme(
+      plot.background = ggplot2::element_rect(fill = "white", color = NA),
+      panel.background = ggplot2::element_rect(fill = "white", color = NA)
+    ) +
+    ggplot2::scale_y_continuous(
+      sec.axis = ggplot2::sec_axis(
+        trans = ~ rr_to_ratio(.),
+        name = "Ratio substituted",
+        labels = function(x) sprintf("%d%%", round(x * 100))
+      )
+    ) +
+    ggplot2::scale_x_continuous(
+      breaks = seq(-60, 60, by = 15),
+      limits = c(-60, 60)
+    ) +
     ggplot2::labs(
       x = "Minutes shifted",
       y = "Risk ratio",
-      title = "Bootstrap risk ratio by substitution",
-      subtitle = "CI: 2.5th and 97.5th percentiles"
+      title = sprintf("Shift %s → %s", from_label, to_label),
+      subtitle = "Ribbon/line shown when ratio substituted ≥ 0.75"
     )
 }
 
-write_bootstrap_substitution_plot <- function(plot, path) {
-  dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
-  ggplot2::ggsave(path, plot = plot, width = 12, height = 8)
-  path
+make_bootstrap_substitution_plots <- function(summary_dt) {
+  summary_dt[,
+    .(
+      plot = list(
+        plot_bootstrap_substitutions(.SD, from = from[1], to = to[1])
+      )
+    ),
+    by = .(from, to)
+  ]
+}
+
+write_bootstrap_substitution_plots <- function(plot_dt, dir_path) {
+  stage_labels <- c(
+    n1_s2 = "N1",
+    n2_s2 = "N2",
+    n3_s2 = "N3",
+    rem_s2 = "REM"
+  )
+
+  dir.create(dir_path, showWarnings = FALSE, recursive = TRUE)
+  paths <- vapply(
+    seq_len(nrow(plot_dt)),
+    function(i) {
+      from_label <- tolower(stage_labels[plot_dt$from[i]])
+      to_label <- tolower(stage_labels[plot_dt$to[i]])
+      path <- file.path(
+        dir_path,
+        sprintf(
+          "bootstrap_substitution_risk_ratio_from_%s_to_%s.png",
+          from_label,
+          to_label
+        )
+      )
+      ggplot2::ggsave(
+        path,
+        plot = plot_dt$plot[[i]],
+        width = 10,
+        height = 6,
+        bg = "white"
+      )
+      path
+    },
+    character(1)
+  )
+  unname(paths)
 }

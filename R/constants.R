@@ -2,6 +2,7 @@ comp_vars <- c(
   "n1_s2",
   "n2_s2",
   "n3_s2",
+  "waso_s2",
   "rem_s2"
 )
 

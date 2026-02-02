@@ -59,6 +59,7 @@
               Hmisc
               dotenv
               compositions
+              cowplot
               rms
               mice
               MASS
