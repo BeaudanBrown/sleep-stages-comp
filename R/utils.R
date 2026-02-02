@@ -373,9 +373,9 @@ plot_bootstrap_substitutions <- function(summary_dt) {
     summary_dt,
     ggplot2::aes(
       x = duration,
-      y = risk_ratio_mean,
-      ymin = risk_ratio_lo,
-      ymax = risk_ratio_hi
+      y = mean_risk_ratio,
+      ymin = lower_ci,
+      ymax = upper_ci
     )
   ) +
     ggplot2::geom_ribbon(alpha = 0.2) +
