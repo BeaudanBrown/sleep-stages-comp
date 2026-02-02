@@ -27,6 +27,10 @@ make_ilrs <- function(dt) {
 
   ilr_vars <- ilr(comp, V = v) |>
     as.data.table()
+
+  setnames(ilr_vars, ilr_names)
+
+  ilr_vars
 }
 
 make_comp_limits <- function(dt) {
@@ -54,43 +58,71 @@ apply_substitution <- function(dt, from_var, to_var, duration, comp_limits) {
   sub[["substituted"]] <- can_substitute
 
   ilr_vars <- make_ilrs(sub)
+  sub[, (ilr_names) := ilr_vars]
 
-  sub[, c("R1", "R2", "R3", "R4")] <- ilr_vars
+  sub
+}
 
-  data.table(
-    results = list(sub),
-    from_var = from_var,
-    to_var = to_var,
-    duration = duration
+compute_substituted_risk <- function(
+  dt,
+  from,
+  to,
+  duration,
+  comp_limits,
+  fitted_models,
+  timegroup_cuts,
+  baseline_risk
+) {
+  sub_dt <- apply_substitution(
+    dt,
+    from,
+    to,
+    duration,
+    comp_limits
+  )
+
+  risk_dt <- predict_risks(sub_dt, fitted_models, timegroup_cuts)
+  setnames(risk_dt, "risk", "mean_risk_substituted")
+
+  baseline_dt <- copy(baseline_risk)
+  setnames(baseline_dt, "risk", "mean_risk_baseline")
+
+  risk_dt[, `:=`(
+    from = from,
+    to = to,
+    duration = duration,
+    n_intervened = sum(sub_dt$substituted),
+    n_total = nrow(sub_dt)
+  )]
+
+  merge(
+    baseline_dt,
+    risk_dt,
+    by = "timegroup"
   )
 }
 get_primary_formula <- function(dt) {
-  knots_r1 <- quantile(
-    dt[["R1"]],
-    c(0.1, 0.5, 0.9)
-  )
-  knots_r2 <- quantile(
-    dt[["R2"]],
-    c(0.1, 0.5, 0.9)
-  )
-  knots_r3 <- quantile(
-    dt[["R3"]],
-    c(0.1, 0.5, 0.9)
-  )
-  knots_r4 <- quantile(
-    dt[["R4"]],
-    c(0.1, 0.5, 0.9)
-  )
+  knots <- lapply(ilr_names, function(name) {
+    quantile(dt[[name]], c(0.1, 0.5, 0.9))
+  })
+  names(knots) <- paste0("knots_", ilr_names)
 
   knots_time <- quantile(dt$timegroup, probs = c(0.1, 0.5, 0.9))
+  knots$knots_time <- knots_time
 
-  primary_formula <- as.formula(
-    ~ rcs(R1, knots_r1) +
-      rcs(R2, knots_r2) +
-      rcs(R3, knots_r3) +
-      rcs(R4, knots_r4) +
-      rcs(timegroup, knots_time)
+  ilr_terms <- paste0(
+    "rcs(",
+    ilr_names,
+    ", ",
+    names(knots)[seq_along(ilr_names)],
+    ")"
   )
+  term_str <- paste(
+    c(ilr_terms, "rcs(timegroup, knots_time)"),
+    collapse = " + "
+  )
+  primary_formula <- as.formula(paste("~", term_str))
+  environment(primary_formula) <- list2env(knots, parent = parent.frame())
 
   primary_formula
 }
