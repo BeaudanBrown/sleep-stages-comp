@@ -48,9 +48,11 @@
               targets
               tarchetypes
               qs2
+              crew
 
               psych
               ggplot2
+              future
               survival
               data_table
               here
