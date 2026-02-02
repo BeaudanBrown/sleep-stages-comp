@@ -64,63 +64,86 @@ analysis_targets <- list(
     pattern = map(boot_dt, boot_fitted_models, boot_timegroup_cuts)
   ),
 
-  # 8. Bootstrap substituted risk (one substitution per bootstrap)
+  # 8. Bootstrap substituted risk (all substitutions per bootstrap)
   tar_target(
     boot_substituted_risk,
     {
-      out <- compute_substituted_risk(
-        boot_dt,
-        substitutions$from,
-        substitutions$to,
-        substitutions$duration,
-        boot_comp_limits,
-        boot_fitted_models,
-        boot_timegroup_cuts,
-        boot_baseline_risk
-      )
+      res_list <- lapply(seq_len(nrow(substitutions)), function(i) {
+        row <- substitutions[i]
+        compute_substituted_risk(
+          boot_dt,
+          row$from,
+          row$to,
+          row$duration,
+          boot_comp_limits,
+          boot_fitted_models,
+          boot_timegroup_cuts,
+          boot_baseline_risk
+        )
+      })
+      out <- data.table::rbindlist(res_list)
       out[, bootstrap_seed := bootstrap_seeds]
       out
     },
-    pattern = cross(
+    pattern = map(
       boot_dt,
       boot_comp_limits,
       boot_fitted_models,
       boot_timegroup_cuts,
       boot_baseline_risk,
-      bootstrap_seeds,
-      substitutions
+      bootstrap_seeds
     )
+  ),
+
+  tar_target(
+    boot_risk_summary,
+    {
+      boot_substituted_risk[,
+        .(
+          mean_risk_ratio = mean(mean_risk_substituted / mean_risk_baseline),
+          lower_ci = quantile(
+            mean_risk_substituted / mean_risk_baseline,
+            0.025
+          ),
+          upper_ci = quantile(
+            mean_risk_substituted / mean_risk_baseline,
+            0.975
+          ),
+          n_intervened = first(n_intervened),
+          n_total = first(n_total)
+        ),
+        by = .(bootstrap_seed, from, to, duration, timegroup)
+      ]
+    }
+  ),
+
+  tar_target(
+    boot_risk_overall,
+    boot_risk_summary[,
+      .(
+        mean_risk_ratio = mean(mean_risk_ratio),
+        lower_ci = mean(lower_ci),
+        upper_ci = mean(upper_ci)
+      ),
+      by = .(from, to, duration)
+    ]
+  ),
+
+  tar_target(
+    plot_boot_substitutions,
+    {
+      splits <- split(boot_risk_overall, by = c("from", "to"))
+      lapply(splits, plot_bootstrap_substitutions)
+    }
+  ),
+
+  # 12. Save summary plot to PDF
+  tar_target(
+    boot_substituted_plot_pdf,
+    write_bootstrap_substitution_plot(
+      boot_substituted_plot,
+      file.path("results", "bootstrap_substitution_risk_ratio.pdf")
+    ),
+    format = "file"
   )
-
-  # # 9. Combine bootstrap substituted risks
-  # tar_combine(
-  #   boot_substituted_risk_tbl,
-  #   boot_substituted_risk,
-  #   command = data.table::rbindlist(
-  #     boot_substituted_risk,
-  #     idcol = "combo_id"
-  #   )
-  # ),
-
-  # # 10. Summarize bootstrap distribution (max timegroup)
-  # tar_target(
-  #   boot_substituted_summary,
-  #   summarize_bootstrap_substitutions(boot_substituted_risk_tbl)
-  # ),
-
-  # # 11. Summary plot (ggplot)
-  # tar_target(
-  #   boot_substituted_plot,
-  #   plot_bootstrap_substitutions(boot_substituted_summary)
-  # ),
-
-  # # 12. Save summary plot to PDF
-  # tar_target(
-  #   boot_substituted_plot_pdf,
-  #   write_bootstrap_substitution_plot(
-  #     boot_substituted_plot,
-  #     file.path("results", "bootstrap_substitution_risk_ratio.pdf")
-  #   ),
-  #   format = "file"
-  # )
 )
