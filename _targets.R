@@ -24,7 +24,8 @@ tar_option_set(
     "compositions",
     "mice"
   ),
-  format = "qs"
+  format = "qs",
+  seed = 20260202
 )
 
 # Run the R scripts in the R/ folder
