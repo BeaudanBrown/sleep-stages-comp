@@ -173,8 +173,8 @@ expand_surv_dt <- function(dt, timegroup_cuts) {
 
   surv_dt[,
     death := fcase(
-      death_status == 1 & end >= death_date,
-      1,
+      death_status == 1 & end >= death_date ,
+                                          1 ,
       default = 0
     )
   ]
@@ -355,7 +355,7 @@ summarize_bootstrap_substitutions <- function(boot_substituted_risk) {
   dt <- copy(boot_substituted_risk)
   dt[, risk_ratio := mean_risk_substituted / mean_risk_baseline]
 
-  dt[, max_timegroup := max(timegroup), by = bootstrap_id]
+  dt[, max_timegroup := max(timegroup), by = bootstrap_seed]
   dt <- dt[timegroup == max_timegroup]
 
   dt[,

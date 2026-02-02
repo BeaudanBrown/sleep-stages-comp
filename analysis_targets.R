@@ -64,66 +64,63 @@ analysis_targets <- list(
     pattern = map(boot_dt, boot_fitted_models, boot_timegroup_cuts)
   ),
 
-  # 8. Bootstrap substituted risk (all substitutions per bootstrap)
+  # 8. Bootstrap substituted risk (one substitution per bootstrap)
   tar_target(
     boot_substituted_risk,
     {
-      res_list <- lapply(seq_len(nrow(substitutions)), function(i) {
-        row <- substitutions[i]
-        compute_substituted_risk(
-          boot_dt,
-          row$from,
-          row$to,
-          row$duration,
-          boot_comp_limits,
-          boot_fitted_models,
-          boot_timegroup_cuts,
-          boot_baseline_risk
-        )
-      })
-      out <- data.table::rbindlist(res_list)
+      out <- compute_substituted_risk(
+        boot_dt,
+        substitutions$from,
+        substitutions$to,
+        substitutions$duration,
+        boot_comp_limits,
+        boot_fitted_models,
+        boot_timegroup_cuts,
+        boot_baseline_risk
+      )
       out[, bootstrap_seed := bootstrap_seeds]
       out
     },
-    pattern = map(
+    pattern = cross(
       boot_dt,
       boot_comp_limits,
       boot_fitted_models,
       boot_timegroup_cuts,
       boot_baseline_risk,
-      bootstrap_seeds
+      bootstrap_seeds,
+      substitutions
     )
-  ),
-
-  # 9. Combine bootstrap substituted risks
-  tar_combine(
-    boot_substituted_risk_tbl,
-    boot_substituted_risk,
-    command = data.table::rbindlist(
-      boot_substituted_risk,
-      idcol = "bootstrap_id"
-    )
-  ),
-
-  # 10. Summarize bootstrap distribution (max timegroup)
-  tar_target(
-    boot_substituted_summary,
-    summarize_bootstrap_substitutions(boot_substituted_risk_tbl)
-  ),
-
-  # 11. Summary plot (ggplot)
-  tar_target(
-    boot_substituted_plot,
-    plot_bootstrap_substitutions(boot_substituted_summary)
-  ),
-
-  # 12. Save summary plot to PDF
-  tar_target(
-    boot_substituted_plot_pdf,
-    write_bootstrap_substitution_plot(
-      boot_substituted_plot,
-      file.path("results", "bootstrap_substitution_risk_ratio.pdf")
-    ),
-    format = "file"
   )
+
+  # # 9. Combine bootstrap substituted risks
+  # tar_combine(
+  #   boot_substituted_risk_tbl,
+  #   boot_substituted_risk,
+  #   command = data.table::rbindlist(
+  #     boot_substituted_risk,
+  #     idcol = "combo_id"
+  #   )
+  # ),
+
+  # # 10. Summarize bootstrap distribution (max timegroup)
+  # tar_target(
+  #   boot_substituted_summary,
+  #   summarize_bootstrap_substitutions(boot_substituted_risk_tbl)
+  # ),
+
+  # # 11. Summary plot (ggplot)
+  # tar_target(
+  #   boot_substituted_plot,
+  #   plot_bootstrap_substitutions(boot_substituted_summary)
+  # ),
+
+  # # 12. Save summary plot to PDF
+  # tar_target(
+  #   boot_substituted_plot_pdf,
+  #   write_bootstrap_substitution_plot(
+  #     boot_substituted_plot,
+  #     file.path("results", "bootstrap_substitution_risk_ratio.pdf")
+  #   ),
+  #   format = "file"
+  # )
 )
