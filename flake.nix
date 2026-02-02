@@ -50,6 +50,7 @@
               qs2
 
               psych
+              ggplot2
               survival
               data_table
               here

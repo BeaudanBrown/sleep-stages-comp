@@ -22,7 +22,8 @@ tar_option_set(
     "data.table",
     "Hmisc",
     "compositions",
-    "mice"
+    "mice",
+    "ggplot2"
   ),
   format = "qs",
   seed = 20260202
