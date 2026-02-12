@@ -44,6 +44,28 @@ make_comp_limits <- function(dt) {
     setNames(comp_vars)
 }
 
+make_lmtp_shift <- function(from, to, duration, comp_limits) {
+  function(data, trt) {
+    dt <- as.data.table(data)
+
+    lower_from <- comp_limits[[from]]$lower
+    upper_to <- comp_limits[[to]]$upper
+
+    max_from_change <- dt[[from]] - lower_from
+    max_to_change <- upper_to - dt[[to]]
+    can_substitute <- (max_from_change >= duration) &
+      (max_to_change >= duration)
+
+    dt[[from]] <- dt[[from]] - (can_substitute * duration)
+    dt[[to]] <- dt[[to]] + (can_substitute * duration)
+
+    ilr_vars <- make_ilrs(sub)
+    dt[, (ilr_names) := ilr_vars]
+
+    as.data.frame(dt[, trt, with = FALSE], check.names = FALSE)
+  }
+}
+
 apply_substitution <- function(dt, from_var, to_var, duration, comp_limits) {
   lower_from <- comp_limits[[from_var]]$lower
   upper_to <- comp_limits[[to_var]]$upper
@@ -206,6 +228,224 @@ expand_for_prediction <- function(dt, timegroup_cuts) {
 
   surv_dt[, timegroup := timegroup - 1]
   surv_dt
+}
+
+make_surv_wide <- function(dt_surv_long, id_var = "PID") {
+  dt <- copy(dt_surv_long)
+
+  max_timegroup <- max(dt$timegroup, na.rm = TRUE)
+
+  grid_dt <- CJ(
+    id_val = unique(dt[[id_var]]),
+    timegroup = seq(1, max_timegroup)
+  )
+  setnames(grid_dt, "id_val", id_var)
+
+  dt <- merge(
+    grid_dt,
+    dt,
+    by = c(id_var, "timegroup"),
+    all.x = TRUE,
+    sort = FALSE
+  )
+
+  dt[, cens := fifelse(!is.na(dem_or_mci), 1, 0)]
+  dt[, dem_or_mci := fifelse(is.na(dem_or_mci), 0, dem_or_mci)]
+  dt[, death := fifelse(is.na(death), 0, death)]
+
+  cast_formula <- as.formula(sprintf("%s ~ timegroup", id_var))
+
+  y_wide <- dcast(dt, cast_formula, value.var = "dem_or_mci", fill = 0)
+  d_wide <- dcast(dt, cast_formula, value.var = "death", fill = 0)
+  c_wide <- dcast(dt, cast_formula, value.var = "cens", fill = 0)
+
+  time_names <- seq_len(max_timegroup)
+  setnames(y_wide, setdiff(names(y_wide), id_var), paste0("Y_", time_names))
+  setnames(d_wide, setdiff(names(d_wide), id_var), paste0("D_", time_names))
+  setnames(c_wide, setdiff(names(c_wide), id_var), paste0("C_", time_names))
+
+  drop_cols <- intersect(
+    c(
+      "start",
+      "end",
+      "timegroup",
+      "dem_or_mci",
+      "death",
+      "cens",
+      "dem_or_mci_status",
+      "dem_or_mci_surv_date",
+      "death_status",
+      "death_date"
+    ),
+    names(dt)
+  )
+
+  base_dt <- unique(
+    dt[, setdiff(names(dt), drop_cols), with = FALSE],
+    by = id_var
+  )
+
+  as.data.frame(Reduce(
+    \(x, y) merge(x, y, by = id_var, sort = FALSE),
+    list(base_dt, y_wide, d_wide, c_wide)
+  ))
+}
+
+get_surv_cols <- function(dt, prefix) {
+  cols <- grep(sprintf("^%s_\\d+$", prefix), names(dt), value = TRUE)
+  cols[order(as.integer(sub(sprintf("^%s_", prefix), "", cols)))]
+}
+
+default_baseline_covars <- function(dt) {
+  candidates <- c(
+    "age_s1",
+    "bmi_s1",
+    "gender",
+    "educat",
+    "IDTYPE",
+    "n1",
+    "n2",
+    "n3",
+    "rem",
+    "slp_time",
+    "s1_incomplete",
+    "total_sleep_time_s2",
+    "waist_circumference",
+    "hypertension",
+    "diabetes",
+    "cvd_status",
+    "smoking_status",
+    "alcohol_use",
+    "physical_activity",
+    "apoe_e4",
+    "sedative_use",
+    "sleeping_pill_use",
+    "antidepressant_use"
+  )
+
+  intersect(candidates, names(dt))
+}
+
+run_lmtp_tmle_substitution <- function(
+  dt,
+  outcome_cols,
+  cens_cols,
+  compete_cols,
+  trt_cols,
+  baseline_covars,
+  comp_limits,
+  substitution,
+  learners_outcome,
+  learners_trt,
+  folds
+) {
+  data <- read.csv("sim.csv")
+  setDT(data)
+
+  n <- nrow(data)
+  data[, `:=`(
+    A_1 = NULL,
+    A_2 = NULL,
+    L1_1 = NULL,
+    L1_2 = NULL,
+    L2_1 = NULL,
+    L2_2 = NULL,
+    A1 = rnorm(n, mean = 0, sd = 1),
+    A2 = rnorm(n, mean = 0, sd = 1)
+  )]
+  time_points <- 1:2
+
+  for (t in time_points) {
+    c_col <- paste0("C_", t)
+    c2_col <- paste0("C_", t + 1)
+    d_col <- paste0("D_", t)
+    y_col <- paste0("Y_", t)
+
+    cols_to_zero <- c(d_col, y_col, c2_col)
+    cols_to_zero <- cols_to_zero[cols_to_zero %in% names(data)]
+
+    if (length(cols_to_zero) > 0) {
+      data[get(c_col) == 0, (cols_to_zero) := 0]
+    }
+    if (c2_col %in% names(data)) {
+      data[get(d_col) == 1, (c2_col) := 0]
+    }
+  }
+  data <- as.data.frame(data)
+
+  trt_cols <- list(c("A1", "A2"))
+  outcome_cols <- c("Y_1", "Y_2")
+  baseline_arg <- c("W1", "W2")
+  cens_cols <- c("C_1", "C_2")
+  compete_cols <- c("D_1", "D_2")
+  learners_trt <- c("glm")
+  learners_outcome <- learners_trt
+  shift_fn <- function(data, trt) {
+    as.data.frame(data[, trt], check.names = FALSE)
+  }
+  folds <- 5
+  fit <- lmtp::lmtp_curve(
+    data = data,
+    trt = trt_cols,
+    outcome = outcome_cols,
+    baseline = baseline_arg,
+    time_vary = NULL,
+    cens = cens_cols,
+    compete = compete_cols,
+    shift = shift_fn,
+    mtp = TRUE,
+    outcome_type = "survival",
+    learners_outcome = learners_outcome,
+    learners_trt = learners_trt,
+    folds = folds
+  )
+
+  shift_fn <- make_lmtp_shift(
+    substitution$from,
+    substitution$to,
+    substitution$duration,
+    comp_limits
+  )
+
+  baseline_arg <- if (length(baseline_covars) == 0) {
+    NULL
+  } else {
+    baseline_covars
+  }
+
+  print(trt_cols)
+  print(outcome_cols)
+  print(baseline_arg)
+  print(cens_cols)
+  print(compete_cols)
+  print(learners_outcome)
+  print(learners_trt)
+
+  fit <- lmtp::lmtp_curve(
+    data = data,
+    trt = trt_cols,
+    outcome = outcome_cols,
+    baseline = baseline_arg,
+    time_vary = NULL,
+    cens = cens_cols,
+    compete = compete_cols,
+    shift = shift_fn,
+    mtp = TRUE,
+    outcome_type = "survival",
+    learners_outcome = learners_outcome,
+    learners_trt = learners_trt,
+    folds = folds
+  )
+
+  estimate_dt <- data.table::as.data.table(generics::tidy(fit))
+  data.table::cbind(
+    data.table::data.table(
+      from = substitution$from,
+      to = substitution$to,
+      duration = substitution$duration
+    ),
+    estimate_dt
+  )
 }
 
 predict_risks <- function(dt, models, timegroup_cuts) {
