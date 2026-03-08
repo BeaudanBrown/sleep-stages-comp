@@ -15,61 +15,56 @@
 \maketitle
 
 \section{Introduction}
-In epidemiology, compositional exposures are multivariate exposures constrained to a constant sum. For example, the time spent in sleep, inactivity, and physical activity are compositional components of a 24-hour day. This constraint poses problems for studies aiming to estimate the effect of intervening on such exposures. For one, the perfect collinearity among the composition elements makes traditional statistical methods, like multivariable regression, unsuitable. While this issue is often avoided in practice by focusing on one element of the composition at a time (i.e., without holding the other components constant), the question addressed using this approach is then ill-defined: it represents the effect of increasing one component while reducing the other components by an equivalent amount in an unspecified way. For example, increasing total physical activity time at the expense of reduced time in some unspecified combination of inactivity and sleep.
+Compositional exposures, multivariate exposures that are constrained to a constant sum, are common in applied epidemiological settings. For example, the time spent in sleep, inactivity, and physical activity are compositional components of a 24-hour day. This constraint poses problems for studies aiming to estimate the effect of intervening on such exposures. For one, the perfect collinearity among the composition elements makes traditional statistical methods, like multivariable regression, unsuitable. While this issue is often avoided in practice by focusing on one element of the composition at a time (i.e., without holding the other components constant), the question addressed using this approach is then often ill-defined: it represents the effect of increasing one component while reducing the other components by an equivalent amount in an unspecified way. For example, increasing total physical activity time without stating whether that time comes at the expense of inactivity, sleep, or some combination thereof.
 
-Another compositional exposure that is of growing interest in the dementia setting is the proportion of total sleep time spent in different sleep stages. Insufficient slow wave sleep (SWS) has been associated with increased risk of dementia \cite{himali_association_2023}. SWS is thought to be important for glymphatic clearance of amyloid-$\beta$ and tau, the two hallmark features of Alzheimer's disease dementia. Restoring SWS may therefore reflect a potential intervention target to reduce risk of dementia. Similarly, an excessive proportion of time spent in light sleep (N1) has been associated with cognitive decline in older people \cite{song_relationships_2015}. A difficulty in interpreting these results, however, is the compositional nature of sleep stages within a fixed sleep window. An increase in SWS, for example, must come at the expense of some combination of N1, N2, REM, and WASO, or otherwise from an increased overall sleep duration (i.e., at the expense of wake). It may well be that the effect of increasing time in SWS depends on which state(s) that time comes at the expense of.
+Another compositional exposure that is of growing interest in the dementia setting is the proportion of total sleep time spent in different sleep stages. Insufficient slow wave sleep (SWS) has been associated with increased risk of dementia \cite{himali_association_2023}. SWS is thought to be important for glymphatic clearance of amyloid-$\beta$ and tau, the two hallmark features of Alzheimer's disease dementia. Restoring SWS may therefore reflect a potential intervention target to reduce risk of dementia. Similarly, an excessive proportion of time spent in light sleep (N1) has been associated with cognitive decline in older people \cite{song_relationships_2015}. A difficulty in interpreting these results, however, is the compositional nature of sleep stages within a fixed sleep window. An increase in SWS, for example, must come at the expense of some combination of N1, N2, rapid eye movement sleep (REM), and wake after sleep onset (WASO), or otherwise from an increased overall sleep window (i.e., at the expense of wake). It may well be that the effect of increasing time in SWS depends on which state(s) that time comes at the expense of.
 
-We can overcome the issues of perfect multicollinearity and ill-defined interventions using the compositional data analysis (CoDA) approach. This approach involves first mapping the original $J$ dimensional composition into a $J-1$ dimensional set of log-ratio coordinates \cite{aitchisonStatisticalAnalysisCompositional1982}. The interventions of interest are then defined as explicit \textit{substitutions} applied to the composition. For example, increasing time in SWS by 5 minutes and reducing time in WASO by 5 minutes. Finally, the effect of these substitutions can be estimated using g-computation, inverse-probability weighting, or their doubly-robust extensions. These statistical approaches have advantages over conventional outcome regression-based approaches, including 1. they do not require interpretation of the regression coefficients for log-ratio coordinates, which, especially when the form of the outcome regression is complex and/or the composition is high-dimensional, is difficult; and 2. they generalise to longitudinal treatments with time-varying confounding.
+We can overcome the issues of perfect multicollinearity and ill-defined interventions using the compositional data analysis (CoDA) approach. This approach involves first mapping the original $J$ dimensional composition into a $J-1$ dimensional set of log-ratio coordinates \cite{aitchisonStatisticalAnalysisCompositional1982}. The interventions of interest are then defined as explicit \textit{substitutions} applied to the composition. For example, increasing time in SWS by 5 minutes and reducing time in WASO by 5 minutes. The effect of these substitutions can be estimated using g-computation, inverse-probability weighting, or their doubly-robust extensions. These statistical approaches have advantages over conventional outcome regression-based approaches, including:
 
+\begin{enumerate}
+    \item They do not require interpretation of the regression coefficients for log-ratio coordinates, which, especially when the form of the outcome regression is complex and/or the composition is high-dimensional, is difficult
+    \item They generalise to longitudinal treatments with time-varying confounding
+\end{enumerate}
 
 \section{Aims}
 \begin{enumerate}
-    \item To investigate the effect of different hypothetical interventions on sleep stage composition (the proportion of time spent in each state within a fixed sleep window; N1, N2, N3/N4, REM, and WASO) on the risk of cognitive decline and MRI volumetric outcomes, compared to no intervention (not changing the sleep stage composition).
-    \item To find the "lowest risk" and "highest risk" pattern of sleep stage compositions with respect to risk of cognitive impairment. I.e., the absolute quantities of time spent in each state which is associated with the highest/lowest risk of cognitive decline.
+    \item To investigate the effect of different hypothetical interventions on sleep stage composition (the proportion of time spent in each state within a fixed sleep window; N1, N2, N3/N4, REM, and WASO) on the risk of cognitive decline and MRI volumetric outcomes, compared to no intervention
+    \item To find the "lowest risk" and "highest risk" sleep stage compositions with respect to risk of cognitive impairment. I.e., the relative time spent in each state which is associated with the highest/lowest risk of cognitive decline.
 \end{enumerate}
 
 \section{Methods}
 
 \subsection{Observational data}
 
-Data are obtained from the Framingham Offspring Study (FOS) and the Sleep Heart Health Study (SHHS). SHHS is a multi-centre prospective cohort study designed to examine the cardiovascular outcomes of sleep-disordered breathing in middle-aged and older adults. Participants were recruited from multiple parent cohorts, including FOS, the Atherosclerosis Risk in Communities (ARIC) cohort, and the Cardiovascular Health Study (CHS). For this study, we used SHHS data provided by participants from the FOS study.
+Data are obtained from the Framingham Offspring Study (FOS) and the Sleep Heart Health Study (SHHS). SHHS is a multi-centre prospective cohort study designed to examine the cardiovascular outcomes of sleep-disordered breathing in middle-aged and older adults. Participants were recruited from multiple parent cohorts, including FOS. For this study, we used SHHS data provided by participants from the FOS study.
 
-For SHHS, a sample of participants who met the inclusion criteria (see below) was invited to participate in the baseline SHHS examination (SHHS-1), which included a polysomnogram. A total of 997 individuals from the FOS study were enrolled between 1995 and 1998. A second polysomnogram (SHHS-2) was performed between 2001 and 2003 in 638 FOS participants.
+For SHHS, a sample of participants who met the inclusion criteria (aged 40 years or older; no history of treatment of sleep apnea with continuous positive airway pressure; no tracheostomy; no current home oxygen therapy) was invited to participate in the baseline SHHS examination (SHHS-1), which included a polysomnogram. A total of 997 individuals from the FOS study were enrolled between 1995 and 1998. A second polysomnogram (SHHS-2) was performed between 2001 and 2003 in 638 FOS participants.
 
-\subsubsection{Eligibility criteria}
-
-The following are the eligibility criteria for participation in SHHS:
-
-\begin{itemize}
-    \item Aged 40 or older
-    \item No history of treatment for sleep apnea
-    \item no Tracheostomy
-    \item No current home oxygen therapy
-\end{itemize}
-
-\noindent For this study, we will additionally require that participants have SHHS-1 and SHHS-2 polysomnography data available and apply the following exclusion criteria:
+\subsection{Exclusion criteria}
 
 \begin{itemize}
     \item Dementia or other significant neurological disease prior to SHHS-2
     \item Mild cognitive impairment prior to SHHS-2
     \item Significant cardiovascular disease prior to SHHS-2
-    \item Less than 4 hours of sleep at SHHS-1 or SHHS-2
+    \item Less than 4 hours of sleep at SHHS-2
 \end{itemize}
 
 \subsection{Hypothetical interventions}
 
-Our exposure of interest is the sleep stage composition at SHHS-2, represented by $A = (A_1, A_2, A_3, A_4, A_5) = (N1, N2, N3/N4, REM, WASO)$, where $A_j$ denotes time spent in sleep stage $j \in \{1,...,5\}$. We use SHHS-2, rather than SHHS-1, for our exposure variables because it allows us to statistically adjust for sleep stage composition at SHHS-1. This ensures that the SHHS-2 sleep composition is approximately an "incident" exposure, reducing confounding and selection bias related to past sleep behaviours.
+Our exposure of interest is the sleep stage composition at SHHS-2, represented by $$A = (A_1, A_2, A_3, A_4, A_5) = (N1, N2, N3/N4, REM, WASO)$$ Where $A_j$ denotes time spent in sleep stage $j \in \{1,...,5\}$. We use SHHS-2, rather than SHHS-1, for our exposure variables because it allows us to statistically adjust for sleep stage composition at SHHS-1. This ensures that the SHHS-2 sleep composition is approximately an "incident" exposure, reducing confounding and selection bias related to past sleep behaviours.
 
-The reference composition is the observed sleep stage composition $A$. We consider hypothetical isotemporal substitution interventions that redistribute time between two sleep stages while holding the total sleep window fixed. We denote these compositional interventions by $d$ and the composition resulting from this intervention as $d(A)$. For example, the intervention $d(A) = A + \Delta$, where $\Delta = (0, 0, 5, -5, 0)$ increases time in SWS $A_3$ and reduces time in REM $A_4$ by 5 minutes. A potential issue with this intervention $d$, however, is that $d(A)$ may not lie within the support of the data. For someone with only 3 minutes of REM, for example, an intervention to reduce REM by 5 minutes would result in -2 minutes of REM, which is obviously impossible. More generally, interventions $d$ that produce compositions that are not within the support of the data will rely purely on extrapolation, which is unlikely to be valid.
+The reference composition is the observed sleep stage composition $A$. We define the total sleep window $T = \sum_{j=1}^{5} A_j$. We consider hypothetical isotemporal substitution interventions that redistribute time between two sleep stages while holding $T$ fixed. We denote these interventions by $d$ and the composition resulting from applying them $d(A)$. For example, the intervention $d(A) = A + \Delta$, where $\Delta = (0, 0, 5, -5, 0)$ increases time in SWS and reduces time in REM by 5 minutes.
 
-Accordingly, following \cite{rudolphEverythingAllOnce2025}, we utilise the convex hull to ensure that the compositional interventions stay within the support of the data. In our case, the convex hull is the smallest $J-1 = 4$ dimensional polygon (a subspace of the 4-simplex) that contains all of the observed exposure values. Any data outside of the borders of the convex hull will require extrapolation. We will compute the convex hull for our exposure data using the Julia software. Note, however, that we are only able to compute the convex hull the \textit{marginal} distribution of the exposures, rather than the distribution of the exposures conditional on the covariates. Though the latter is what is important for avoiding extrapolation and for the positivity assumption (see below) to hold, the former is a useful approximation \cite{rudolphEverythingAllOnce2025}.
+A potential issue with this intervention $d$, however, is that $d(A)$ may not lie within the support of the data. For someone with only 3 minutes of REM, for example, an intervention to reduce REM by 5 minutes would result in -2 minutes of REM, which is impossible. More generally, interventions $d$ may produce compositions that are not within the support of the data and are therefore either unlikely or biologically implausible.
 
-We now define the intervention $d$, incorporating the data support constraint:
+Accordingly, following \cite{rudolphEverythingAllOnce2025}, we utilise the convex hull to ensure that the compositional interventions stay within the support of the data. In our case, the convex hull is the smallest $J-1 = 4$ dimensional polygon (a subspace of the 4D simplex) that contains all of the observed exposure values. We will compute the convex hull for our exposure data using an available Julia package. For each participant, the intervention will only be applied if the resulting composition is within the convex hull, otherwise no intervention will be applied. This helps to limit extrapolation and violations of the positivity assumption. Note that since we compute the convex hull for the \textit{marginal} distribution of the exposures, rather than the distribution of the exposures conditional on the covariates, this does not guarantee that extrapolation and positivity violations are avoided \cite{rudolphEverythingAllOnce2025}.
+
+The intervention $d$, incorporating the data support constraint, is defined as:
 
 \[
     d(A) =
     \begin{cases}
-        A + \Delta & \text{if} A + \Delta \in \text{convex hull}, \\
+        A + \Delta & \text{if } A + \Delta \in \text{convex hull}, \\
         A          & \text{otherwise}
     \end{cases}
 \]
@@ -87,12 +82,12 @@ Follow-up commences at the time of SHHS-2 (the time of exposure measurement). Fo
 
 \subsection{Causal contrast}
 
-For survival outcomes, our causal contrast of interest is the total effect \cite{youngCausalFrameworkClassical2020b} of the intervention $d$ on the risk of cognitive impairment $E[Y^{A^d} - Y]$. This represents the effect of the intervention through all pathways, including through the competing event of death. For the MRI outcomes, as MRI outcomes are undefined after death occurs, our estimand is the average causal effect in survivors $E[Y^{A^d} - Y|D=0]$, where $D$ = death. Implicit in each causal contrast is an intervention to abolish censoring throughout follow-up.
+For survival outcomes, our causal contrast of interest is the total effect \cite{youngCausalFrameworkClassical2020b} of the intervention $d$ on the risk of cognitive impairment $E[Y^{A^d} - Y]$. This represents the effect of the intervention through all pathways, including through the competing event of death. For the MRI outcomes, as MRI outcomes are undefined after death occurs, our estimand is the average causal effect in survivors $E[Y^{A^d} - Y|D=0]$, where $D=0$ represents survival. Implicit in each causal contrast is an intervention to abolish censoring throughout follow-up.
 
 
 \subsection{Confounders}
 
-The presumed structure of confounding is displayed in the directed acyclic graph in Figure \ref{fig:dag}. $A$ represents sleep stage composition at SHHS-2, which is the exposure. $L_0$ represents confounders measured before but proximal to SHHS-2 and includes age, sex, education, race, MMSE score, body mass index (BMI), waist circumference, physical activity (from the PAI), hypertension, CVD, diabetes, smoking status, APOE $\epsilon$ 4 positivity, medication (sedative, sleeping pill, antidepressant), apnea hypopnea index, MRI intracranial volume (for MRI outcomes only), SHHS1 Sleep macro-architecture measures (i.e., time in N1, N2, N3, REM, time awake, wake after sleep onset) mapped to log ratio coordinates, and SHHS1 sleep maintenance efficiency and apnea hypopnea index. $L$ represents covariates variables measured at time $t$ which are common causes of censoring and the outcome. $U$ is a vector of unmeasured variables (e.g., genetics) which is a common cause of sleep stage composition, covariates $L_t$, death $D$, and the outcome $Y$.
+The presumed structure of confounding is displayed in the directed acyclic graph in Figure \ref{fig:dag}. $A$ represents sleep stage composition at SHHS-2, which is the exposure. $L_0$ represents confounders measured before but proximal to SHHS-2 and includes age, sex, education, race, MMSE score, body mass index (BMI), diabetes, smoking status, APOE $\epsilon$ 4 positivity, apnea hypopnea index, MRI intracranial volume (for MRI outcomes only), SHHS1 sleep macro-architecture measures (i.e., time in N1, N2, N3, REM, time awake, wake after sleep onset) mapped to log ratio coordinates, and SHHS1 sleep maintenance efficiency. $L_t$ represents covariates measured at time $t$ which are time-varying common causes of censoring and the outcome (TBD). $U$ is a vector of unmeasured variables (e.g., genetics) which is a common cause of the covariates $L_t$, death $D$, and the outcome $Y$.
 
 \begin{figure}[h]
     \centering
@@ -116,6 +111,7 @@ The presumed structure of confounding is displayed in the directed acyclic graph
         \draw [-latex] (L) edge (C);
         \draw [-latex] (A) edge (L);
         \draw [-latex] (A) edge [bend left=15] (C);
+        \draw [-latex] (A) edge [bend left=15] (D);
         \draw [-latex] (U) edge (D);
         \draw [-latex] (U) edge (Y);
         \draw [-latex] (U) edge (L0);
@@ -126,38 +122,42 @@ The presumed structure of confounding is displayed in the directed acyclic graph
     \label{fig:dag}
 \end{figure}
 
-Note that, for the MRI outcomes, the identification of the average causal effect in survivors requires that the exposure $A$ is independent of $D$.
+Note that for the MRI outcomes, the estimand $E[Y^{A^d} - Y \mid D=0]$ conditions on observed survival status. Because $A$ affects $D$ (as shown in the DAG), this conditioning introduces selection bias, though we do not expect meaningful bias given the small expected proportion of competing events.
 
 \subsection{Statistical analysis}
 
 \subsubsection{Isotemporal substitutions}
 
-For the primary analysis, we will use g-computation to estimate the substitution effects. For the time to cognitive impairment outcome, the steps for this algorithm are:
+For the primary analysis, we will use g-computation to estimate the substitution effects. We use g-computation rather than a doubly-robust estimator for the primary analysis as the performance of the doubly robust estimators (such as targeted maximum likelihood estimation) with relatively high dimensional exposures in modest sample sizes is unclear. For the cognitive impairment outcome, the steps for this algorithm are:
 \begin{enumerate}
     \item Apply the intervention to create $A^d$
-    \item Map $A$ and $A^d$ from the simplex to the Real space using an isometric log ratio (ILR) transformation
-    \item Fit a pooled over time logistic model for $Y$ and for $D$, given $ILR(A)$ and the baseline confounders. This model will include restricted cubic splines (knots at the 5th, 50th, and 95th percentiles) for continuous variables and two-way product terms between the exposures and time, key confounders (age, sex, APOE, education) and time, and between the key confounders.
-    \item Generate predicted hazards for $Y$ and $D$ with the exposures set $ILR(A)$ (reference) and $ILR(A^d)$ (intervention)
-    \item For each intervention, compute risks as a function of the estimated hazards. Then, average the estimated risks over the baseline covariates $L_0$.
-    \item Calculate the effect estimate as the difference between interventions
-    \item Perform 500 replications of the non-parametric bootstrap for percentile based 95\% confidence intervals
+    \item Fit a pooled over time logistic model for $Y$ and for $D$, given the baseline confounders and an isometric log ratio (ILR) transformation of $A$. This transformation maps the composition from the simplex to the Real space. This model will include restricted cubic splines (knots at the 10th, 50th, and 90th percentiles) for continuous variables and two-way product terms between the exposures and time and between key confounders (age, sex, APOE, education) and time.
+    \item Generate predicted hazards for $Y$ and $D$ with the exposures set to $ILR(A)$ (observed/reference) and $ILR(A^d)$ (intervention)
+    \item For the intervention and comparator, compute the cause-specific cumulative incidence of $Y$ at each time point using the estimated hazards from both models. Average the estimated risks over the baseline covariates $L_0$.
+    \item Calculate risk difference and risk ratio effect estimates as the difference/ratio of the estimated risk under the intervention and under the comparator
+    \item Perform 1000 replications of the non-parametric bootstrap for percentile based 95\% confidence intervals
 \end{enumerate}
 
-The specification of the outcome model for the MRI outcomes will be equivalent, though no time term will be required.
-
+The specification of the outcome model for the MRI outcomes will be equivalent.
 
 \subsubsection{Highest and lowest risk compositions}
 
-To estimate the highest and lowest composition, i.e., the absolute time spent in each sleep stage associated with the best and worst outcome, respectively, we will use the following method:
+To estimate the highest and lowest risk composition, i.e., the absolute time spent in each sleep stage associated with the best and worst outcome, respectively, we will use the following method:
 \begin{enumerate}
-    \item
+    \item Create a grid of synthetic compositions (in discrete 2-minute steps) covering all possible compositions within the convex hull
+    \item Split the data randomly into two equally sized folds
+    \item In the first (“training”) fold, estimate the cognitive impairment risk for each synthetic composition by g-computation. The synthetic composition returning the lowest and highest estimated cognitive impairment risks are termed the “lowest risk” and “highest risk” compositions, respectively.
+    \item In the second (“testing”) fold the cumulative incidence of cognitive impairment for the lowest and highest risk compositions are then estimated by g-computation.
 \end{enumerate}
 
 \subsection{Sensitivity analyses}
+\begin{enumerate}
+    \item Repeat the primary analysis using targeted maximum likelihood estimation (a doubly robust estimator). The outcome and treatment models will be fitted using SuperLearner, an ensemble approach that combines the predictions of multiple machine learning estimators into an optimally weighted sum. The treatment model will be estimated using the "classification trick" described by Diaz et al (2023) \cite{diazNonparametricCausalEffects2023a}. Propensity scores will be truncated at the 2.5th percentile.
+\end{enumerate}
 
 
 \section{References}
-\bibliographystyle{plain}
+\bibliographystyle{unsrt}
 \bibliography{citations}
 
 \end{document}
