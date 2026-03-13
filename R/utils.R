@@ -47,13 +47,24 @@ make_lmtp_shift <- function(from, to, duration, comp_limits) {
   function(data, trt) {
     dt <- as.data.table(data)
 
-    lower_from <- comp_limits[[from]]$lower
-    upper_to <- comp_limits[[to]]$upper
+    if (duration >= 0) {
+      lower_from <- comp_limits[[from]]$lower
+      upper_to <- comp_limits[[to]]$upper
 
-    max_from_change <- dt[[from]] - lower_from
-    max_to_change <- upper_to - dt[[to]]
-    can_substitute <- (max_from_change >= duration) &
-      (max_to_change >= duration)
+      max_from_change <- dt[[from]] - lower_from
+      max_to_change <- upper_to - dt[[to]]
+      can_substitute <- (max_from_change >= duration) &
+        (max_to_change >= duration)
+    } else {
+      abs_dur <- abs(duration)
+      upper_from <- comp_limits[[from]]$upper
+      lower_to <- comp_limits[[to]]$lower
+
+      max_from_change <- upper_from - dt[[from]]
+      max_to_change <- dt[[to]] - lower_to
+      can_substitute <- (max_from_change >= abs_dur) &
+        (max_to_change >= abs_dur)
+    }
 
     dt[[from]] <- dt[[from]] - (can_substitute * duration)
     dt[[to]] <- dt[[to]] + (can_substitute * duration)
@@ -169,10 +180,16 @@ fit_model <- function(dt) {
 
 make_cuts <- function(dt) {
   max_follow_up <- max(
-    dt[dem_or_mci_status == 1, ]$dem_or_mci_surv_date,
+    dt$dem_or_mci_surv_date,
     na.rm = TRUE
   )
+
+  if (!is.finite(max_follow_up) || max_follow_up <= 0) {
+    stop("Cannot construct timegroup cuts without positive finite follow-up.")
+  }
+
   timegroup_steps <- ceiling(max_follow_up / (365 * 3))
+  timegroup_steps <- max(timegroup_steps, 1)
 
   timegroup_cuts <- seq(
     from = 0,
@@ -200,8 +217,8 @@ expand_surv_dt <- function(dt, timegroup_cuts) {
 
   surv_dt[,
     death := fcase(
-      death_status == 1 & end >= death_date ,
-                                          1 ,
+      death_status == 1 & end >= death_date,
+      1,
       default = 0
     )
   ]
@@ -254,20 +271,61 @@ make_surv_wide <- function(dt_surv_long, id_var = "PID") {
     sort = FALSE
   )
 
-  dt[, cens := fifelse(!is.na(dem_or_mci), 1, 0)]
-  dt[, dem_or_mci := fifelse(is.na(dem_or_mci), 0, dem_or_mci)]
-  dt[, death := fifelse(is.na(death), 0, death)]
+  observed_row <- !is.na(dt$dem_or_mci)
+  dt[, cens := fifelse(observed_row, 1, 0)]
+  dt[
+    !observed_row,
+    `:=`(
+      dem_or_mci = NA_real_,
+      death = NA_real_
+    )
+  ]
 
   cast_formula <- as.formula(sprintf("%s ~ timegroup", id_var))
 
-  y_wide <- dcast(dt, cast_formula, value.var = "dem_or_mci", fill = 0)
-  d_wide <- dcast(dt, cast_formula, value.var = "death", fill = 0)
-  c_wide <- dcast(dt, cast_formula, value.var = "cens", fill = 0)
+  y_wide <- dcast(dt, cast_formula, value.var = "dem_or_mci", fill = NA_real_)
+  d_wide <- dcast(dt, cast_formula, value.var = "death", fill = NA_real_)
+  c_wide <- dcast(dt, cast_formula, value.var = "cens", fill = NA_real_)
 
   time_names <- seq_len(max_timegroup)
   setnames(y_wide, setdiff(names(y_wide), id_var), paste0("Y_", time_names))
   setnames(d_wide, setdiff(names(d_wide), id_var), paste0("D_", time_names))
   setnames(c_wide, setdiff(names(c_wide), id_var), paste0("C_", time_names))
+
+  y_cols <- paste0("Y_", time_names)
+  d_cols <- paste0("D_", time_names)
+  c_cols <- paste0("C_", time_names)
+
+  # lmtp survival inputs expect the event indicators to be carried forward
+  # after the event, while future columns remain NA after censoring.
+  y_wide[,
+    (y_cols) := {
+      vals <- unlist(.SD, use.names = FALSE)
+      first_one <- match(TRUE, vals == 1, nomatch = 0L)
+      if (first_one > 0L) {
+        vals[first_one:length(vals)] <- 1
+      }
+      as.list(vals)
+    },
+    by = id_var,
+    .SDcols = y_cols
+  ]
+
+  d_wide[,
+    (d_cols) := {
+      vals <- unlist(.SD, use.names = FALSE)
+      first_one <- match(TRUE, vals == 1, nomatch = 0L)
+      if (first_one > 0L) {
+        vals[first_one:length(vals)] <- 1
+      }
+      as.list(vals)
+    },
+    by = id_var,
+    .SDcols = d_cols
+  ]
+
+  # In the installed lmtp examples, censoring indicators are 1 while observed
+  # and 0 after censoring or a terminal event. Keep that convention here.
 
   drop_cols <- intersect(
     c(
@@ -301,6 +359,39 @@ get_surv_cols <- function(dt, prefix) {
   cols[order(as.integer(sub(sprintf("^%s_", prefix), "", cols)))]
 }
 
+get_lmtp_surv_cols <- function(dt) {
+  outcome_cols <- get_surv_cols(dt, "Y")
+  cens_cols <- get_surv_cols(dt, "C")
+  compete_cols <- get_surv_cols(dt, "D")
+
+  n_periods <- min(
+    length(outcome_cols),
+    length(cens_cols),
+    length(compete_cols)
+  )
+  if (n_periods == 0) {
+    stop("No survival columns available for LMTP.")
+  }
+
+  informative_outcome <- vapply(
+    outcome_cols[seq_len(n_periods)],
+    function(col) data.table::uniqueN(dt[[col]], na.rm = FALSE) > 1,
+    logical(1)
+  )
+
+  if (!any(informative_outcome)) {
+    stop("No informative outcome periods available for LMTP.")
+  }
+
+  keep_n <- max(which(informative_outcome))
+
+  list(
+    outcome = outcome_cols[seq_len(keep_n)],
+    cens = cens_cols[seq_len(keep_n)],
+    compete = compete_cols[seq_len(keep_n)]
+  )
+}
+
 default_baseline_covars <- function(dt) {
   candidates <- c(
     "age_s1",
@@ -312,9 +403,8 @@ default_baseline_covars <- function(dt) {
     "n2",
     "n3",
     "rem",
-    "slp_time",
+    "slp_time_s2",
     "s1_incomplete",
-    "total_sleep_time_s2",
     "waist_circumference",
     "hypertension",
     "diabetes",
@@ -331,7 +421,150 @@ default_baseline_covars <- function(dt) {
   intersect(candidates, names(dt))
 }
 
+run_lmtp_tmle_reference <- function(
+  dt,
+  outcome_cols,
+  cens_cols,
+  compete_cols,
+  trt_cols,
+  baseline_covars,
+  learners_outcome,
+  learners_trt,
+  folds
+) {
+  baseline_arg <- if (length(baseline_covars) == 0) {
+    NULL
+  } else {
+    baseline_covars
+  }
+
+  lmtp::lmtp_tmle(
+    data = as.data.frame(dt),
+    trt = list(trt_cols),
+    outcome = outcome_cols,
+    baseline = baseline_arg,
+    time_vary = NULL,
+    cens = cens_cols,
+    compete = compete_cols,
+    shift = NULL,
+    mtp = TRUE,
+    outcome_type = "survival",
+    learners_outcome = learners_outcome,
+    learners_trt = learners_trt,
+    folds = folds
+  )
+}
+
+build_lmtp_shifted_data <- function(dt, trt_cols, cens_cols, shifted_trt_dt) {
+  shifted_final <- copy(as.data.table(dt))
+  shifted_final[, (trt_cols) := shifted_trt_dt[, trt_cols, with = FALSE]]
+
+  if (!is.null(cens_cols)) {
+    for (col in cens_cols) {
+      if (col %in% names(shifted_final)) {
+        shifted_final[[col]] <- 1
+      }
+    }
+  }
+
+  shifted_final
+}
+
+summarize_lmtp_contrast <- function(
+  fit,
+  reference_fit,
+  substitution,
+  ratio_substituted
+) {
+  contrast_dt <- data.table::as.data.table(
+    lmtp::lmtp_contrast(fit, ref = reference_fit, type = "rr")$estimates
+  )
+  data.table::setnames(
+    contrast_dt,
+    old = c("shift", "ref", "estimate", "conf.low", "conf.high"),
+    new = c(
+      "mean_risk_substituted",
+      "mean_risk_reference",
+      "mean_risk_ratio",
+      "lower_ci",
+      "upper_ci"
+    ),
+    skip_absent = TRUE
+  )
+
+  cbind(
+    data.table::data.table(
+      from = substitution$from,
+      to = substitution$to,
+      duration = substitution$duration,
+      ratio_substituted = ratio_substituted
+    ),
+    contrast_dt
+  )
+}
+
 run_lmtp_tmle_substitution <- function(
+  dt,
+  outcome_cols,
+  cens_cols,
+  compete_cols,
+  trt_cols,
+  baseline_covars,
+  comp_limits,
+  reference_fit,
+  substitution,
+  learners_outcome,
+  learners_trt,
+  folds
+) {
+  shifted_dt <- apply_substitution(
+    dt,
+    substitution$from,
+    substitution$to,
+    substitution$duration,
+    comp_limits
+  )
+
+  # lmtp::check_shifted_data() requires only trt/cens columns to differ
+  # between data and shifted; when censoring is supplied, shifted[cens] must be 1.
+  shifted_final <- build_lmtp_shifted_data(
+    dt = dt,
+    trt_cols = trt_cols,
+    cens_cols = cens_cols,
+    shifted_trt_dt = shifted_dt
+  )
+
+  baseline_arg <- if (length(baseline_covars) == 0) {
+    NULL
+  } else {
+    baseline_covars
+  }
+
+  fit <- lmtp::lmtp_tmle(
+    data = as.data.frame(dt),
+    trt = list(trt_cols),
+    outcome = outcome_cols,
+    baseline = baseline_arg,
+    time_vary = NULL,
+    cens = cens_cols,
+    compete = compete_cols,
+    shifted = as.data.frame(shifted_final),
+    mtp = TRUE,
+    outcome_type = "survival",
+    learners_outcome = learners_outcome,
+    learners_trt = learners_trt,
+    folds = folds
+  )
+
+  summarize_lmtp_contrast(
+    fit = fit,
+    reference_fit = reference_fit,
+    substitution = substitution,
+    ratio_substituted = mean(shifted_dt$substituted)
+  )
+}
+
+run_lmtp_tmle_substitution_sim <- function(
   dt,
   outcome_cols,
   cens_cols,
@@ -389,7 +622,7 @@ run_lmtp_tmle_substitution <- function(
     as.data.frame(data[, trt], check.names = FALSE)
   }
   folds <- 5
-  fit <- lmtp::lmtp_curve(
+  fit <- lmtp::lmtp_tmle(
     data = data,
     trt = trt_cols,
     outcome = outcome_cols,
@@ -426,7 +659,7 @@ run_lmtp_tmle_substitution <- function(
   print(learners_outcome)
   print(learners_trt)
 
-  fit <- lmtp::lmtp_curve(
+  fit <- lmtp::lmtp_tmle(
     data = data,
     trt = trt_cols,
     outcome = outcome_cols,
@@ -443,7 +676,7 @@ run_lmtp_tmle_substitution <- function(
   )
 
   estimate_dt <- data.table::as.data.table(generics::tidy(fit))
-  data.table::cbind(
+  cbind(
     data.table::data.table(
       from = substitution$from,
       to = substitution$to,

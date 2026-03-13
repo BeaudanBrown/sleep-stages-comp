@@ -382,7 +382,7 @@ simulate_outcomes <- function(spec, dt_baseline, dt_sleep) {
   dem_status <- integer(n)
   dem_surv_date <- numeric(n)
   death_status <- integer(n)
-  death_surv_date <- numeric(n)
+  death_date <- numeric(n)
   dem_or_mci_status <- integer(n)
   dem_or_mci_surv_date <- numeric(n)
 
@@ -436,7 +436,7 @@ simulate_outcomes <- function(spec, dt_baseline, dt_sleep) {
         # Death is competing risk - check if death occurs first
         if (u[2] < h_death) {
           death_event <- TRUE
-          death_surv_date[i] <- year * 365.25
+          death_date[i] <- year * 365.25
           death_status[i] <- 1
           # If both in same year, death wins (competing risk)
           dem_event <- FALSE
@@ -446,7 +446,7 @@ simulate_outcomes <- function(spec, dt_baseline, dt_sleep) {
         break
       } else if (u[2] < h_death) {
         death_event <- TRUE
-        death_surv_date[i] <- year * 365.25
+        death_date[i] <- year * 365.25
         death_status[i] <- 1
         break
       }
@@ -457,7 +457,7 @@ simulate_outcomes <- function(spec, dt_baseline, dt_sleep) {
     # If no event, censor at end of follow-up
     if (!dem_event && !death_event) {
       dem_surv_date[i] <- event_year * 365.25
-      death_surv_date[i] <- event_year * 365.25
+      death_date[i] <- event_year * 365.25
       dem_status[i] <- 0
       death_status[i] <- 0
     }
@@ -472,7 +472,7 @@ simulate_outcomes <- function(spec, dt_baseline, dt_sleep) {
     dem_status = dem_status,
     dem_surv_date = pmax(dem_surv_date, 1), # ensure minimum 1 day
     death_status = death_status,
-    death_surv_date = pmax(death_surv_date, 1), # ensure minimum 1 day
+    death_date = pmax(death_date, 1), # ensure minimum 1 day
     dem_or_mci_status = dem_or_mci_status,
     dem_or_mci_surv_date = pmax(dem_or_mci_surv_date, 1) # ensure minimum 1 day
   )

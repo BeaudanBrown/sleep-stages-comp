@@ -51,6 +51,8 @@
               tarchetypes
               qs2
               crew
+              testthat
+              withr
 
               psych
               ggplot2
@@ -67,53 +69,74 @@
               MASS
               MCMCpack
               truncnorm
+              # (pkgs.rPackages.buildRPackage {
+              #   name = "lmtp";
+              #   src = pkgs.fetchFromGitHub {
+              #     owner = "BeaudanBrown";
+              #     repo = "lmtp";
+              #     rev = "009086e20ab24d104ceade38a1c3866e7d39a7a4";
+              #     sha256 = "sha256-oirKPa16t1gwwhA7S/ERpbKTrWkjaAkDJyqJH0BIATs=";
+              #   };
+              #   propagatedBuildInputs = with pkgs.rPackages; [
+              #     (pkgs.rPackages.buildRPackage {
+              #       name = "mlr3superlearner";
+              #       src = pkgs.fetchFromGitHub {
+              #         owner = "nt-williams";
+              #         repo = "mlr3superlearner";
+              #         rev = "e56a4cbc29e6858ec045fdaf3423de6a3e43a330";
+              #         sha256 = "sha256-N+1WvLnwq1Z6cZmf3w8zeX3Qha1NLbdOpm2u3YcK4Lg=";
+              #       };
+              #       propagatedBuildInputs = with pkgs.rPackages; [
+              #         checkmate
+              #         lgr
+              #         mlr3
+              #         data_table
+              #         purrr
+              #         cli
+              #         glmnet
+              #         mlr3learners
+              #       ];
+              #     })
+              #     SuperLearner
+              #     generics
+              #     origami
+              #     progressr
+              #     isotone
+              #     (pkgs.rPackages.buildRPackage {
+              #       name = "ife";
+              #       src = pkgs.fetchFromGitHub {
+              #         owner = "nt-williams";
+              #         repo = "ife";
+              #         rev = "4281a41ce25fdedc529552310bf15a0e1605a8b2";
+              #         sha256 = "sha256-+cLsdGu8jpNHQ0UZJuP2A+jb2WNMnE5Vq9qz6Z1tZrk=";
+              #       };
+              #       propagatedBuildInputs = with pkgs.rPackages; [
+              #         cli
+              #         generics
+              #         S7
+              #       ];
+              #     })
+              #   ];
+              # })
               (pkgs.rPackages.buildRPackage {
                 name = "lmtp";
                 src = pkgs.fetchFromGitHub {
                   owner = "BeaudanBrown";
                   repo = "lmtp";
-                  rev = "009086e20ab24d104ceade38a1c3866e7d39a7a4";
-                  sha256 = "sha256-oirKPa16t1gwwhA7S/ERpbKTrWkjaAkDJyqJH0BIATs=";
+                  rev = "2a107de96906af9c42c38b7bd301ad17a3e684b4";
+                  sha256 = "sha256-O8NHAjl95nssX//y+UgjghxF5Bqnv4eQR3l5FbVNv/I=";
                 };
                 propagatedBuildInputs = with pkgs.rPackages; [
-                  (pkgs.rPackages.buildRPackage {
-                    name = "mlr3superlearner";
-                    src = pkgs.fetchFromGitHub {
-                      owner = "nt-williams";
-                      repo = "mlr3superlearner";
-                      rev = "e56a4cbc29e6858ec045fdaf3423de6a3e43a330";
-                      sha256 = "sha256-N+1WvLnwq1Z6cZmf3w8zeX3Qha1NLbdOpm2u3YcK4Lg=";
-                    };
-                    propagatedBuildInputs = with pkgs.rPackages; [
-                      checkmate
-                      lgr
-                      mlr3
-                      data_table
-                      purrr
-                      cli
-                      glmnet
-                      mlr3learners
-                    ];
-                  })
                   SuperLearner
                   generics
                   origami
                   progressr
                   isotone
-                  (pkgs.rPackages.buildRPackage {
-                    name = "ife";
-                    src = pkgs.fetchFromGitHub {
-                      owner = "nt-williams";
-                      repo = "ife";
-                      rev = "4281a41ce25fdedc529552310bf15a0e1605a8b2";
-                      sha256 = "sha256-+cLsdGu8jpNHQ0UZJuP2A+jb2WNMnE5Vq9qz6Z1tZrk=";
-                    };
-                    propagatedBuildInputs = with pkgs.rPackages; [
-                      cli
-                      generics
-                      S7
-                    ];
-                  })
+                  cli
+                  R6
+                  checkmate
+                  ife
+                  lifecycle
                 ];
               })
             ]);

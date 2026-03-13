@@ -1,0 +1,7 @@
+interface:
+  display_name: "R Analysis Test Suites"
+  short_description: "Testthat strategies for statistical code"
+  default_prompt: "Use $r-analysis-test-suites to design or review tests for R statistical analysis code."
+
+policy:
+  allow_implicit_invocation: true

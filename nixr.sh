@@ -36,7 +36,8 @@ RSCRIPT
 
 if [ "$1" == "-f" ]; then
     # Run a script file with targets loaded
-    nix develop --command R -e "$R_INIT" -f "$2"
+    FULL_CMD="$R_INIT; source('$2')"
+    nix develop --command R -e "$FULL_CMD"
 elif [ "$1" == "-i" ] || [ "$1" == "--interactive" ]; then
     # Interactive R session with targets loaded
     nix develop --command R -e "$R_INIT" --interactive
