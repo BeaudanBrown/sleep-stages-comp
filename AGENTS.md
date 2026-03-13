@@ -201,6 +201,10 @@ When you find yourself repeating the same diagnostic commands:
 ### To see implementation status and roadmap:
 → Read `IMPLEMENTATION_PLAN.md`
 
+### To understand the current LMTP/TMLE development issues:
+→ Read `specs/analysis.md`
+→ Check `analysis_targets.R` and `R/utils.R` together
+
 ### To modify the pipeline:
 1. Check which targets are affected: `tar_visnetwork()`
 2. Modify functions in `R/` 
@@ -247,6 +251,23 @@ See `IMPLEMENTATION_PLAN.md` for detailed status and roadmap.
 - **Phase 6:** Bootstrap inference and ideal composition
 - **Phase 7:** Reporting |
 
+### Current LMTP/TMLE status
+
+The repo currently has an experimental LMTP/TMLE survival path for the dementia/MCI substitution analysis. The intended LMTP estimand is:
+
+> risk ratio under each substitution policy compared with the no-intervention risk.
+
+This requires:
+
+1. A no-intervention reference fit from `lmtp_tmle(..., shift = NULL)`
+2. A substitution fit for each shifted policy
+3. A contrast from `lmtp_contrast(..., ref = reference_fit, type = "rr")`
+
+Important implementation notes:
+- Do not assume `tidy(lmtp_tmle_fit)` is already a risk ratio; it is the mean outcome under that intervention.
+- If checking LMTP plots, verify that a 0-minute shift gives a risk ratio near 1.
+- The current LMTP pipeline is still under development and should be treated as provisional until branch wiring, survival-wide encoding, and shifted-data semantics are validated.
+
 ---
 
 ## Key Decisions Log
@@ -259,3 +280,10 @@ See `IMPLEMENTATION_PLAN.md` for detailed status and roadmap.
 | SBP: {N3,REM} vs {N1,N2} hierarchy | Interpretable as "restorative vs light" sleep |
 | First MRI post-SHHS-2 | Adjust for time-since-exposure; no imputation of MRI timing |
 | Grid search for ideal composition | 15-min resolution; filter by MVN density |
+
+## Current Development Priorities
+
+1. Stabilize the LMTP/TMLE substitution pipeline for dementia/MCI.
+2. Ensure LMTP plots show contrast-based risk ratios, not intervention means.
+3. Reconcile the active code with the documented composition definition.
+4. Return to proper multiple imputation and bootstrap inference after the LMTP estimand is correct.

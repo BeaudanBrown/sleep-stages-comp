@@ -8,6 +8,36 @@ Two main analyses:
 
 Both use **g-computation** with **density-bounded interventions** to ensure counterfactual compositions are plausible.
 
+## Current Development Status
+
+The repository currently contains two partially overlapping implementations for the dementia/MCI substitution analysis:
+
+1. A more mature **g-computation / pooled logistic** pipeline.
+2. An experimental **LMTP / TMLE** pipeline.
+
+The immediate development goal is to make the LMTP path estimate the same scientific contrast that the g-computation path reports:
+
+> the risk ratio comparing each substitution policy to the no-intervention dementia/MCI risk.
+
+This means the LMTP path must estimate:
+
+1. A **reference fit** under no intervention.
+2. A **substitution fit** for each policy.
+3. A **contrast** between the two, using `lmtp_contrast(..., type = "rr")`.
+
+### Current LMTP notes
+
+- `lmtp_tmle()` estimates the mean outcome under a single intervention.
+- `lmtp_contrast()` is required to convert those intervention means into risk ratios relative to a reference.
+- The plotted LMTP quantity should be the **contrast-based risk ratio**, not the raw intervention mean.
+
+### Known LMTP issues still to fix
+
+- The mapped substitutions target currently has branch-wiring problems and must use the mapped substitution value, not a hard-coded first row.
+- The survival-wide `Y_t` construction should respect the `lmtp` survival convention after an event.
+- The shifted dataset should only encode the treatment intervention, not alter censoring indicators.
+- The current plotting code still reuses the bootstrap plotting helper and should be treated as provisional until the LMTP outputs are stabilized.
+
 ---
 
 ## Isotemporal Substitutions
@@ -66,6 +96,19 @@ Because we revert to the original composition when a shift is infeasible or impl
 > “Apply the requested shift if feasible and plausible; otherwise leave the composition unchanged.”
 
 We will report `n_intervened` (number of participants whose composition was actually shifted) for transparency.
+
+### LMTP implementation target
+
+For the experimental LMTP path, the substitution analysis should be implemented as:
+
+```r
+psi_null <- lmtp_tmle(..., shift = NULL, outcome_type = "survival")
+psi_sub  <- lmtp_tmle(..., shifted = shifted_data, outcome_type = "survival")
+rr_sub   <- lmtp_contrast(psi_sub, ref = psi_null, type = "rr")
+```
+
+The plotted and reported primary estimand should be the **risk ratio from `rr_sub`**.
+The intervention-specific mean risk from `psi_sub` may still be retained as metadata, but it is not the main contrast.
 
 ### Substitution Grid
 
@@ -224,10 +267,12 @@ data.table(
   from = "rem",
   to = "n3",
   duration = 15,
-  mean_risk_baseline = 0.XX,
+  mean_risk_reference = 0.XX,
   mean_risk_substituted = 0.XX,
   risk_difference = 0.XX,
-  risk_ratio = 0.XX,
+  mean_risk_ratio = 0.XX,
+  lower_ci = 0.XX,
+  upper_ci = 0.XX,
   n_intervened = XXX,  # Number of participants with plausible shift
   n_total = XXX
 )

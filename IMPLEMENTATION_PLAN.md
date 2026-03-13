@@ -6,10 +6,14 @@ This plan addresses the gaps between the current codebase and the specifications
 
 **Current State Summary:**
 - ✅ Simulated data infrastructure implemented (Phase 0 Tier 1 core)
-- ✅ Composition updated to 4-part SHHS-2 variables (n1_s2, n2_s2, n3_s2, rem_s2)
-- ✅ SBP matrix updated to "restorative vs light" partition (4×3 → 3 ILRs)
-- ✅ ILR utilities updated (R1-R3 instead of R1-R4, df=3 for density)
+- ✅ Bootstrap / g-computation substitution pipeline exists and has produced plots
+- ✅ Experimental LMTP / TMLE survival pipeline exists
+- ✅ LMTP path now includes an explicit no-intervention reference fit for contrast estimation
 - ✅ Phase 0: Model fitting on simulated data working (make_cuts/survSplit guardrails)
+- Active issue: LMTP plots previously mislabeled intervention means as risk ratios; the intended estimand is substitution vs no-intervention risk ratio
+- Active issue: LMTP mapped target wiring is still incorrect and must use the mapped substitution branch value
+- Active issue: LMTP survival-wide outcome/censoring encoding needs validation against package expectations
+- Active issue: code/docs are inconsistent about 4-part vs 5-part sleep composition
 - Missing: full confounders, ILR×Time interactions, ILR×Age interactions, TST covariate
 - Missing: proper MI pooling, MRI outcomes, bootstrap inference, ideal composition search
 
@@ -237,6 +241,41 @@ If this resurfaces, confirm that:
   - Ensure death model fits on full data
 
 **Milestone 2:** Models fit with proper formula including S1 adjustment, interactions, and TST covariate.
+
+---
+
+## Phase 2.5: Stabilize LMTP Dementia/MCI Pipeline
+
+**Goal:** Make the experimental LMTP/TMLE path estimate and plot the correct substitution-vs-reference dementia/MCI risk ratios.
+
+- [x] **2.5.1** Add explicit no-intervention LMTP reference fit
+  - Implement `run_lmtp_tmle_reference()`
+  - Estimate observed-risk reference using `lmtp_tmle(..., shift = NULL)`
+
+- [x] **2.5.2** Contrast each substitution fit against the reference
+  - Use `lmtp_contrast(sub_fit, ref = ref_fit, type = "rr")`
+  - Treat the contrast output as the risk ratio estimand
+
+- [ ] **2.5.3** Fix dynamic branching in `analysis_targets.R`
+  - Current code still passes `substitutions_list[[1]]` inside a mapped target
+  - Must use the mapped branch value directly
+
+- [ ] **2.5.4** Validate wide survival outcome encoding for `lmtp`
+  - Confirm `Y_t`, `C_t`, and `D_t` follow `lmtp` survival conventions
+  - In particular, confirm post-event `Y_t` handling and censoring semantics
+
+- [ ] **2.5.5** Remove unintended censoring changes from shifted LMTP data
+  - The shifted dataset should represent the treatment intervention only
+  - Do not modify censoring indicators as part of the treatment policy
+
+- [ ] **2.5.6** Separate LMTP plotting from bootstrap g-computation plotting
+  - Current helper re-use hides whether the plotted quantity is an intervention mean or a contrast
+  - Create an LMTP-specific plotting helper if needed
+
+- [ ] **2.5.7** Verify that duration 0 gives risk ratio approximately 1
+  - This is a simple regression check for the LMTP contrast path
+
+**Milestone 2.5:** LMTP substitution outputs are true risk ratios against no intervention, and the plotted values match that estimand.
 
 ---
 
