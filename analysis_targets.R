@@ -10,11 +10,11 @@ analysis_targets <- list(
   # 0.1 Long format survival data (non-bootstrap)
   tar_target(
     timegroup_cuts,
-    make_cuts(dt)
+    make_cuts(imp)
   ),
   tar_target(
     dt_surv_long,
-    expand_surv_dt(dt, timegroup_cuts)
+    expand_surv_dt(imp, timegroup_cuts)
   ),
   tar_target(
     dt_surv_wide,
@@ -22,48 +22,86 @@ analysis_targets <- list(
   ),
   tar_target(
     comp_limits,
-    make_comp_limits(dt)
+    make_comp_limits(imp)
   ),
   tar_target(
     lmtp_surv_cols,
-    list(
-      outcome = get_surv_cols(dt_surv_wide, "Y"),
-      cens = get_surv_cols(dt_surv_wide, "C"),
-      compete = get_surv_cols(dt_surv_wide, "D")
-    )
+    get_lmtp_surv_cols(dt_surv_wide)
   ),
   tar_target(
     lmtp_baseline_covars,
     default_baseline_covars(dt_surv_wide)
   ),
+  # Keep the default LMTP learner stack conservative: glmnet was unstable
+  # under the sparse event counts in the current survival-wide data.
   tar_target(
     lmtp_learners_outcome,
-    c("SL.mean", "SL.glm", "SL.glmnet")
+    c("SL.mean", "SL.glm")
   ),
   tar_target(
     lmtp_learners_trt,
-    c("SL.glm", "SL.glmnet")
+    "SL.glm"
   ),
   tar_target(
     lmtp_folds,
     5
   ),
   tar_target(
-    lmtp_tmle_substitutions,
-    run_lmtp_tmle_substitution(
+    lmtp_tmle_reference,
+    run_lmtp_tmle_reference(
       dt_surv_wide,
       lmtp_surv_cols$outcome,
       lmtp_surv_cols$cens,
       lmtp_surv_cols$compete,
       ilr_names,
       lmtp_baseline_covars,
-      comp_limits,
-      substitutions_list,
       lmtp_learners_outcome,
       lmtp_learners_trt,
       lmtp_folds
+    )
+  ),
+  tar_target(
+    lmtp_tmle_substitutions,
+    tryCatch(
+      run_lmtp_tmle_substitution(
+        dt_surv_wide,
+        lmtp_surv_cols$outcome,
+        lmtp_surv_cols$cens,
+        lmtp_surv_cols$compete,
+        ilr_names,
+        lmtp_baseline_covars,
+        comp_limits,
+        lmtp_tmle_reference,
+        substitutions,
+        lmtp_learners_outcome,
+        lmtp_learners_trt,
+        lmtp_folds
+      ),
+      error = function(e) {
+        stop(
+          paste0(
+            "targets branch lmtp_tmle_substitutions failed [",
+            format_lmtp_substitution(substitutions),
+            "]: ",
+            conditionMessage(e)
+          ),
+          call. = FALSE
+        )
+      }
     ),
-    pattern = map(substitutions_list)
+    pattern = map(substitutions)
+  ),
+  tar_target(
+    plot_lmtp_tmle_substitutions,
+    make_lmtp_substitution_plots(lmtp_tmle_substitutions)
+  ),
+  tar_target(
+    lmtp_tmle_substituted_plot_png,
+    write_lmtp_substitution_plots(
+      plot_lmtp_tmle_substitutions,
+      file.path("results", "lmtp_substitution_risk_ratio")
+    ),
+    format = "file"
   ),
   # 1. Define Substitutions Grid
   tar_target(
@@ -94,7 +132,7 @@ analysis_targets <- list(
   # 3. Bootstrap datasets
   tar_target(
     boot_dt,
-    bootstrap_resample(dt, seed = bootstrap_seeds),
+    bootstrap_resample(imp, seed = bootstrap_seeds),
     pattern = map(bootstrap_seeds)
   ),
 
