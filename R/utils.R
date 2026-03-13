@@ -21,9 +21,8 @@ mice.impute.truncated_norm <- function(y, ry, x, wy = NULL, lower = -Inf, ...) {
 }
 
 make_ilrs <- function(dt) {
-  comp <- compositions::acomp(dt[,
-    ..comp_vars
-  ])
+  dt <- as.data.table(dt)
+  comp <- compositions::acomp(dt[, .SD, .SDcols = comp_vars])
 
   ilr_vars <- ilr(comp, V = v) |>
     as.data.table()
@@ -59,7 +58,7 @@ make_lmtp_shift <- function(from, to, duration, comp_limits) {
     dt[[from]] <- dt[[from]] - (can_substitute * duration)
     dt[[to]] <- dt[[to]] + (can_substitute * duration)
 
-    ilr_vars <- make_ilrs(sub)
+    ilr_vars <- make_ilrs(dt)
     dt[, (ilr_names) := ilr_vars]
 
     as.data.frame(dt[, trt, with = FALSE], check.names = FALSE)
@@ -67,12 +66,19 @@ make_lmtp_shift <- function(from, to, duration, comp_limits) {
 }
 
 apply_substitution <- function(dt, from_var, to_var, duration, comp_limits) {
-  lower_from <- comp_limits[[from_var]]$lower
-  upper_to <- comp_limits[[to_var]]$upper
+  dt <- as.data.table(dt)
 
-  max_from_change <- dt[[from_var]] - lower_from
-  max_to_change <- upper_to - dt[[to_var]]
-  can_substitute <- (max_from_change >= duration) & (max_to_change >= duration)
+  if (duration >= 0) {
+    max_from_change <- dt[[from_var]] - comp_limits[[from_var]]$lower
+    max_to_change <- comp_limits[[to_var]]$upper - dt[[to_var]]
+    can_substitute <- (max_from_change >= duration) &
+      (max_to_change >= duration)
+  } else {
+    abs_dur <- abs(duration)
+    max_from_change <- comp_limits[[from_var]]$upper - dt[[from_var]]
+    max_to_change <- dt[[to_var]] - comp_limits[[to_var]]$lower
+    can_substitute <- (max_from_change >= abs_dur) & (max_to_change >= abs_dur)
+  }
 
   sub <- copy(dt)
   sub[[from_var]] <- sub[[from_var]] - (can_substitute * duration)
@@ -166,14 +172,13 @@ make_cuts <- function(dt) {
     dt[dem_or_mci_status == 1, ]$dem_or_mci_surv_date,
     na.rm = TRUE
   )
-  timegroup_steps <- ceiling(max_follow_up / 365)
+  timegroup_steps <- ceiling(max_follow_up / (365 * 3))
 
-  timegroup_cuts <-
-    seq(
-      from = 0,
-      to = max_follow_up,
-      length.out = timegroup_steps + 1
-    )
+  timegroup_cuts <- seq(
+    from = 0,
+    to = max_follow_up,
+    length.out = timegroup_steps + 1
+  )
   timegroup_cuts
 }
 
