@@ -9,6 +9,7 @@
 #' @param effect_R1_dem Numeric. True effect of R1 (restorative/light) on dementia log-odds. Default 0.
 #' @param effect_R2_dem Numeric. True effect of R2 (N3/REM) on dementia log-odds. Default 0.
 #' @param effect_R3_dem Numeric. True effect of R3 (N1/N2) on dementia log-odds. Default 0.
+#' @param effect_R4_dem Numeric. True effect of R4 on dementia log-odds. Default 0.
 #' @param effect_age_dem Numeric. Age effect per year on dementia log-odds. Default 0.08.
 #' @param effect_tst_dem Numeric. Total sleep time effect on dementia log-odds. Default 0.
 #' @param effect_interaction_age_R2 Numeric. Age × R2 interaction coefficient. Default 0.
@@ -37,6 +38,7 @@ make_sim_spec <- function(
   effect_R1_dem = 0,
   effect_R2_dem = 0,
   effect_R3_dem = 0,
+  effect_R4_dem = 0,
   effect_age_dem = 0.08,
   effect_tst_dem = 0,
   effect_interaction_age_R2 = 0,
@@ -54,6 +56,7 @@ make_sim_spec <- function(
     effect_R1_dem = effect_R1_dem,
     effect_R2_dem = effect_R2_dem,
     effect_R3_dem = effect_R3_dem,
+    effect_R4_dem = effect_R4_dem,
     effect_age_dem = effect_age_dem,
     effect_tst_dem = effect_tst_dem,
     effect_interaction_age_R2 = effect_interaction_age_R2,
@@ -65,6 +68,10 @@ make_sim_spec <- function(
     # Distribution parameters for compositional data
     alpha_s1 = c(n1 = 5, n2 = 30, n3 = 10, rem = 12),
     alpha_s2_base = c(n1 = 5, n2 = 30, n3 = 10, rem = 12),
+    waso_s1_mean = 35,
+    waso_s1_sd = 15,
+    waso_s2_mean = 45,
+    waso_s2_sd = 18,
     s1_s2_correlation = 0.6,
     years_s1_to_s2_mean = 5,
     years_s1_to_s2_sd = 1,
@@ -113,6 +120,7 @@ simulate_dataset <- function(spec) {
     "effect_R1_dem",
     "effect_R2_dem",
     "effect_R3_dem",
+    "effect_R4_dem",
     "baseline_hazard_dem",
     "baseline_hazard_death"
   )
@@ -252,6 +260,14 @@ simulate_sleep_stages <- function(spec, dt_baseline) {
 
   # Sleep time (same as TST for sim, but separate variable for compatibility)
   slp_time <- tst_s1
+  waso <- pmax(
+    rnorm(
+      n,
+      mean = spec$waso_s1_mean + pmax(age_dev, 0) * 10,
+      sd = spec$waso_s1_sd
+    ),
+    1
+  )
 
   # SHHS-2: Years between assessments
   years_s1_to_s2 <- rnorm(
@@ -303,18 +319,28 @@ simulate_sleep_stages <- function(spec, dt_baseline) {
   n2_s2 <- props_s2[, "n2"] * tst_s2
   n3_s2 <- props_s2[, "n3"] * tst_s2
   rem_s2 <- props_s2[, "rem"] * tst_s2
+  waso_s2 <- pmax(
+    rnorm(
+      n,
+      mean = spec$waso_s2_mean + pmax(age_dev, 0) * 12,
+      sd = spec$waso_s2_sd
+    ),
+    1
+  )
 
   dt <- data.table::data.table(
     n1_s1 = n1_s1,
     n2_s1 = n2_s1,
     n3_s1 = n3_s1,
     rem_s1 = rem_s1,
+    waso = waso,
     slp_time = slp_time,
     n1_s2 = n1_s2,
     n2_s2 = n2_s2,
     n3_s2 = n3_s2,
+    waso_s2 = waso_s2,
     rem_s2 = rem_s2,
-    total_sleep_time_s2 = tst_s2,
+    slp_time_s2 = tst_s2,
     years_s1_to_s2 = years_s1_to_s2
   )
 
@@ -345,38 +371,16 @@ simulate_outcomes <- function(spec, dt_baseline, dt_sleep) {
   bmi_s1 <- dt_baseline$bmi_s1
 
   # Create ILR coordinates from SHHS-2 sleep stages
-  comp <- compositions::acomp(dt_sleep[, .(n1_s2, n2_s2, n3_s2, rem_s2)])
-
-  # Use the SBP from constants.R (must be 4-part for simulation)
-  # Create temporary SBP matching expected 4-part structure
-  sbp_4part <- matrix(
-    c(
-      -1,
-      -1,
-      1,
-      1, # R1: restorative vs light
-      0,
-      0,
-      1,
-      -1, # R2: N3 vs REM
-      1,
-      -1,
-      0,
-      0 # R3: N1 vs N2
-    ),
-    ncol = 4,
-    byrow = TRUE
-  )
-  v_4part <- compositions::gsi.buildilrBase(t(sbp_4part))
-
-  ilr_coords <- compositions::ilr(comp, V = v_4part)
+  comp <- compositions::acomp(dt_sleep[, .(n1_s2, n2_s2, n3_s2, waso_s2, rem_s2)])
+  ilr_coords <- compositions::ilr(comp, V = v)
   R1 <- ilr_coords[, 1]
   R2 <- ilr_coords[, 2]
   R3 <- ilr_coords[, 3]
+  R4 <- ilr_coords[, 4]
 
   # Age at SHHS-2
   age_s2 <- age_s1 + dt_sleep$years_s1_to_s2
-  tst_s2 <- dt_sleep$total_sleep_time_s2
+  tst_s2 <- dt_sleep$slp_time_s2
 
   # Initialize outcome variables
   dem_status <- integer(n)
@@ -411,6 +415,7 @@ simulate_outcomes <- function(spec, dt_baseline, dt_sleep) {
         spec$effect_R1_dem * R1[i] +
         spec$effect_R2_dem * R2[i] +
         spec$effect_R3_dem * R3[i] +
+        spec$effect_R4_dem * R4[i] +
         spec$effect_age_dem * (current_age - 65) +
         spec$effect_tst_dem * (tst_s2[i] - 400) / 60 + # standardized TST
         spec$effect_interaction_age_R2 * (current_age - 65) * R2[i]
@@ -494,35 +499,16 @@ prepare_simulated_dataset <- function(dt_raw) {
 
   # Create derived variables that would come from prepare_dataset()
 
-  # ILR coordinates (already computed in simulate_outcomes, but ensure they exist)
-  # Use 4-part composition from SHHS-2
-  comp <- compositions::acomp(dt[, .(n1_s2, n2_s2, n3_s2, rem_s2)])
+  # Match the real analysis columns and 5-part SHHS-2 exposure definition.
+  dt[, `:=`(
+    n1 = n1_s1,
+    n2 = n2_s1,
+    n3 = n3_s1,
+    rem = rem_s1
+  )]
 
-  # SBP for 4-part composition
-  sbp_4part <- matrix(
-    c(
-      -1,
-      -1,
-      1,
-      1, # R1: restorative vs light
-      0,
-      0,
-      1,
-      -1, # R2: N3 vs REM
-      1,
-      -1,
-      0,
-      0 # R3: N1 vs N2
-    ),
-    ncol = 4,
-    byrow = TRUE
-  )
-  v_4part <- compositions::gsi.buildilrBase(t(sbp_4part))
-
-  ilr_coords <- compositions::ilr(comp, V = v_4part)
-  dt[, R1 := ilr_coords[, 1]]
-  dt[, R2 := ilr_coords[, 2]]
-  dt[, R3 := ilr_coords[, 3]]
+  ilr_coords <- make_ilrs(dt)
+  dt[, (ilr_names) := ilr_coords]
 
   # S1 incomplete indicator (for SHHS-1 battery failure)
   # Default to 0 (complete) in simulation

@@ -55,6 +55,7 @@ extract_true_effects <- function(true_spec) {
     R1_dem = true_spec$effect_R1_dem,
     R2_dem = true_spec$effect_R2_dem,
     R3_dem = true_spec$effect_R3_dem,
+    R4_dem = true_spec$effect_R4_dem,
     age_dem = true_spec$effect_age_dem,
     interaction_age_R2 = true_spec$effect_interaction_age_R2,
     tst_dem = true_spec$effect_tst_dem

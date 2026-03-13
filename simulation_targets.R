@@ -68,44 +68,14 @@ simulation_targets <- list(
   tar_target(
     sim_substitution_grid,
     {
-      # Define grid for isotemporal substitutions
-      # Components: n1_s2, n2_s2, n3_s2, rem_s2
-      # Durations: 15, 30, 60 minutes
-      from <- c(
-        "n1_s2",
-        "n1_s2",
-        "n1_s2",
-        "n2_s2",
-        "n2_s2",
-        "n2_s2",
-        "n3_s2",
-        "n3_s2",
-        "n3_s2",
-        "rem_s2",
-        "rem_s2",
-        "rem_s2"
-      )
-      to <- c(
-        "n2_s2",
-        "n3_s2",
-        "rem_s2",
-        "n1_s2",
-        "n3_s2",
-        "rem_s2",
-        "n1_s2",
-        "n2_s2",
-        "rem_s2",
-        "n1_s2",
-        "n2_s2",
-        "n3_s2"
-      )
-      duration <- rep(c(15, 30, 60), 12)
+      pairs <- t(combn(comp_vars, 2))
+      pair_dt <- data.table::data.table(from = pairs[, 1], to = pairs[, 2])
+      pair_dt <- data.table::rbindlist(list(
+        pair_dt,
+        pair_dt[, .(from = to, to = from)]
+      ))
 
-      data.table::data.table(
-        from = rep(from, each = 3),
-        to = rep(to, each = 3),
-        duration = rep(duration, 12)
-      )
+      pair_dt[, .(duration = c(15, 30, 60)), by = .(from, to)]
     }
   )
 
