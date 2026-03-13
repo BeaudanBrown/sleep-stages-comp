@@ -266,7 +266,10 @@ This requires:
 Important implementation notes:
 - Do not assume `tidy(lmtp_tmle_fit)` is already a risk ratio; it is the mean outcome under that intervention.
 - If checking LMTP plots, verify that a 0-minute shift gives a risk ratio near 1.
-- The current LMTP pipeline is still under development and should be treated as provisional until branch wiring, survival-wide encoding, and shifted-data semantics are validated.
+- The current LMTP pipeline is still under development and should be treated as provisional until the remaining LMTP fit instability and end-to-end validation are resolved.
+- For sleep-duration adjustment:
+  - Do not include SHHS-1 `slp_time` if SHHS-1 stage minutes `n1`, `n2`, `n3`, and `rem` are already in the model.
+  - Do include SHHS-2 `slp_time_s2`, because the SHHS-2 ILR coordinates encode composition, not duration.
 
 ---
 
@@ -274,16 +277,16 @@ Important implementation notes:
 
 | Decision | Rationale |
 |----------|-----------|
-| 4 components (N1,N2,N3,REM), not 5 | Wake excluded; adjust for total sleep time instead |
+| 5 components (N1,N2,N3,WASO,REM), not 4 | WASO is part of the intended SHHS-2 exposure composition; adjust for sleep duration separately |
 | SHHS-1 as raw times, not ILR | S1 is confounder, not exposure; simpler adjustment |
 | Use S1 data as-is despite battery issues | Missingness likely MCAR; bias from exclusion > measurement error |
-| SBP: {N3,REM} vs {N1,N2} hierarchy | Interpretable as "restorative vs light" sleep |
+| SBP: current 5-part matrix in `R/constants.R` | Keep the component order fixed while the broader stats pipeline is being tightened |
 | First MRI post-SHHS-2 | Adjust for time-since-exposure; no imputation of MRI timing |
 | Grid search for ideal composition | 15-min resolution; filter by MVN density |
 
 ## Current Development Priorities
 
 1. Stabilize the LMTP/TMLE substitution pipeline for dementia/MCI.
-2. Ensure LMTP plots show contrast-based risk ratios, not intervention means.
-3. Reconcile the active code with the documented composition definition.
-4. Return to proper multiple imputation and bootstrap inference after the LMTP estimand is correct.
+2. Rerun the branched `lmtp_tmle_substitutions` target with the new branch-aware errors and isolate the residual `targets`-level failure.
+3. Sweep remaining 4-part assumptions in simulation/tests now that the intended exposure is 5-part with WASO.
+4. Return to proper multiple imputation and bootstrap inference after the LMTP estimand is correct and numerically stable.

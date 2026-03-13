@@ -217,8 +217,8 @@ expand_surv_dt <- function(dt, timegroup_cuts) {
 
   surv_dt[,
     death := fcase(
-      death_status == 1 & end >= death_date,
-      1,
+      death_status == 1 & end >= death_date ,
+                                          1 ,
       default = 0
     )
   ]
@@ -527,7 +527,10 @@ validate_lmtp_substitution <- function(substitution) {
 
   if (nrow(substitution) != 1L) {
     stop(
-      sprintf("substitution must have exactly 1 row, got %s", nrow(substitution)),
+      sprintf(
+        "substitution must have exactly 1 row, got %s",
+        nrow(substitution)
+      ),
       call. = FALSE
     )
   }

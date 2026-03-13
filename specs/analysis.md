@@ -30,13 +30,21 @@ This means the LMTP path must estimate:
 - `lmtp_tmle()` estimates the mean outcome under a single intervention.
 - `lmtp_contrast()` is required to convert those intervention means into risk ratios relative to a reference.
 - The plotted LMTP quantity should be the **contrast-based risk ratio**, not the raw intervention mean.
+- A 0-minute substitution is now the primary smoke test for the LMTP contrast path and should give a risk ratio approximately equal to 1.
 
 ### Known LMTP issues still to fix
 
-- The mapped substitutions target currently has branch-wiring problems and must use the mapped substitution value, not a hard-coded first row.
-- The survival-wide `Y_t` construction should respect the `lmtp` survival convention after an event.
-- The shifted dataset should only encode the treatment intervention, not alter censoring indicators.
+- The mapped substitutions target has been corrected, but the full LMTP branch still needs end-to-end validation after rebuild.
+- The survival-wide `Y_t` and `D_t` construction has been updated to use cumulative event coding, closer to the `lmtp` package examples.
+- The intended exposure composition is the 5-part SHHS-2 set `(N1, N2, N3, WASO, REM)`, so substitution grids and density checks should use 4 ILR coordinates.
+- SHHS-1 `slp_time` should not be adjusted for when SHHS-1 stage components are already included.
+- SHHS-2 `slp_time_s2` should be adjusted for explicitly because the ILR coordinates encode composition, not duration.
+- The `lmtp` package expects the only differences between `data` and `shifted` to be the treatment and censoring columns; when censoring is supplied, the shifted censoring columns should be all `1`.
 - The current plotting code still reuses the bootstrap plotting helper and should be treated as provisional until the LMTP outputs are stabilized.
+- Simplifying the default learners away from `SL.glmnet` improved the direct LMTP substitution path materially.
+- The remaining unresolved issue is now the full `targets`-branched `lmtp_tmle_substitutions` target, which can still fail with a generic branch-level error even when the same substitution call succeeds directly.
+- The LMTP substitution code and the branched target now rethrow errors with explicit substitution context to support the next debugging pass.
+- Immediate next step: rerun the branched LMTP target and use the new branch-aware error messages to determine whether the residual failure is in `targets` branching/aggregation rather than the LMTP fit.
 
 ---
 
@@ -80,7 +88,7 @@ An isotemporal substitution answers: "What would happen if we increased time in 
    
     d. **Check density (plausibility constraint):**
     - Calculate Mahalanobis distance from MVN center.
-    - If distance exceeds the 95% chi-squared threshold (df = 3), the shifted composition is implausible.
+    - If distance exceeds the 95% chi-squared threshold (df = 4), the shifted composition is implausible.
     - For implausible cases, **keep original composition** (no intervention for that participant).
    
    e. **Predict counterfactual outcomes:**
@@ -110,13 +118,20 @@ rr_sub   <- lmtp_contrast(psi_sub, ref = psi_null, type = "rr")
 The plotted and reported primary estimand should be the **risk ratio from `rr_sub`**.
 The intervention-specific mean risk from `psi_sub` may still be retained as metadata, but it is not the main contrast.
 
+### Sleep duration adjustment
+
+For the intended dementia/MCI analysis:
+
+- **SHHS-1:** adjust for the component minutes (`n1`, `n2`, `n3`, `rem`) and do **not** also adjust for `slp_time`, since it is already determined by the components.
+- **SHHS-2:** adjust for `slp_time_s2` separately, because the SHHS-2 ILR coordinates encode the sleep-stage composition but not the total sleep duration.
+
 ### Substitution Grid
 
 Default substitutions to evaluate:
 
 | Duration | All pairwise substitutions |
 |----------|---------------------------|
-| 15 min | N1↔N2, N1↔N3, N1↔REM, N2↔N3, N2↔REM, N3↔REM |
+| 15 min | All pairwise substitutions among N1, N2, N3, WASO, REM |
 | 30 min | Same pairs |
 | 60 min | Same pairs |
 
@@ -127,7 +142,7 @@ Default substitutions to evaluate:
 ```r
 # MVN density check
 threshold_quantile <- 0.05
-threshold <- qchisq(1 - threshold_quantile, df = 3)  # df = number of ILR coords
+threshold <- qchisq(1 - threshold_quantile, df = 4)  # df = number of ILR coords
 
 # Check if shifted composition is plausible
 d2 <- mahalanobis(ilr_sub, center = mu, cov = sigma)
@@ -139,25 +154,25 @@ is_plausible <- d2 <= threshold
 ## Ideal Composition Search
 
 ### Concept
-Find the composition (N1, N2, N3, REM) associated with the best (and worst) expected outcomes.
+Find the composition (N1, N2, N3, WASO, REM) associated with the best (and worst) expected outcomes.
 
 ### Algorithm
 
-### Primary analysis: constrain total sleep time (TST)
+### Primary analysis: constrain a fixed duration/whole definition
 
-Primary ideal-composition analysis constrains total sleep time to the **median observed SHHS-2 TST** for interpretability.
+Primary ideal-composition analysis still needs an explicit definition of the fixed "whole" under the 5-part composition. Before implementation, decide whether to constrain `slp_time_s2` or a derived sleep-period-time measure that includes `waso_s2`.
 
-1. **Generate grid of compositions at fixed TST:**
+1. **Generate grid of compositions at a fixed duration/whole:**
 
    a. Set `resolution <- 15` minutes.
 
    b. Define component bounds (default: 2.5th–97.5th percentiles for each stage).
 
-   c. Enumerate integer-minute (or `resolution`-grid) compositions `(n1, n2, n3, rem)` such that:
-   - `n1 + n2 + n3 + rem == TST_fixed`
+   c. Enumerate integer-minute (or `resolution`-grid) compositions `(n1, n2, n3, waso, rem)` such that:
+   - the chosen duration/whole definition is held fixed
    - each component lies within its bounds
 
-   Implementation note: generate valid tuples directly (e.g., loop over 3 components and solve the 4th as `rem = TST_fixed - n1 - n2 - n3`) to avoid an infeasible 4D Cartesian grid.
+   Implementation note: once the fixed-whole definition is finalized, generate valid tuples directly (e.g., loop over 4 components and solve the 5th) instead of attempting a full 5D Cartesian grid.
 
 2. **Filter by density:**
    
@@ -183,11 +198,11 @@ Primary ideal-composition analysis constrains total sleep time to the **median o
 - **Trade-off:** Finer resolution → more precision, but exponentially more computations
 - **Configurable** in `analysis_targets.R`
 
-### Total Sleep Time Handling
+### Duration Handling
 
-### Sensitivity analysis: allow TST to vary
+### Sensitivity analysis: allow the whole to vary
 
-As a sensitivity analysis, allow TST to vary across grid points, and report `total_sleep = n1 + n2 + n3 + rem` alongside predicted mean outcomes.
+As a sensitivity analysis, allow the chosen whole to vary across grid points and report the associated duration measures alongside predicted mean outcomes.
 
 ---
 

@@ -27,7 +27,7 @@ glm(dem_or_mci ~ [formula], data = surv_dt[death == 0], family = binomial())
 
 The primary analysis uses a **reduced interaction** specification to avoid overfitting:
 
-1. **ILR coordinates** (R1, R2, R3) with restricted cubic splines (RCS)
+1. **ILR coordinates** (R1, R2, R3, R4) with restricted cubic splines (RCS)
 2. **Time** (`timegroup`) with RCS, interacted with ILR RCS terms (non-proportional hazards)
 3. **Age** (`age_s1`) with RCS, interacted with ILR RCS terms (effect modification by age)
 4. **Full confounder set** as *main effects* (see `specs/data.md`)
@@ -42,16 +42,19 @@ primary_formula <- ~
   rcs(R1, knots_R1) +
   rcs(R2, knots_R2) +
   rcs(R3, knots_R3) +
+  rcs(R4, knots_R4) +
 
   # Time-varying effects (non-proportional hazards): ILR × Time
   rcs(R1, knots_R1) * rcs(timegroup, knots_time) +
   rcs(R2, knots_R2) * rcs(timegroup, knots_time) +
   rcs(R3, knots_R3) * rcs(timegroup, knots_time) +
+  rcs(R4, knots_R4) * rcs(timegroup, knots_time) +
 
   # Effect modification by age: ILR × Age
   rcs(R1, knots_R1) * rcs(age_s1, knots_age) +
   rcs(R2, knots_R2) * rcs(age_s1, knots_age) +
   rcs(R3, knots_R3) * rcs(age_s1, knots_age) +
+  rcs(R4, knots_R4) * rcs(age_s1, knots_age) +
 
   # Main effects: required confounders (exact variable list in specs/data.md)
   IDTYPE +
@@ -75,15 +78,15 @@ primary_formula <- ~
   rcs(n2, knots_n2_s1) +
   rcs(n3, knots_n3_s1) +
   rcs(rem, knots_rem_s1) +
-  rcs(slp_time, knots_slp_s1) +
   s1_incomplete +
 
   # SHHS-2 total sleep time (TST) as separate covariate
-  rcs(total_sleep_time_s2, knots_tst)
+  rcs(slp_time_s2, knots_tst)
 ```
 
 Notes:
-- `R1`, `R2`, `R3` are ILR coordinates derived from the **SHHS-2** 4-part composition `(N1, N2, N3, REM)`.
+- `R1`, `R2`, `R3`, `R4` are ILR coordinates derived from the **SHHS-2** 5-part composition `(N1, N2, N3, WASO, REM)`.
+- Coordinate-specific interpretation follows the current SBP matrix in `R/constants.R`.
 - The confounder variable names above are placeholders until the definitive names are confirmed.
 
 ### Knot Placement

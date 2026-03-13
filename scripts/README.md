@@ -31,6 +31,8 @@ The goal of this directory is to:
 | `test_make_cuts.R` | Test the make_cuts() function with current data | `./nixr.sh -f scripts/test_make_cuts.R` |
 | `test_surv_expand.R` | Test survival data expansion | `./nixr.sh -f scripts/test_surv_expand.R` |
 | `test_model_fit.R` | Test model fitting on simulated data | `./nixr.sh -f scripts/test_model_fit.R` |
+| `debug_lmtp_localize.R` | Sweep LMTP learner stacks and time horizons to isolate fit failures | `./nixr.sh -f scripts/debug_lmtp_localize.R` |
+| `debug_lmtp_all_substitutions.R` | Run every LMTP substitution directly outside targets branching | `./nixr.sh -f scripts/debug_lmtp_all_substitutions.R` |
 
 ### Target Management
 

@@ -371,7 +371,13 @@ simulate_outcomes <- function(spec, dt_baseline, dt_sleep) {
   bmi_s1 <- dt_baseline$bmi_s1
 
   # Create ILR coordinates from SHHS-2 sleep stages
-  comp <- compositions::acomp(dt_sleep[, .(n1_s2, n2_s2, n3_s2, waso_s2, rem_s2)])
+  comp <- compositions::acomp(dt_sleep[, .(
+    n1_s2,
+    n2_s2,
+    n3_s2,
+    waso_s2,
+    rem_s2
+  )])
   ilr_coords <- compositions::ilr(comp, V = v)
   R1 <- ilr_coords[, 1]
   R2 <- ilr_coords[, 2]

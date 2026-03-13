@@ -173,10 +173,9 @@ props_s2 <- autocorrelate_composition(props_s1, rho = 0.6) +
 After generating stage minutes, transform to ILR coordinates using the same SBP as the real analysis:
 
 ```r
-# Component order: (N1, N2, N3, REM)
-# SBP: {N3,REM} vs {N1,N2}, then N3 vs REM, then N1 vs N2
-comp <- acomp(cbind(n1_s2, n2_s2, n3_s2, rem_s2))
-ilr_coords <- ilr(comp, V = v)  # R1, R2, R3
+# Component order: (N1, N2, N3, WASO, REM)
+comp <- acomp(cbind(n1_s2, n2_s2, n3_s2, waso_s2, rem_s2))
+ilr_coords <- ilr(comp, V = v)  # R1, R2, R3, R4
 ```
 
 ### Step 5: Dementia Outcome

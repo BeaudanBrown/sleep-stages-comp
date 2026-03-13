@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sleep stage times are **compositional data** - they represent parts of a whole (total sleep time) and are constrained to sum to a constant. Standard regression on raw times violates the assumption of unconstrained predictors. We use **Isometric Log-Ratio (ILR)** transformation to map compositions to unconstrained real space.
+Sleep stage times are **compositional data** - they represent parts of a constrained overnight window and are therefore dependent on one another. Standard regression on raw times violates the assumption of unconstrained predictors. We use **Isometric Log-Ratio (ILR)** transformation to map compositions to unconstrained real space.
 
 ---
 
@@ -10,61 +10,52 @@ Sleep stage times are **compositional data** - they represent parts of a whole (
 
 ### Exposure composition (SHHS-2)
 
-**4-part composition** using SHHS-2 sleep stages, in the fixed component order:
+**5-part composition** using SHHS-2 stage and post-onset wake times, in the fixed component order:
 
-`(N1, N2, N3, REM)`.
+`(N1, N2, N3, WASO, REM)`.
 
 | Component | Variable | Description |
 |-----------|----------|-------------|
 | N1 | `n1_s2` | Light sleep stage 1 |
 | N2 | `n2_s2` | Light sleep stage 2 |
 | N3 | `n3_s2` | Slow wave sleep (deep) |
+| WASO | `waso_s2` | Wake after sleep onset |
 | REM | `rem_s2` | Rapid eye movement |
 
 ### Not included in the composition
 
-- **Wake** (including WASO) is *not* part of the composition.
-- **Total sleep time (TST)** is included as a *separate covariate*.
+- **Wake before sleep onset** is not part of the composition.
+- **Sleep duration** is still adjusted for separately in the outcome models via `slp_time_s2`.
 
 ---
 
 ## Sequential Binary Partition (SBP)
 
-The SBP defines how components are hierarchically grouped for ILR transformation.
-
-We use a **"restorative vs light sleep"** partition consistent with the component order `(N1, N2, N3, REM)`:
-
-```
-Level 1: {N3, REM} vs {N1, N2}    → R1
-Level 2: N3 vs REM                → R2
-Level 3: N1 vs N2                 → R3
-```
+The current code uses the 5-part SBP stored in `R/constants.R`. While the broader pipeline is being tightened, this code-defined basis is the source of truth for the ILR coordinates.
 
 ### SBP Matrix
 
 ```r
-# Component order is fixed: (N1, N2, N3, REM)
-#        N1  N2  N3  REM
+# Component order is fixed: (N1, N2, N3, WASO, REM)
+#        N1  N2  N3  WASO REM
 sbp <- matrix(c(
-  -1, -1,  1,  1,   # R1: restorative vs light
-   0,  0,  1, -1,   # R2: N3 vs REM
-   1, -1,  0,  0    # R3: N1 vs N2
-), ncol = 4, byrow = TRUE)
+  -1, -1,  1,  1,  0,
+  -1,  0,  0,  1,  1,
+   0, -1,  1,  0,  1,
+   0,  0, -1,  1,  1
+), ncol = 5, byrow = TRUE)
 ```
 
 ### ILR Coordinate Interpretation
 
 | Coordinate | Interpretation | Higher value means... |
 |------------|----------------|----------------------|
-| R1 | log-ratio of restorative to light sleep | More time in N3+REM relative to N1+N2 |
-| R2 | log-ratio of N3 to REM | More N3 relative to REM |
-| R3 | log-ratio of N1 to N2 | More N1 relative to N2 |
+| R1 | `{N3, WASO}` relative to `{N1, N2}` | More time in N3 and/or WASO relative to N1 and N2 |
+| R2 | `{WASO, REM}` relative to `N1` | More time in WASO and/or REM relative to N1 |
+| R3 | `{N3, REM}` relative to `N2` | More time in N3 and/or REM relative to N2 |
+| R4 | `{WASO, REM}` relative to `N3` | More time in WASO and/or REM relative to N3 |
 
-### Rationale for This SBP
-
-1. **Substantively meaningful:** Groups sleep by function (restorative vs transitional/light)
-2. **Aligned with research questions:** SWS (N3) and REM have distinct proposed mechanisms for brain health
-3. **Interpretable contrasts:** Each ILR has a clear interpretation
+These labels are shorthand for the current plus/minus sets in the SBP matrix. If the basis changes, update this file and downstream interpretation together.
 
 ---
 
@@ -76,14 +67,14 @@ Using the `{compositions}` package:
 library(compositions)
 
 # Exposure composition variables (SHHS-2), fixed order
-comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "rem_s2")
+comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
 
 # Build ILR basis from SBP
 v <- gsi.buildilrBase(t(sbp))
 
 # Transform
 comp <- acomp(dt[, ..comp_vars])
-ilr_coords <- ilr(comp, V = v)  # Returns 3 columns: R1, R2, R3
+ilr_coords <- ilr(comp, V = v)  # Returns 4 columns: R1, R2, R3, R4
 ```
 
 ### Zero handling
@@ -96,15 +87,11 @@ Notes:
 
 ---
 
-## Total Sleep Time (TST) adjustment
+## Sleep Duration Adjustment
 
-Since wake is excluded from the composition, we adjust for **total sleep time** as a separate covariate.
+The ILR coordinates encode relative allocation across the 5-part composition, not absolute duration. The primary models therefore adjust for `slp_time_s2` separately.
 
-```r
-total_sleep_time_s2 <- n1_s2 + n2_s2 + n3_s2 + rem_s2
-```
-
-This ensures the model accounts for absolute sleep duration, not just relative composition.
+For the ideal-composition analysis, the remaining design choice is which duration "whole" to hold fixed under the 5-part composition: `slp_time_s2` or a derived sleep-period-time quantity that includes `waso_s2`.
 
 ---
 
@@ -113,7 +100,6 @@ This ensures the model accounts for absolute sleep duration, not just relative c
 SHHS-1 sleep times are included as **raw minutes** (not ILR transformed) to adjust for prior sleep patterns:
 
 - `n1`, `n2`, `n3`, `rem` (SHHS-1 stage times)
-- `slp_time` (SHHS-1 total sleep time, may be missing due to battery failure)
 - `s1_incomplete` indicator (1 if `slp_time` is NA)
 
 **Rationale:** SHHS-1 variables are confounders, not exposure. Raw times with RCS splines provide flexible adjustment.

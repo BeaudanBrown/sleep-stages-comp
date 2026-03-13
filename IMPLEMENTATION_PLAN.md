@@ -9,12 +9,19 @@ This plan addresses the gaps between the current codebase and the specifications
 - ✅ Bootstrap / g-computation substitution pipeline exists and has produced plots
 - ✅ Experimental LMTP / TMLE survival pipeline exists
 - ✅ LMTP path now includes an explicit no-intervention reference fit for contrast estimation
+- ✅ LMTP dynamic branching now uses the mapped substitution branch value
+- ✅ LMTP 0-minute substitution sanity check gives risk ratio approximately 1
+- ✅ LMTP survival-wide `Y_t` / `D_t` coding now follows cumulative event conventions more closely
+- ✅ LMTP baseline adjustment now excludes SHHS-1 `slp_time` and includes SHHS-2 `slp_time_s2`
+- ✅ Intended SHHS-2 exposure composition is the 5-part set `(n1_s2, n2_s2, n3_s2, waso_s2, rem_s2)`
+- ✅ LMTP shifted-data censoring handling matches the package expectation: censoring columns in `shifted` should be `1`
+- ✅ Default LMTP learners were simplified to `SL.mean + SL.glm` for outcomes and `SL.glm` for treatment after localizing sparse-class `SL.glmnet` failures
+- ✅ LMTP substitution code and branched targets now rethrow errors with explicit substitution context
 - ✅ Phase 0: Model fitting on simulated data working (make_cuts/survSplit guardrails)
-- Active issue: LMTP plots previously mislabeled intervention means as risk ratios; the intended estimand is substitution vs no-intervention risk ratio
-- Active issue: LMTP mapped target wiring is still incorrect and must use the mapped substitution branch value
-- Active issue: LMTP survival-wide outcome/censoring encoding needs validation against package expectations
-- Active issue: code/docs are inconsistent about 4-part vs 5-part sleep composition
-- Missing: full confounders, ILR×Time interactions, ILR×Age interactions, TST covariate
+- Active issue: the direct LMTP substitution path is now more stable, but the full `targets`-branched `lmtp_tmle_substitutions` target still intermittently errors with a generic branch-level message
+- Active issue: the exact remaining `targets` branching failure mechanism is not yet isolated even after simplifying learners
+- Active issue: ideal-composition and simulation/test scaffolding still carry some older 4-part assumptions despite the intended 5-part exposure
+- Missing: full confounders, ILR×Time interactions, ILR×Age interactions, sleep-duration covariate cleanup
 - Missing: proper MI pooling, MRI outcomes, bootstrap inference, ideal composition search
 
 ---
@@ -129,54 +136,53 @@ This plan addresses the gaps between the current codebase and the specifications
 
 ---
 
-## Phase 1: Fix Core Composition and ILR Infrastructure
+## Phase 1: Stabilize 5-Part Composition and ILR Infrastructure
 
-**Goal:** Correct the fundamental composition setup so all downstream analysis uses the right exposure variables.
+**Goal:** Lock the intended SHHS-2 exposure definition to the 5-part composition `(N1, N2, N3, WASO, REM)` and keep downstream code and docs aligned.
 
 - [x] **1.1** Update `R/constants.R` - Composition Variables
-  - Change `comp_vars` from `c("wake", "n1", "n2", "n3", "rem")` to `c("n1_s2", "n2_s2", "n3_s2", "rem_s2")`
-  - Rationale: Specs require 4-part composition (N1, N2, N3, REM) from SHHS-2, excluding wake
+  - Ensure `comp_vars` is `c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")`
+  - Rationale: the intended SHHS-2 exposure composition includes WASO
 
 - [x] **1.2** Update `R/constants.R` - SBP Matrix
-  - Replace current 5×4 SBP with specified 4×3 "restorative vs light" partition:
+  - Maintain the code-defined 5x4 SBP in the fixed component order `(N1, N2, N3, WASO, REM)`:
     ```r
-    # Component order: (N1, N2, N3, REM)
-    #        N1  N2  N3  REM
+    # Component order: (N1, N2, N3, WASO, REM)
+    #        N1  N2  N3  WASO REM
     sbp <- matrix(c(
-      -1, -1,  1,  1,   # R1: restorative vs light
-       0,  0,  1, -1,   # R2: N3 vs REM
-       1, -1,  0,  0    # R3: N1 vs N2
-    ), ncol = 4, byrow = TRUE)
+      -1, -1,  1,  1,  0,
+      -1,  0,  0,  1,  1,
+       0, -1,  1,  0,  1,
+       0,  0, -1,  1,  1
+    ), ncol = 5, byrow = TRUE)
     ```
   - Rebuild ILR basis: `v <- gsi.buildilrBase(t(sbp))`
 
-- [~] **1.3** Update `R/utils.R` - `make_ilrs()` function
+- [x] **1.3** Update `R/utils.R` - `make_ilrs()` function
   - Function should use `comp_vars` (now SHHS-2 variables)
-  - Output: 3 ILR coordinates (R1, R2, R3), not 4
+  - Output: 4 ILR coordinates (R1, R2, R3, R4)
   - Ensure `compositions::acomp()` handles any zero values
-  - **STATUS:** Function not yet updated but downstream functions now expect R1-R3 only
 
-- [ ] **1.4** Update `R/prepare_dataset.R` - ILR creation
-  - Update to assign 3 ILR columns: `c("R1", "R2", "R3")`
-  - Remove references to R4
+- [x] **1.4** Update `R/prepare_dataset.R` - ILR creation
+  - Assign ILR columns via `ilr_names` so the 5-part basis yields `c("R1", "R2", "R3", "R4")`
 
-- [ ] **1.5** Add Total Sleep Time variable
-  - Create: `total_sleep_time_s2 <- n1_s2 + n2_s2 + n3_s2 + rem_s2`
-  - Location: In `prepare_dataset()` function
+- [~] **1.5** Clarify SHHS-2 duration covariate semantics under the 5-part composition
+  - Primary models currently adjust for `slp_time_s2`
+  - Ideal-composition work must explicitly decide whether to constrain `slp_time_s2` or a sleep-period-time measure that includes `waso_s2`
 
 - [ ] **1.6** Add S1 incomplete indicator
   - Create: `s1_incomplete <- as.integer(is.na(slp_time))`
   - Location: In `prepare_dataset()` function
   - Use: Will be covariate in models
 
-- [x] **1.7** Update all downstream functions using ILR columns
+- [~] **1.7** Update all downstream functions using ILR columns
   - Files affected: `R/utils.R`
   - Functions: `apply_substitution()`, `fit_density_model()`, `check_density()`, `get_primary_formula()`
-  - Change: Replace `c("R1", "R2", "R3", "R4")` → `c("R1", "R2", "R3")`
-  - Update density df: Chi-squared df from 4 to 3
+  - Change: downstream code should assume `c("R1", "R2", "R3", "R4")`
+  - Update density df: Chi-squared df from 3 to 4 wherever the dimension is hard-coded
   - **FIXED:** Also updated `death_date` → `death_surv_date` in `expand_surv_dt()`
 
-**Milestone 1:** Pipeline runs with corrected 4-part SHHS-2 composition producing 3 ILR coordinates.
+**Milestone 1:** Pipeline and docs agree on the intended 5-part SHHS-2 composition producing 4 ILR coordinates.
 
 **Notes for Next Agent - CRITICAL:**
 Previously `sim_fitted_models` failed with a "fewer than 3 unique knots" error due to degenerate `timegroup` after `survSplit()`.
@@ -201,8 +207,8 @@ If this resurfaces, confirm that:
 - [ ] **2.2** Implement SHHS-1 adjustment terms
   - Add to formula: Raw SHHS-1 sleep times with RCS
     ```r
-    rcs(n1, knots_n1_s1) + rcs(n2, knots_n2_s1) + rcs(n3, knots_n3_s1) + 
-    rcs(rem, knots_rem_s1) + rcs(slp_time, knots_slp_s1) + s1_incomplete
+    rcs(n1, knots_n1_s1) + rcs(n2, knots_n2_s1) + rcs(n3, knots_n3_s1) +
+    rcs(rem, knots_rem_s1) + s1_incomplete
     ```
   - Handle missingness: When `s1_incomplete == 1`, S1 stage variables may be imputed
 
@@ -211,7 +217,8 @@ If this resurfaces, confirm that:
     ```r
     rcs(R1, k_r1) * rcs(timegroup, k_time) +
     rcs(R2, k_r2) * rcs(timegroup, k_time) +
-    rcs(R3, k_r3) * rcs(timegroup, k_time)
+    rcs(R3, k_r3) * rcs(timegroup, k_time) +
+    rcs(R4, k_r4) * rcs(timegroup, k_time)
     ```
 
 - [ ] **2.4** Implement ILR × Age interactions (effect modification)
@@ -219,11 +226,12 @@ If this resurfaces, confirm that:
     ```r
     rcs(R1, k_r1) * rcs(age_s1, k_age) +
     rcs(R2, k_r2) * rcs(age_s1, k_age) +
-    rcs(R3, k_r3) * rcs(age_s1, k_age)
+    rcs(R3, k_r3) * rcs(age_s1, k_age) +
+    rcs(R4, k_r4) * rcs(age_s1, k_age)
     ```
 
-- [ ] **2.5** Add total sleep time covariate
-  - Add to formulas: `rcs(total_sleep_time_s2, knots_tst)`
+- [ ] **2.5** Add SHHS-2 sleep-duration covariate
+  - Add to formulas: `rcs(slp_time_s2, knots_tst)`
 
 - [ ] **2.6** Add cohort indicator
   - Add to formulas: `IDTYPE` (already available, just needs inclusion)
@@ -256,24 +264,34 @@ If this resurfaces, confirm that:
   - Use `lmtp_contrast(sub_fit, ref = ref_fit, type = "rr")`
   - Treat the contrast output as the risk ratio estimand
 
-- [ ] **2.5.3** Fix dynamic branching in `analysis_targets.R`
-  - Current code still passes `substitutions_list[[1]]` inside a mapped target
-  - Must use the mapped branch value directly
+- [x] **2.5.3** Fix dynamic branching in `analysis_targets.R`
+  - `lmtp_tmle_substitutions` now consumes the mapped substitution branch value directly
 
-- [ ] **2.5.4** Validate wide survival outcome encoding for `lmtp`
-  - Confirm `Y_t`, `C_t`, and `D_t` follow `lmtp` survival conventions
-  - In particular, confirm post-event `Y_t` handling and censoring semantics
+- [~] **2.5.4** Validate wide survival outcome encoding for `lmtp`
+  - `Y_t` and `D_t` are now carried forward after events, matching package examples more closely
+  - Later columns can remain `NA` after censoring or terminal events instead of being forced to 0
+  - Remaining work: confirm any remaining survival-wide expectations beyond the now-confirmed censoring requirement
 
-- [ ] **2.5.5** Remove unintended censoring changes from shifted LMTP data
-  - The shifted dataset should represent the treatment intervention only
-  - Do not modify censoring indicators as part of the treatment policy
+- [x] **2.5.5** Confirm LMTP-required censoring changes in shifted data
+  - `lmtp:::check_shifted_data()` requires the only differences between `data` and `shifted` to be the `trt` and `cens` columns
+  - When censoring is supplied, `shifted[cens]` must be all `1`
+  - Current code in `run_lmtp_tmle_substitution()` matches that package expectation
 
 - [ ] **2.5.6** Separate LMTP plotting from bootstrap g-computation plotting
   - Current helper re-use hides whether the plotted quantity is an intervention mean or a contrast
   - Create an LMTP-specific plotting helper if needed
 
-- [ ] **2.5.7** Verify that duration 0 gives risk ratio approximately 1
-  - This is a simple regression check for the LMTP contrast path
+- [x] **2.5.7** Verify that duration 0 gives risk ratio approximately 1
+  - Observed smoke test result was approximately `1.0007` with a tight CI around 1
+
+- [ ] **2.5.8** Localize the remaining LMTP fit failure
+  - `SL.glmnet`-containing stacks were the main source of sparse-class `lognet()` failures; defaults were simplified
+  - Direct calls to `run_lmtp_tmle_substitution()` now succeed for at least the previously failing early substitution branches
+  - Remaining problem: the full branched `lmtp_tmle_substitutions` target can still error with a generic `argument is of length zero`
+  - Next debugging step:
+    1. use the new branch-aware error messages to identify the exact failing substitution branch in `targets`
+    2. compare that branch under direct execution vs `targets` execution
+    3. determine whether the residual issue is in `targets` branching/aggregation rather than the LMTP fit itself
 
 **Milestone 2.5:** LMTP substitution outputs are true risk ratios against no intervention, and the plotted values match that estimand.
 
@@ -290,7 +308,7 @@ If this resurfaces, confirm that:
 
 - [ ] **3.2** Update imputation predictors
   - Include in imputation model:
-    - SHHS-2 exposure variables (`n1_s2`, `n2_s2`, `n3_s2`, `rem_s2`, `total_sleep_time_s2`)
+    - SHHS-2 exposure variables (`n1_s2`, `n2_s2`, `n3_s2`, `waso_s2`, `rem_s2`, `slp_time_s2`)
     - Outcomes (`dem_or_mci_status`, log-transformed `dem_or_mci_surv_date`)
     - Confounders (`age_s1`, `gender`, `bmi_s1`, `educat`)
   - Exclude from imputation: PID, raw backup variables
@@ -333,17 +351,17 @@ If this resurfaces, confirm that:
 
 - [ ] **4.1** Update `analysis_targets.R` - substitution grid
   - Remove: `wake` from grid
-  - Update components: `c("n1_s2", "n2_s2", "n3_s2", "rem_s2")`
+  - Update components: `c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")`
   - Update durations: `c(15, 30, 60)` (specs say 15 min resolution)
-  - Result: 6 pairs × 2 directions × 3 durations = 36 substitutions
+  - Result: 10 pairs × 2 directions × 3 durations = 60 substitutions
 
 - [ ] **4.2** Update `apply_substitution()` for S2 variables
   - Change: Operate on `*_s2` variables
-  - Change: Output 3 ILR columns (R1, R2, R3)
+  - Change: Output 4 ILR columns (R1, R2, R3, R4)
   - Keep: Validity checking (non-negative, within percentile bounds)
 
 - [ ] **4.3** Update `make_comp_limits()` for S2 variables
-  - Change: Calculate limits from `n1_s2`, `n2_s2`, `n3_s2`, `rem_s2`
+  - Change: Calculate limits from `n1_s2`, `n2_s2`, `n3_s2`, `waso_s2`, `rem_s2`
   - Update percentiles: 1st-99th for feasibility
 
 - [ ] **4.4** Create substitution targets with dynamic branching
@@ -358,9 +376,9 @@ If this resurfaces, confirm that:
     ```
   - Note: Handle MI - apply substitution to each imputed dataset
 
-- [ ] **4.5** Update density checking for 3 ILRs
-  - Change: df=3 for chi-squared threshold
-  - Change: Use 3 ILR columns
+- [ ] **4.5** Update density checking for 4 ILRs
+  - Change: df=4 for chi-squared threshold
+  - Change: Use 4 ILR columns
 
 - [ ] **4.6** Create substitution risk prediction target
   - Input: Substituted data branches, fitted models
@@ -489,15 +507,15 @@ If this resurfaces, confirm that:
 ### Ideal Composition Search
 
 - [ ] **6.7** Implement ideal composition grid generation
-  - Function: `generate_composition_grid(tst_fixed, resolution, bounds)`
-    - Fix TST to median observed SHHS-2 TST
-    - Generate all (n1, n2, n3, rem) where sum = TST
+  - Function: `generate_composition_grid(whole_fixed, resolution, bounds)`
+    - First define whether `whole_fixed` is `slp_time_s2` or a sleep-period-time measure that includes `waso_s2`
+    - Generate all `(n1, n2, n3, waso, rem)` satisfying that fixed-whole definition
     - Resolution = 15 minutes
     - Within 2.5th-97.5th percentile bounds for each component
-  - Implementation: Loop over 3 components, solve 4th as `rem = TST - n1 - n2 - n3`
+  - Implementation: Loop over 4 components and solve the 5th once the fixed-whole definition is finalized
 
 - [ ] **6.8** Filter grid by density
-  - Apply: Mahalanobis distance check (same threshold as isotemporal: 95% chi-sq, df=3)
+  - Apply: Mahalanobis distance check (same threshold as isotemporal: 95% chi-sq, df=4)
   - Keep: Only plausible compositions
 
 - [ ] **6.9** Create grid prediction target
@@ -624,24 +642,30 @@ These items are noted but deferred for later implementation:
 
 ### Completed (Last Session)
 
-1. **Phase 0 Tier 1 Core - Simulated Data Infrastructure:**
-   - Created `R/simulate_data.R` with full simulation functions
-   - Created `R/validate_simulation.R` (skeleton)
-   - Created `simulation_targets.R` with branched targets for multiple scenarios
-   - Created `nixr.sh` wrapper script for running R through nix environment
+1. **LMTP contrast path tightened:**
+   - Added an explicit no-intervention reference fit
+   - Contrasted substitution fits against the reference with `lmtp_contrast(..., type = "rr")`
+   - Corrected mapped substitution branching and added a 0-minute smoke test near RR = 1
 
-2. **Phase 1 Partial - Core Composition Fixes:**
-   - Updated `R/constants.R` to use 4-part SHHS-2 composition (n1_s2, n2_s2, n3_s2, rem_s2)
-   - Updated SBP matrix to "restorative vs light" partition
-   - Updated `R/utils.R` functions to use R1-R3 instead of R1-R4
-   - Fixed various bugs discovered during testing
+2. **Survival-wide encoding tightened:**
+   - `Y_t` and `D_t` now carry forward after events more consistently with `lmtp` survival examples
+   - Confirmed against `lmtp` package source that censoring columns in `shifted` should be set to `1`
+   - SHHS-2 `slp_time_s2` is the documented duration covariate; SHHS-1 `slp_time` is not part of the intended baseline adjustment once SHHS-1 stage minutes are included
 
-3. **Bug Fixes:**
-   - `targets::map()` → `map()` in simulation_targets.R
-   - `rDirichlet()` → `rDirichlet.acomp()` for Dirichlet sampling
-   - Named list handling in targets branching (targets passes named sublists)
-   - Survival time minimum safeguard (pmax(..., 1) to avoid zero times)
-   - Column name `death_date` → `death_surv_date` in `expand_surv_dt()`
+3. **Learner-stack localization:**
+   - `SL.mean/SL.mean`, `SL.glm/SL.glm`, and `SL.mean + SL.glm` with 5 folds all ran on the current substitution path
+   - Configurations that included `SL.glmnet` produced repeated sparse-class `lognet()` failures and the associated intermittent `non-conformable arguments` path
+   - The default LMTP learner targets were simplified accordingly
+
+4. **Targets-branch debugging support added:**
+   - `run_lmtp_tmle_substitution()` now validates substitution inputs and rethrows errors with `from`, `to`, `duration`, folds, and learner details
+   - The `lmtp_tmle_substitutions` target now wraps branch errors with the substitution label so future failures are easier to localize
+   - Local debug scripts were added for learner-stack sweeps and direct all-substitutions runs outside `targets`
+
+5. **Exposure definition clarified:**
+   - The intended SHHS-2 exposure is the 5-part composition `(n1_s2, n2_s2, n3_s2, waso_s2, rem_s2)`
+   - Older 4-part plan/spec text was stale and has been corrected
+   - Remaining 4-part drift is now mostly in simulation/test scaffolding and ideal-composition planning
 
 ### Previously Blocking Issue (Resolved)
 
@@ -671,6 +695,7 @@ These items are noted but deferred for later implementation:
 
 ### Priority Order for Next Work
 
-1. Complete Phase 1 items 1.3-1.6 (prepare_dataset.R updates)
-2. Resume Phase 0 items 0.8 (validation targets)
-3. Move to Phase 2 (model specifications with confounders)
+1. Rerun `lmtp_tmle_substitutions` through `targets` and use the new branch-aware error messages to isolate the residual branch-level failure.
+2. If the direct substitution call still succeeds for that branch, inspect `targets` branching/aggregation rather than the LMTP fit itself.
+3. Sweep remaining 4-part assumptions in simulation/test scaffolding and finalize the duration/whole definition needed for ideal-composition work under the 5-part exposure.
+4. Separate LMTP plotting from the bootstrap g-computation helper once the fit path is stable.

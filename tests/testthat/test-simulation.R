@@ -4,7 +4,9 @@ test_that("prepare_simulated_dataset matches the 5-part SHHS-2 exposure contract
   raw_dt <- simulate_dataset(spec)
   sim_dt <- prepare_simulated_dataset(raw_dt)
 
-  expect_true(all(c(comp_vars, "slp_time_s2", "n1", "n2", "n3", "rem") %in% names(sim_dt)))
+  expect_true(all(
+    c(comp_vars, "slp_time_s2", "n1", "n2", "n3", "rem") %in% names(sim_dt)
+  ))
   expect_true("waso" %in% names(sim_dt))
   expect_true(all(ilr_names %in% names(sim_dt)))
   expect_equal(length(ilr_names), 4L)
