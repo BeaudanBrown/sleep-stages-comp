@@ -6,7 +6,68 @@ base_substitution_theme <- function() {
     )
 }
 
-empty_substitution_plot <- function(title, subtitle, y_label) {
+compute_substitution_plot_scales <- function(
+  summary_dt,
+  ratio_threshold = 0.75,
+  default_rr_limits = c(0.95, 1.05)
+) {
+  dt <- data.table::as.data.table(summary_dt)
+  dt_plot <- dt[
+    is.finite(ratio_substituted) &
+      ratio_substituted >= ratio_threshold &
+      is.finite(mean_risk_ratio) &
+      is.finite(lower_ci) &
+      is.finite(upper_ci)
+  ]
+
+  rr_vals <- c(
+    dt_plot$mean_risk_ratio,
+    dt_plot$lower_ci,
+    dt_plot$upper_ci,
+    1
+  )
+  rr_vals <- rr_vals[is.finite(rr_vals)]
+
+  if (length(rr_vals) == 0L) {
+    rr_limits <- default_rr_limits
+  } else {
+    rr_limits <- range(rr_vals)
+    if (!is.finite(rr_limits[1]) || !is.finite(rr_limits[2])) {
+      rr_limits <- default_rr_limits
+    } else if (rr_limits[1] == rr_limits[2]) {
+      rr_limits <- rr_limits + c(-0.05, 0.05)
+    }
+  }
+
+  rs_limits <- c(ratio_threshold, 1)
+  if (rs_limits[1] >= rs_limits[2]) {
+    rs_limits <- c(0, 1)
+  }
+
+  ratio_to_rr <- function(ratio) {
+    (ratio - rs_limits[1]) /
+      (rs_limits[2] - rs_limits[1]) *
+      (rr_limits[2] - rr_limits[1]) +
+      rr_limits[1]
+  }
+
+  rr_to_ratio <- function(rr) {
+    (rr - rr_limits[1]) /
+      (rr_limits[2] - rr_limits[1]) *
+      (rs_limits[2] - rs_limits[1]) +
+      rs_limits[1]
+  }
+
+  list(
+    ratio_threshold = ratio_threshold,
+    rr_limits = rr_limits,
+    rs_limits = rs_limits,
+    ratio_to_rr = ratio_to_rr,
+    rr_to_ratio = rr_to_ratio
+  )
+}
+
+empty_substitution_plot <- function(title, subtitle, y_label, scales) {
   ggplot2::ggplot() +
     base_substitution_theme() +
     ggplot2::labs(
@@ -15,7 +76,24 @@ empty_substitution_plot <- function(title, subtitle, y_label) {
       x = "Minutes shifted",
       y = y_label
     ) +
-    ggplot2::annotate("text", x = 0, y = 1, label = "No data")
+    ggplot2::annotate(
+      "text",
+      x = 0,
+      y = mean(scales$rr_limits),
+      label = "No data"
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = scales$rr_limits,
+      sec.axis = ggplot2::sec_axis(
+        transform = ~ scales$rr_to_ratio(.),
+        name = "Ratio substituted",
+        labels = function(x) sprintf("%d%%", round(x * 100))
+      )
+    ) +
+    ggplot2::scale_x_continuous(
+      breaks = seq(-60, 60, by = 15),
+      limits = c(-60, 60)
+    )
 }
 
 write_substitution_plots <- function(plot_dt, dir_path, file_prefix) {
@@ -48,13 +126,22 @@ write_substitution_plots <- function(plot_dt, dir_path, file_prefix) {
   unname(paths)
 }
 
-plot_bootstrap_substitutions <- function(summary_dt, from, to) {
+plot_bootstrap_substitutions <- function(
+  summary_dt,
+  from,
+  to,
+  scales,
+  ratio_threshold = scales$ratio_threshold
+) {
   dt_all <- data.table::copy(summary_dt)
   data.table::setorder(dt_all, duration)
 
-  dt_ratio <- dt_all[is.finite(ratio_substituted)]
+  dt_ratio <- dt_all[
+    is.finite(ratio_substituted) &
+      ratio_substituted >= ratio_threshold
+  ]
   dt_risk <- dt_all[
-    ratio_substituted >= 0.75 &
+    ratio_substituted >= ratio_threshold &
       is.finite(mean_risk_ratio) &
       is.finite(lower_ci) &
       is.finite(upper_ci)
@@ -66,35 +153,16 @@ plot_bootstrap_substitutions <- function(summary_dt, from, to) {
   if (nrow(dt_ratio) == 0) {
     return(empty_substitution_plot(
       title = sprintf("Shift %s \u2192 %s", from_label, to_label),
-      subtitle = "No data available for ratio substituted",
-      y_label = "Risk ratio"
+      subtitle = sprintf(
+        "No data above %d%% substitution coverage",
+        round(ratio_threshold * 100)
+      ),
+      y_label = "Risk ratio",
+      scales = scales
     ))
   }
 
-  rr_min <- min(dt_all$mean_risk_ratio, na.rm = TRUE)
-  rr_max <- max(dt_all$mean_risk_ratio, na.rm = TRUE)
-  rs_min <- 0
-  rs_max <- 1
-
-  if (!is.finite(rr_min) || !is.finite(rr_max)) {
-    rr_min <- 0
-    rr_max <- 1
-  }
-
-  if (!is.finite(rs_min) || !is.finite(rs_max) || rs_min == rs_max) {
-    rs_min <- 0
-    rs_max <- 1
-  }
-
-  ratio_to_rr <- function(ratio) {
-    (ratio - rs_min) / (rs_max - rs_min) * (rr_max - rr_min) + rr_min
-  }
-
-  rr_to_ratio <- function(rr) {
-    (rr - rr_min) / (rr_max - rr_min) * (rs_max - rs_min) + rs_min
-  }
-
-  dt_ratio[, ratio_substituted_scaled := ratio_to_rr(ratio_substituted)]
+  dt_ratio[, ratio_substituted_scaled := scales$ratio_to_rr(ratio_substituted)]
 
   ggplot2::ggplot() +
     ggplot2::geom_ribbon(
@@ -124,8 +192,9 @@ plot_bootstrap_substitutions <- function(summary_dt, from, to) {
     ) +
     base_substitution_theme() +
     ggplot2::scale_y_continuous(
+      limits = scales$rr_limits,
       sec.axis = ggplot2::sec_axis(
-        trans = ~ rr_to_ratio(.),
+        transform = ~ scales$rr_to_ratio(.),
         name = "Ratio substituted",
         labels = function(x) sprintf("%d%%", round(x * 100))
       )
@@ -138,17 +207,30 @@ plot_bootstrap_substitutions <- function(summary_dt, from, to) {
       x = "Minutes shifted",
       y = "Risk ratio",
       title = sprintf("Shift %s \u2192 %s", from_label, to_label),
-      subtitle = "Ribbon/line shown when ratio substituted \u2265 0.75"
+      subtitle = sprintf(
+        "Shown only when ratio substituted \u2265 %d%%",
+        round(ratio_threshold * 100)
+      )
     )
 }
 
-plot_lmtp_substitutions <- function(summary_dt, from, to) {
+plot_lmtp_substitutions <- function(
+  summary_dt,
+  from,
+  to,
+  scales,
+  ratio_threshold = scales$ratio_threshold
+) {
   dt_all <- data.table::copy(summary_dt)
   data.table::setorder(dt_all, duration)
 
-  dt_ratio <- dt_all[is.finite(ratio_substituted)]
+  dt_ratio <- dt_all[
+    is.finite(ratio_substituted) &
+      ratio_substituted >= ratio_threshold
+  ]
   dt_risk <- dt_all[
-    is.finite(mean_risk_ratio) &
+    ratio_substituted >= ratio_threshold &
+      is.finite(mean_risk_ratio) &
       is.finite(lower_ci) &
       is.finite(upper_ci)
   ]
@@ -159,30 +241,16 @@ plot_lmtp_substitutions <- function(summary_dt, from, to) {
   if (nrow(dt_ratio) == 0 || nrow(dt_risk) == 0) {
     return(empty_substitution_plot(
       title = sprintf("LMTP Shift %s -> %s", from_label, to_label),
-      subtitle = "No LMTP substitution results available",
-      y_label = "Risk ratio vs no intervention"
+      subtitle = sprintf(
+        "No LMTP results above %d%% substitution coverage",
+        round(ratio_threshold * 100)
+      ),
+      y_label = "Risk ratio vs no intervention",
+      scales = scales
     ))
   }
 
-  rr_min <- min(dt_all$mean_risk_ratio, na.rm = TRUE)
-  rr_max <- max(dt_all$mean_risk_ratio, na.rm = TRUE)
-  rs_min <- 0
-  rs_max <- 1
-
-  if (!is.finite(rr_min) || !is.finite(rr_max) || rr_min == rr_max) {
-    rr_min <- 0.95
-    rr_max <- 1.05
-  }
-
-  ratio_to_rr <- function(ratio) {
-    (ratio - rs_min) / (rs_max - rs_min) * (rr_max - rr_min) + rr_min
-  }
-
-  rr_to_ratio <- function(rr) {
-    (rr - rr_min) / (rr_max - rr_min) * (rs_max - rs_min) + rs_min
-  }
-
-  dt_ratio[, ratio_substituted_scaled := ratio_to_rr(ratio_substituted)]
+  dt_ratio[, ratio_substituted_scaled := scales$ratio_to_rr(ratio_substituted)]
 
   ggplot2::ggplot() +
     ggplot2::geom_hline(
@@ -228,8 +296,9 @@ plot_lmtp_substitutions <- function(summary_dt, from, to) {
     base_substitution_theme() +
     ggplot2::scale_y_continuous(
       name = "Risk ratio vs no intervention",
+      limits = scales$rr_limits,
       sec.axis = ggplot2::sec_axis(
-        trans = ~ rr_to_ratio(.),
+        transform = ~ scales$rr_to_ratio(.),
         name = "Participants shifted",
         labels = function(x) sprintf("%d%%", round(x * 100))
       )
@@ -241,26 +310,54 @@ plot_lmtp_substitutions <- function(summary_dt, from, to) {
     ggplot2::labs(
       x = "Minutes shifted",
       title = sprintf("LMTP Shift %s -> %s", from_label, to_label),
-      subtitle = "Line/ribbon: LMTP contrast risk ratio; blue: bounded-policy shift coverage"
+      subtitle = sprintf(
+        "Shown only when ratio substituted \u2265 %d%%",
+        round(ratio_threshold * 100)
+      )
     )
 }
 
-make_bootstrap_substitution_plots <- function(summary_dt) {
+make_bootstrap_substitution_plots <- function(
+  summary_dt,
+  ratio_threshold = 0.75
+) {
+  scales <- compute_substitution_plot_scales(
+    summary_dt = summary_dt,
+    ratio_threshold = ratio_threshold
+  )
+
   summary_dt[,
     .(
       plot = list(
-        plot_bootstrap_substitutions(.SD, from = from[1], to = to[1])
+        plot_bootstrap_substitutions(
+          .SD,
+          from = from[1],
+          to = to[1],
+          scales = scales,
+          ratio_threshold = ratio_threshold
+        )
       )
     ),
     by = .(from, to)
   ]
 }
 
-make_lmtp_substitution_plots <- function(summary_dt) {
+make_lmtp_substitution_plots <- function(summary_dt, ratio_threshold = 0.75) {
+  scales <- compute_substitution_plot_scales(
+    summary_dt = summary_dt,
+    ratio_threshold = ratio_threshold
+  )
+
   summary_dt[,
     .(
       plot = list(
-        plot_lmtp_substitutions(.SD, from = from[1], to = to[1])
+        plot_lmtp_substitutions(
+          .SD,
+          from = from[1],
+          to = to[1],
+          scales = scales,
+          ratio_threshold = ratio_threshold
+        )
       )
     ),
     by = .(from, to)
