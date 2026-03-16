@@ -1,24 +1,53 @@
+make_formula_knots <- function(dt, vars, probs = c(0.1, 0.5, 0.9)) {
+  knots <- list()
+
+  for (var in vars) {
+    if (!(var %in% names(dt))) {
+      next
+    }
+
+    vals <- dt[[var]]
+    if (!is.numeric(vals) || all(is.na(vals))) {
+      next
+    }
+
+    knot_name <- paste0("knots_", var)
+    knots[[knot_name]] <- quantile(vals, probs = probs, na.rm = TRUE)
+  }
+
+  knots
+}
+
+rcs_term <- function(var) {
+  paste0("rcs(", var, ", knots_", var, ")")
+}
+
 get_primary_formula <- function(dt) {
-  knots <- lapply(ilr_names, function(name) {
-    quantile(dt[[name]], c(0.1, 0.5, 0.9))
-  })
-  names(knots) <- paste0("knots_", ilr_names)
-
-  knots_time <- quantile(dt$timegroup, probs = c(0.1, 0.5, 0.9))
-  knots$knots_time <- knots_time
-
-  ilr_terms <- paste0(
-    "rcs(",
+  spline_vars <- c(
     ilr_names,
-    ", ",
-    names(knots)[seq_along(ilr_names)],
-    ")"
+    "timegroup",
+    "n1",
+    "n2",
+    "n3",
+    "rem",
+    "slp_time_s2"
   )
-  term_str <- paste(
-    c(ilr_terms, "rcs(timegroup, knots_time)"),
-    collapse = " + "
+  knots <- make_formula_knots(dt, spline_vars)
+
+  terms <- c(
+    vapply(ilr_names, rcs_term, character(1)),
+    if ("timegroup" %in% names(dt)) rcs_term("timegroup"),
+    vapply(
+      intersect(c("n1", "n2", "n3", "rem", "slp_time_s2"), names(dt)),
+      rcs_term,
+      character(1)
+    ),
+    intersect("s1_incomplete", names(dt))
   )
-  primary_formula <- as.formula(paste("~", term_str))
+
+  # TODO: add the finalized confounder main effects and reduced interaction
+  # structure once the spec-level variable set is locked down.
+  primary_formula <- as.formula(paste("~", paste(terms, collapse = " + ")))
   environment(primary_formula) <- list2env(knots, parent = parent.frame())
 
   primary_formula

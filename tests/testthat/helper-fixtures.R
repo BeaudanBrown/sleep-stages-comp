@@ -45,13 +45,26 @@ make_test_timegroup_cuts <- function() {
 make_test_model_dt <- function(n = 120L) {
   set.seed(20260313)
 
+  n1_s2 <- runif(n, 40, 100)
+  n2_s2 <- runif(n, 120, 220)
+  n3_s2 <- runif(n, 40, 120)
+  waso_s2 <- runif(n, 10, 60)
+  rem_s2 <- runif(n, 50, 120)
+
   dt <- data.table::data.table(
     PID = seq_len(n),
-    n1_s2 = runif(n, 40, 100),
-    n2_s2 = runif(n, 120, 220),
-    n3_s2 = runif(n, 40, 120),
-    waso_s2 = runif(n, 10, 60),
-    rem_s2 = runif(n, 50, 120)
+    age_s1 = runif(n, 45, 85),
+    n1_s2 = n1_s2,
+    n2_s2 = n2_s2,
+    n3_s2 = n3_s2,
+    waso_s2 = waso_s2,
+    rem_s2 = rem_s2,
+    n1 = runif(n, 30, 90),
+    n2 = runif(n, 100, 210),
+    n3 = runif(n, 30, 120),
+    rem = runif(n, 45, 120),
+    s1_incomplete = sample(c(0L, 1L), n, replace = TRUE),
+    slp_time_s2 = n1_s2 + n2_s2 + n3_s2 + rem_s2
   )
 
   ilrs <- make_ilrs(dt)

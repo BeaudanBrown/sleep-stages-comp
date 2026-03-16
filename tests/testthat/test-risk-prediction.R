@@ -1,18 +1,34 @@
-test_that("get_primary_formula includes current ILR and timegroup spline terms", {
+test_that("get_primary_formula includes the current sleep-history contract terms", {
   dt <- make_test_model_dt()
   surv_dt <- expand_surv_dt(dt, make_cuts(dt))
 
   formula_obj <- get_primary_formula(surv_dt)
   formula_txt <- paste(deparse(formula_obj), collapse = " ")
+  formula_txt <- gsub("[[:space:]]+", " ", formula_txt)
 
   for (name in ilr_names) {
     expect_match(formula_txt, paste0("rcs\\(", name, ","), perl = TRUE)
   }
-  expect_match(formula_txt, "rcs\\(timegroup, knots_time\\)", perl = TRUE)
+  expect_match(formula_txt, "rcs\\(timegroup, knots_timegroup\\)", perl = TRUE)
+  for (name in c("n1", "n2", "n3", "rem", "slp_time_s2")) {
+    expect_match(
+      formula_txt,
+      paste0("rcs\\(", name, ", +knots_", name, "\\)"),
+      perl = TRUE
+    )
+  }
+  expect_match(formula_txt, "\\bs1_incomplete\\b", perl = TRUE)
 
   env_names <- ls(environment(formula_obj))
-  expect_true("knots_time" %in% env_names)
-  for (name in ilr_names) {
+  for (name in c(
+    ilr_names,
+    "timegroup",
+    "n1",
+    "n2",
+    "n3",
+    "rem",
+    "slp_time_s2"
+  )) {
     expect_true(paste0("knots_", name) %in% env_names)
   }
 })
