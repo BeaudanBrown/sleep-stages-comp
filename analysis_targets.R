@@ -236,9 +236,29 @@ analysis_bootstrap_targets <- list(
   )
 )
 
+analysis_comparison_targets <- list(
+  tar_target(
+    pooled_vs_lmtp_comparison,
+    join_method_substitution_summaries(
+      pooled_summary = pooled_risk_overall,
+      lmtp_summary = lmtp_tmle_substitutions,
+      ratio_threshold = comparison_contract$ratio_threshold
+    )
+  ),
+  tar_target(
+    pooled_vs_lmtp_comparison_summary,
+    summarize_method_comparison(pooled_vs_lmtp_comparison)
+  ),
+  tar_target(
+    pooled_vs_lmtp_debug_rows,
+    extract_comparison_debug_rows(pooled_vs_lmtp_comparison)
+  )
+)
+
 analysis_targets <- c(
   analysis_config_targets,
   analysis_survival_targets,
   analysis_lmtp_targets,
-  analysis_bootstrap_targets
+  analysis_bootstrap_targets,
+  analysis_comparison_targets
 )
