@@ -109,8 +109,8 @@ SHHS-1 sleep times are included as **raw minutes** (not ILR transformed) to adju
 ## Code location
 
 - **SBP matrix and composition variables:** `R/constants.R`
-- **ILR transformation function:** `R/utils.R` → `make_ilrs()`
-- **Composition limits:** `R/utils.R` → `make_comp_limits()`
+- **ILR transformation function:** `R/composition_utils.R` → `make_ilrs()`
+- **Composition limits:** `R/composition_utils.R` → `make_comp_limits()`
 
 ---
 

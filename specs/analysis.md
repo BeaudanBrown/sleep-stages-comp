@@ -265,10 +265,9 @@ mean_outcome <- mean(predict(model, newdata = dt_intervention))
 
 ## Code References
 
-- **Substitution logic:** `R/utils.R` → `apply_substitution()`, `perform_isotemporal_substitution()`
-- **Density checking:** `R/utils.R` → `fit_density_model()`, `check_density()`
-- **Risk prediction:** `R/utils.R` → `predict_risks()`
-- **Grid definition:** `analysis_targets.R` → `substitution_grid`
+- **Substitution logic:** `R/substitution_utils.R` → `apply_substitution()`, `compute_substituted_risk()`
+- **Risk prediction:** `R/survival_utils.R` → `predict_risks()`
+- **Grid definition:** `R/substitution_utils.R` → `make_substitution_grid()`, `analysis_targets.R` → `substitutions`
 
 ---
 

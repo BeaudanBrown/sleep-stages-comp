@@ -1,0 +1,8 @@
+interface:
+  display_name: "LMTP and G-Computation Survival"
+  short_description: "LMTP, g-comp, and survival estimands"
+  default_prompt: "Use $lmtp-gcomp-survival to validate an LMTP or g-computation survival analysis implementation."
+
+policy:
+  allow_implicit_invocation: true
+

@@ -183,7 +183,7 @@ Large model objects are stripped of unnecessary components before caching:
 
 ```r
 # Remove data, residuals, fitted values to reduce size
-model <- strip_glm(model)  # See R/utils.R
+model <- strip_glm(model)  # See R/survival_utils.R
 ```
 
 This preserves coefficients and prediction ability while reducing storage.
@@ -200,14 +200,14 @@ surv_dt$haz_dem <- predict(model_dem, newdata = surv_dt, type = "response")
 surv_dt$haz_death <- predict(model_death, newdata = surv_dt, type = "response")
 
 # Calculate cumulative incidence with competing risks
-# See R/utils.R → predict_risks()
+# See R/survival_utils.R → predict_risks()
 ```
 
 ---
 
 ## Code References
 
-- **Formula construction:** `R/utils.R` → `get_primary_formula()`
-- **Model fitting:** `R/utils.R` → `fit_models()`
-- **Model stripping:** `R/utils.R` → `strip_glm()`, `strip_lm()`
-- **Prediction:** `R/utils.R` → `predict_risks()`
+- **Formula construction:** `R/survival_utils.R` → `get_primary_formula()`
+- **Model fitting:** `R/survival_utils.R` → `fit_models()`
+- **Model stripping:** `R/survival_utils.R` → `strip_glm()`, `strip_lm()`
+- **Prediction:** `R/survival_utils.R` → `predict_risks()`

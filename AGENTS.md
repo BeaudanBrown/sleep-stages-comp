@@ -33,12 +33,19 @@ stages_compositional/
 ├── IMPLEMENTATION_PLAN.md  # Detailed implementation roadmap
 ├── nixr.sh              # Nix wrapper for running R commands
 ├── R/                   # R functions and utilities
-│   ├── constants.R      # Composition variables, SBP matrix
+│   ├── constants.R      # Shared composition constants and labels
+│   ├── composition_utils.R  # ILR creation and composition bounds
+│   ├── substitution_utils.R # Substitution grids and bounded shifts
+│   ├── survival_utils.R     # Survival expansion, formulas, model fitting
+│   ├── lmtp_utils.R         # LMTP/TMLE support functions
+│   ├── bootstrap_utils.R    # Bootstrap resampling helpers
+│   ├── plot_utils.R         # Plot construction and file writing
+│   ├── imputation.R         # MICE helpers and imputation workflow
 │   ├── make_dataset_from_raw_files.R  # Raw data loading functions
-│   ├── prepare_dataset.R              # Data cleaning, ILR creation
-│   ├── simulate_data.R  # Simulated data generation functions
-│   ├── validate_simulation.R  # Validation of simulation results
-│   └── utils.R          # Model fitting, prediction, substitution functions
+│   ├── prepare_dataset.R              # Data cleaning and outcome derivation
+│   ├── simulate_data.R       # Simulated data generation functions
+│   ├── validate_simulation.R # Validation of simulation results
+│   └── ...                   # Additional focused helper modules
 ├── scripts/             # Reusable development scripts (gitignored)
 │   ├── README.md        # Documentation for available scripts
 │   └── *.R              # Individual scripts for debugging/inspection
@@ -110,6 +117,12 @@ R
 ## Development Scripts (`scripts/`)
 
 The `scripts/` directory contains reusable R scripts for common debugging and inspection tasks. This prevents clogging the context window with repeated diagnostic commands.
+
+Canonical entrypoints:
+- Targets pipeline: `_targets.R`, `data_targets.R`, `analysis_targets.R`, `simulation_targets.R`
+- Analysis code: focused modules under `R/`
+- Tests: `tests/testthat.R` and `tests/testthat/`
+- Old root-level `test_*.R` / `debug_*.R` entrypoints were removed; new one-off workflows should go in `scripts/` instead.
 
 ### Available Scripts
 
@@ -198,12 +211,13 @@ When you find yourself repeating the same diagnostic commands:
 ### To understand simulated data (for dev/validation):
 → Read `specs/simulation.md`
 
-### To see implementation status and roadmap:
+### To see the technical roadmap:
 → Read `IMPLEMENTATION_PLAN.md`
+→ Use coordinator Beads epic `coordinator-xyb` for live status, blockers, and next actions
 
 ### To understand the current LMTP/TMLE development issues:
 → Read `specs/analysis.md`
-→ Check `analysis_targets.R` and `R/utils.R` together
+→ Check `analysis_targets.R`, `R/lmtp_utils.R`, and `R/substitution_utils.R` together
 
 ### To modify the pipeline:
 1. Check which targets are affected: `tar_visnetwork()`
@@ -237,21 +251,7 @@ For **privacy-safe development** and **pipeline validation**, simulated data is 
 
 ---
 
-## Implementation Status
-
-See `IMPLEMENTATION_PLAN.md` for detailed status and roadmap.
-
-**Phase Overview:**
-- **Phase 0:** Simulated data infrastructure *(enables safe development)*
-- **Phase 1:** Fix core composition and ILR
-- **Phase 2:** Update model specifications  
-- **Phase 3:** Fix multiple imputation
-- **Phase 4:** Fix isotemporal substitutions
-- **Phase 5:** Implement MRI outcomes
-- **Phase 6:** Bootstrap inference and ideal composition
-- **Phase 7:** Reporting |
-
-### Current LMTP/TMLE status
+## LMTP Contract Notes
 
 The repo currently has an experimental LMTP/TMLE survival path for the dementia/MCI substitution analysis. The intended LMTP estimand is:
 
@@ -266,7 +266,6 @@ This requires:
 Important implementation notes:
 - Do not assume `tidy(lmtp_tmle_fit)` is already a risk ratio; it is the mean outcome under that intervention.
 - If checking LMTP plots, verify that a 0-minute shift gives a risk ratio near 1.
-- The current LMTP pipeline is still under development and should be treated as provisional until the remaining LMTP fit instability and end-to-end validation are resolved.
 - For sleep-duration adjustment:
   - Do not include SHHS-1 `slp_time` if SHHS-1 stage minutes `n1`, `n2`, `n3`, and `rem` are already in the model.
   - Do include SHHS-2 `slp_time_s2`, because the SHHS-2 ILR coordinates encode composition, not duration.
@@ -283,10 +282,3 @@ Important implementation notes:
 | SBP: current 5-part matrix in `R/constants.R` | Keep the component order fixed while the broader stats pipeline is being tightened |
 | First MRI post-SHHS-2 | Adjust for time-since-exposure; no imputation of MRI timing |
 | Grid search for ideal composition | 15-min resolution; filter by MVN density |
-
-## Current Development Priorities
-
-1. Stabilize the LMTP/TMLE substitution pipeline for dementia/MCI.
-2. Rerun the branched `lmtp_tmle_substitutions` target with the new branch-aware errors and isolate the residual `targets`-level failure.
-3. Sweep remaining 4-part assumptions in simulation/tests now that the intended exposure is 5-part with WASO.
-4. Return to proper multiple imputation and bootstrap inference after the LMTP estimand is correct and numerically stable.

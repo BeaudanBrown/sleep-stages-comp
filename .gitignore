@@ -76,3 +76,13 @@ rsconnect/
 # Development scripts folder (keep README.md for documentation)
 scripts/*.R
 !scripts/README.md
+
+# Local tooling state and generated analysis artifacts
+.complix/
+lancedb/
+models/
+results/
+result-bin
+result-man
+R-bak/
+sim.csv

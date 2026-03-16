@@ -443,29 +443,9 @@ data.table(
 
 ---
 
-## Implementation Tiers
+## Implementation Note
 
-### Tier 1: Core (Implement First)
-- [ ] `make_sim_spec()` with default parameters
-- [ ] `simulate_dataset()` with Dirichlet compositions
-- [ ] Linear effects only (no interactions)
-- [ ] Single dementia outcome
-- [ ] Basic `validate_simulation()` function
-- [ ] Integration with targets pipeline
-
-### Tier 2: Essential Extensions
-- [ ] Effect modification by age (interaction terms)
-- [ ] Multiple predefined scenarios
-- [ ] Death as competing risk
-- [ ] Non-linear (quadratic) effects in DGP
-- [ ] Comprehensive validation report
-
-### Tier 3: Advanced (If Needed)
-- [ ] SHHS-1 battery failure missingness pattern
-- [ ] MRI outcomes
-- [ ] Time-varying effects
-- [ ] U-shaped relationships (spline-based DGP)
-- [ ] Covariate-dependent censoring
+This document is the simulation specification. Live implementation status and backlog now live in coordinator Beads, not in this spec.
 
 ---
 

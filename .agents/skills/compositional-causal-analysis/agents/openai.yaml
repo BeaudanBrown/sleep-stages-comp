@@ -1,0 +1,8 @@
+interface:
+  display_name: "Compositional Causal Analysis"
+  short_description: "CoDA and causal reallocation guidance"
+  default_prompt: "Use $compositional-causal-analysis to review a compositional causal analysis change or design."
+
+policy:
+  allow_implicit_invocation: true
+

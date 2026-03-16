@@ -147,5 +147,5 @@ Sensitivity analyses will be finalized and pre-specified later. Candidate sensit
 ## Code References
 
 - **Outcome derivation:** `R/prepare_dataset.R`
-- **Survival data expansion:** `R/utils.R` → `expand_surv_dt()`
-- **Model fitting:** `R/utils.R` → `fit_models()`
+- **Survival data expansion:** `R/survival_utils.R` → `expand_surv_dt()`
+- **Model fitting:** `R/survival_utils.R` → `fit_models()`
