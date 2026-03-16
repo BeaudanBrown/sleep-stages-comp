@@ -28,13 +28,10 @@ test_that("simulated ILRs are recomputed from the 5-part SHHS-2 composition", {
 })
 
 test_that("simulation substitution grid spans all directed 5-part substitutions", {
-  pairs <- t(combn(comp_vars, 2))
-  pair_dt <- data.table::data.table(from = pairs[, 1], to = pairs[, 2])
-  pair_dt <- data.table::rbindlist(list(
-    pair_dt,
-    pair_dt[, .(from = to, to = from)]
-  ))
-  grid <- pair_dt[, .(duration = c(15, 30, 60)), by = .(from, to)]
+  grid <- make_substitution_grid(
+    durations = c(15, 30, 60),
+    directed = TRUE
+  )
 
   expect_equal(nrow(grid), length(comp_vars) * (length(comp_vars) - 1L) * 3L)
   expect_true(all(grid$from != grid$to))

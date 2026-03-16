@@ -8,6 +8,14 @@ comp_vars <- c(
 
 ilr_names <- paste0("R", seq_len(length(comp_vars) - 1))
 
+stage_labels <- c(
+  n1_s2 = "N1",
+  n2_s2 = "N2",
+  n3_s2 = "N3",
+  waso_s2 = "WASO",
+  rem_s2 = "REM"
+)
+
 # Component order is fixed: (N1, N2, N3, WASO, REM)
 sbp <- matrix(
   c(

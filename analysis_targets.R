@@ -1,5 +1,4 @@
-analysis_targets <- list(
-  # 0. Bootstrap configuration
+analysis_config_targets <- list(
   tar_target(
     bootstrap_config,
     list(
@@ -7,7 +6,20 @@ analysis_targets <- list(
       m = 10
     )
   ),
-  # 0.1 Long format survival data (non-bootstrap)
+  tar_target(
+    substitutions,
+    make_substitution_grid(
+      durations = seq(-60, 60, by = 15),
+      directed = FALSE
+    )
+  ),
+  tar_target(
+    substitutions_list,
+    split(substitutions, seq_len(nrow(substitutions)))
+  )
+)
+
+analysis_survival_targets <- list(
   tar_target(
     timegroup_cuts,
     make_cuts(imp)
@@ -31,9 +43,10 @@ analysis_targets <- list(
   tar_target(
     lmtp_baseline_covars,
     default_baseline_covars(dt_surv_wide)
-  ),
-  # Keep the default LMTP learner stack conservative: glmnet was unstable
-  # under the sparse event counts in the current survival-wide data.
+  )
+)
+
+analysis_lmtp_targets <- list(
   tar_target(
     lmtp_learners_outcome,
     c("SL.mean", "SL.glm")
@@ -102,25 +115,10 @@ analysis_targets <- list(
       file.path("results", "lmtp_substitution_risk_ratio")
     ),
     format = "file"
-  ),
-  # 1. Define Substitutions Grid
-  tar_target(
-    substitutions,
-    {
-      pairs <- t(combn(comp_vars, 2))
-      pair_dt <- data.table(from = pairs[, 1], to = pairs[, 2])
-      pair_dt[,
-        .(duration = seq(-60, 60, by = 15)),
-        by = .(from, to)
-      ]
-    }
-  ),
-  tar_target(
-    substitutions_list,
-    split(substitutions, seq_len(nrow(substitutions)))
-  ),
+  )
+)
 
-  # 2. Bootstrap seeds
+analysis_bootstrap_targets <- list(
   tar_target(
     bootstrap_seeds,
     {
@@ -128,43 +126,31 @@ analysis_targets <- list(
       sample.int(.Machine$integer.max, bootstrap_config$B)
     }
   ),
-
-  # 3. Bootstrap datasets
   tar_target(
     boot_dt,
     bootstrap_resample(imp, seed = bootstrap_seeds),
     pattern = map(bootstrap_seeds)
   ),
-
-  # 4. Bootstrap time cuts
   tar_target(
     boot_timegroup_cuts,
     make_cuts(boot_dt),
     pattern = map(boot_dt)
   ),
-
-  # 5. Bootstrap models
   tar_target(
     boot_fitted_models,
     fit_models(boot_dt, boot_timegroup_cuts),
     pattern = map(boot_dt, boot_timegroup_cuts)
   ),
-
-  # 6. Bootstrap composition limits
   tar_target(
     boot_comp_limits,
     make_comp_limits(boot_dt),
     pattern = map(boot_dt)
   ),
-
-  # 7. Bootstrap baseline risk
   tar_target(
     boot_baseline_risk,
     predict_risks(boot_dt, boot_fitted_models, boot_timegroup_cuts),
     pattern = map(boot_dt, boot_fitted_models, boot_timegroup_cuts)
   ),
-
-  # 8. Bootstrap substituted risk (all substitutions per bootstrap)
   tar_target(
     boot_substituted_risk,
     {
@@ -194,7 +180,6 @@ analysis_targets <- list(
       bootstrap_seeds
     )
   ),
-
   tar_target(
     boot_risk_summary,
     {
@@ -211,7 +196,6 @@ analysis_targets <- list(
       ]
     }
   ),
-
   tar_target(
     boot_risk_overall,
     boot_risk_summary[,
@@ -224,15 +208,10 @@ analysis_targets <- list(
       by = .(from, to, duration)
     ]
   ),
-
   tar_target(
     plot_boot_substitutions,
-    {
-      make_bootstrap_substitution_plots(boot_risk_overall)
-    }
+    make_bootstrap_substitution_plots(boot_risk_overall)
   ),
-
-  # 12. Save summary plots to PNG
   tar_target(
     boot_substituted_plot_png,
     write_bootstrap_substitution_plots(
@@ -241,4 +220,11 @@ analysis_targets <- list(
     ),
     format = "file"
   )
+)
+
+analysis_targets <- c(
+  analysis_config_targets,
+  analysis_survival_targets,
+  analysis_lmtp_targets,
+  analysis_bootstrap_targets
 )

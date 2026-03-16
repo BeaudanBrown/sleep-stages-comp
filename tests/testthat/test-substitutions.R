@@ -57,6 +57,25 @@ test_that("apply_substitution handles negative durations as reverse shifts", {
   expect_true(all(shifted$substituted))
 })
 
+test_that("zero-duration substitutions mark every row as substituted", {
+  dt <- make_test_comp_dt()
+  limits <- make_test_comp_limits()
+
+  dt[1, n2_s2 := limits$n2_s2$upper + 5]
+  dt[2, n2_s2 := limits$n2_s2$lower - 5]
+
+  shifted <- suppressWarnings(apply_substitution(
+    dt,
+    "n2_s2",
+    "n3_s2",
+    0,
+    limits
+  ))
+
+  expect_equal(shifted[, ..comp_vars], dt[, ..comp_vars])
+  expect_true(all(shifted$substituted))
+})
+
 test_that("make_lmtp_shift matches apply_substitution on treatment columns", {
   dt <- make_test_comp_dt()
   dt[, extra_covariate := c(1, 2, 3, 4)]

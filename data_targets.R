@@ -71,5 +71,5 @@ data_targets <- list(
     )
   ),
   tar_target(dt, prepare_dataset(dt_raw)),
-  tar_target(imp, impute_data(dt = dt, m = 10, maxit = 10))
+  tar_target(imp, impute_data(dt = dt, m = 1, maxit = 5))
 )
