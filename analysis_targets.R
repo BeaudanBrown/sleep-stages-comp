@@ -8,10 +8,7 @@ analysis_config_targets <- list(
   ),
   tar_target(
     substitutions,
-    make_substitution_grid(
-      durations = seq(-60, 60, by = 15),
-      directed = FALSE
-    )
+    comparison_substitution_grid()
   ),
   tar_target(
     substitutions_list,
@@ -43,6 +40,10 @@ analysis_survival_targets <- list(
   tar_target(
     lmtp_baseline_covars,
     default_baseline_covars(dt_surv_wide)
+  ),
+  tar_target(
+    comparison_contract,
+    build_comparison_contract(dt_surv_wide)
   )
 )
 
@@ -66,7 +67,7 @@ analysis_lmtp_targets <- list(
       lmtp_surv_cols$outcome,
       lmtp_surv_cols$cens,
       lmtp_surv_cols$compete,
-      ilr_names,
+      comparison_contract$trt_cols,
       lmtp_baseline_covars,
       lmtp_learners_outcome,
       lmtp_learners_trt,
@@ -81,7 +82,7 @@ analysis_lmtp_targets <- list(
         lmtp_surv_cols$outcome,
         lmtp_surv_cols$cens,
         lmtp_surv_cols$compete,
-        ilr_names,
+        comparison_contract$trt_cols,
         lmtp_baseline_covars,
         comp_limits,
         lmtp_tmle_reference,
@@ -106,7 +107,10 @@ analysis_lmtp_targets <- list(
   ),
   tar_target(
     plot_lmtp_tmle_substitutions,
-    make_lmtp_substitution_plots(lmtp_tmle_substitutions)
+    make_lmtp_substitution_plots(
+      lmtp_tmle_substitutions,
+      ratio_threshold = comparison_contract$ratio_threshold
+    )
   ),
   tar_target(
     lmtp_tmle_substituted_plot_png,
@@ -210,7 +214,10 @@ analysis_bootstrap_targets <- list(
   ),
   tar_target(
     plot_boot_substitutions,
-    make_bootstrap_substitution_plots(boot_risk_overall)
+    make_bootstrap_substitution_plots(
+      boot_risk_overall,
+      ratio_threshold = comparison_contract$ratio_threshold
+    )
   ),
   tar_target(
     boot_substituted_plot_png,

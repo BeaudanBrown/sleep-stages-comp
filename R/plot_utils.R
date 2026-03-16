@@ -319,7 +319,7 @@ plot_lmtp_substitutions <- function(
 
 make_bootstrap_substitution_plots <- function(
   summary_dt,
-  ratio_threshold = 0.75
+  ratio_threshold = comparison_ratio_threshold()
 ) {
   scales <- compute_substitution_plot_scales(
     summary_dt = summary_dt,
@@ -342,7 +342,10 @@ make_bootstrap_substitution_plots <- function(
   ]
 }
 
-make_lmtp_substitution_plots <- function(summary_dt, ratio_threshold = 0.75) {
+make_lmtp_substitution_plots <- function(
+  summary_dt,
+  ratio_threshold = comparison_ratio_threshold()
+) {
   scales <- compute_substitution_plot_scales(
     summary_dt = summary_dt,
     ratio_threshold = ratio_threshold

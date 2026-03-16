@@ -58,8 +58,9 @@ provisional_confounder_main_effects <- function(dt) {
 }
 
 get_primary_formula <- function(dt) {
+  comparison_contract <- build_comparison_contract(dt)
   spline_vars <- c(
-    ilr_names,
+    comparison_contract$trt_cols,
     "timegroup",
     "n1",
     "n2",
@@ -70,15 +71,15 @@ get_primary_formula <- function(dt) {
   knots <- make_formula_knots(dt, spline_vars)
 
   terms <- c(
-    vapply(ilr_names, rcs_term, character(1)),
+    vapply(comparison_contract$trt_cols, rcs_term, character(1)),
     if ("timegroup" %in% names(dt)) rcs_term("timegroup"),
     vapply(
-      required_sleep_history_spline_covars(dt),
+      comparison_contract$sleep_history_spline_covars,
       rcs_term,
       character(1)
     ),
     intersect("s1_incomplete", names(dt)),
-    provisional_confounder_main_effects(dt)
+    comparison_contract$confounder_main_effects
   )
 
   # The sleep-history contract is fixed here. Broader confounder selection is
@@ -294,10 +295,7 @@ get_lmtp_surv_cols <- function(dt) {
 }
 
 default_baseline_covars <- function(dt) {
-  unique(c(
-    required_sleep_history_covars(dt),
-    provisional_confounder_main_effects(dt)
-  ))
+  build_comparison_contract(dt)$baseline_covars
 }
 
 predict_risks <- function(dt, models, timegroup_cuts) {
