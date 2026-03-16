@@ -110,3 +110,33 @@ make_test_lmtp_inputs <- function(n = 120L) {
     comp_limits = make_comp_limits(wide)
   )
 }
+
+make_test_raw_dataset <- function() {
+  data.table::data.table(
+    PID = 1:2,
+    IDTYPE = c(1L, 7L),
+    fram_death_status = c(0L, 0L),
+    shhs_alive_status = c(1L, 1L),
+    days_to_psg1 = c(100, 100),
+    days_psg1_to_psg2 = c(200, 200),
+    shhs_death_date = c(NA_real_, NA_real_),
+    shhs_cens_date = c(1200, 1200),
+    fram_death_date = c(NA_real_, NA_real_),
+    DEM_SURVDATE = c(900, 950),
+    DEM_STATUS = c(0L, 0L),
+    impairment_date_1 = c(NA_real_, NA_real_),
+    impairment_date_2 = c(NA_real_, NA_real_),
+    impairment_date_3 = c(NA_real_, NA_real_),
+    n1 = c(50, 60),
+    n2 = c(180, 170),
+    n3 = c(90, 80),
+    rem = c(80, 75),
+    slp_time = c(400, NA_real_),
+    n1_s2 = c(55, 65),
+    n2_s2 = c(175, 165),
+    n3_s2 = c(95, 85),
+    waso_s2 = c(25, 30),
+    rem_s2 = c(85, 80),
+    slp_time_s2 = c(410, 395)
+  )
+}

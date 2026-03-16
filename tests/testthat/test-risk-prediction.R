@@ -69,3 +69,29 @@ test_that("predict_risks returns bounded non-decreasing mean risks over time", {
   expect_true(all(diff(risks$timegroup) > 0))
   expect_true(all(diff(risks$risk) >= -1e-8))
 })
+
+test_that("prepare_dataset creates the LMTP sleep-history baseline terms", {
+  dt_raw <- make_test_raw_dataset()
+
+  prepared <- prepare_dataset(dt_raw)
+
+  expect_true(all(
+    c("n1", "n2", "n3", "rem", "slp_time_s2", "s1_incomplete") %in%
+      names(prepared)
+  ))
+  expect_equal(prepared$s1_incomplete, c(0L, 1L))
+})
+
+test_that("default_baseline_covars keeps the intended LMTP sleep-history covariates", {
+  dt_raw <- make_test_raw_dataset()
+  prepared <- prepare_dataset(dt_raw)
+  cuts <- make_cuts(prepared)
+  surv_dt <- expand_surv_dt(prepared, cuts)
+  wide <- make_surv_wide(surv_dt)
+
+  covars <- default_baseline_covars(wide)
+
+  expect_true(all(
+    c("n1", "n2", "n3", "rem", "slp_time_s2", "s1_incomplete") %in% covars
+  ))
+})
