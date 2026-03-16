@@ -15,9 +15,9 @@ This file is a compact technical roadmap. Live implementation status, blockers, 
 ## Active Technical Focus
 
 - Stabilize the targets-branched `lmtp_tmle_substitutions` path.
-- Remove remaining 4-part assumptions from simulation, tests, and supporting docs.
 - Finish the duration/formula contract needed for the 5-part exposure definition.
 - Keep the current locked formula contract narrow: SHHS-1 raw stage-minute splines, `slp_time_s2`, `s1_incomplete`, and additive-only broader confounder terms until the final confounder pass.
+- Keep the simulation, test, and spec layers aligned to the 5-part SHHS-2 exposure contract.
 - Verify the LMTP and simulation/test contracts after those fixes land.
 
 ## Remaining Roadmap

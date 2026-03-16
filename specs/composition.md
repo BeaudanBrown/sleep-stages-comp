@@ -32,6 +32,7 @@ Sleep stage times are **compositional data** - they represent parts of a constra
 ## Sequential Binary Partition (SBP)
 
 The current code uses the 5-part SBP stored in `R/constants.R`. While the broader pipeline is being tightened, this code-defined basis is the source of truth for the ILR coordinates.
+Legacy 4-part examples should be treated as obsolete and removed rather than left as alternate commented code paths.
 
 ### SBP Matrix
 

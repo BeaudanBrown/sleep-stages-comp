@@ -225,6 +225,8 @@ simulate_sleep_stages <- function(spec, dt_baseline) {
   n <- spec$n
   age_s1 <- dt_baseline$age_s1
 
+  # SHHS-1 stage composition excludes WASO; WASO is simulated separately.
+  # The active SHHS-2 exposure contract remains 5-part once waso_s2 is added.
   # SHHS-1: Dirichlet with age-adjusted concentration parameters
   # Older participants have less N3, more N1
   alpha_s1 <- matrix(0, nrow = n, ncol = 4)
@@ -240,7 +242,7 @@ simulate_sleep_stages <- function(spec, dt_baseline) {
     alpha_s1[i, "rem"] <- spec$alpha_s1["rem"] - age_dev[i] * 0.5 # slightly less REM
   }
 
-  # Generate SHHS-1 proportions from Dirichlet
+  # Generate SHHS-1 stage-only proportions from Dirichlet
   props_s1 <- matrix(0, nrow = n, ncol = 4)
   colnames(props_s1) <- c("n1", "n2", "n3", "rem")
   for (i in seq_len(n)) {
@@ -277,7 +279,8 @@ simulate_sleep_stages <- function(spec, dt_baseline) {
   )
   years_s1_to_s2 <- pmax(years_s1_to_s2, 2) # minimum 2 years
 
-  # Autocorrelated composition with S1
+  # Autocorrelated stage-only composition with S1; WASO is still added
+  # separately before the SHHS-2 ILRs are derived from the full 5-part set.
   # Use geometric mean approach: S2 = weighted combination of S1 and new draw
   props_s2 <- matrix(0, nrow = n, ncol = 4)
   colnames(props_s2) <- c("n1", "n2", "n3", "rem")

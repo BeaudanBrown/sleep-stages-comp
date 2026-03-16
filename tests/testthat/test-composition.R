@@ -10,6 +10,16 @@ test_that("make_ilrs returns named ILR coordinates with expected dimensions", {
   expect_true(all(vapply(ilrs, is.numeric, logical(1))))
 })
 
+test_that("composition constants stay on the 5-part SHHS-2 exposure contract", {
+  expect_equal(
+    comp_vars,
+    c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
+  )
+  expect_equal(stage_labels[["waso_s2"]], "WASO")
+  expect_equal(length(ilr_names), 4L)
+  expect_equal(dim(sbp), c(4L, 5L))
+})
+
 test_that("make_ilrs is deterministic for identical input", {
   dt <- make_test_comp_dt()
 

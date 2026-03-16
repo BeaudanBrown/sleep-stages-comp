@@ -23,7 +23,7 @@ sbp <- matrix(
     -1,
     1,
     1,
-    0, # R1: (N1, N2) vs (N3, REM)
+    0, # R1: (N1, N2) vs (N3, WASO)
     -1,
     0,
     0,
@@ -43,25 +43,5 @@ sbp <- matrix(
   ncol = 5,
   byrow = TRUE
 )
-
-# # Component order is fixed: (N1, N2, N3, REM)
-# sbp <- matrix(
-#   c(
-#     -1,
-#     -1,
-#     1,
-#     1,
-#     0,
-#     0,
-#     1,
-#     -1,
-#     1,
-#     -1,
-#     0,
-#     0
-#   ),
-#   ncol = 4,
-#   byrow = TRUE
-# )
 
 v <- compositions::gsi.buildilrBase(t(sbp))
