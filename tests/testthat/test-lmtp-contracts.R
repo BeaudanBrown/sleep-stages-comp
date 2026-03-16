@@ -85,7 +85,7 @@ test_that("run_lmtp_tmle_substitution returns a near-null risk ratio for a zero 
   expect_equal(out$mean_risk_ratio, 1, tolerance = 0.05)
 })
 
-test_that("run_lmtp_tmle_substitution reports the contrast estimate, not just the intervention mean", {
+test_that("run_lmtp_tmle_substitution reports the event-risk contrast, not the survival-scale ratio", {
   inputs <- make_test_lmtp_inputs()
   ref <- run_lmtp_tmle_reference(
     dt = inputs$wide,
@@ -135,10 +135,12 @@ test_that("run_lmtp_tmle_substitution reports the contrast estimate, not just th
     folds = 2
   )
 
-  contrast_est <- data.table::as.data.table(
+  shifted_event_risk <- 1 - fit$estimate
+  reference_event_risk <- 1 - ref$estimate
+  event_rr <- ife::tidy(shifted_event_risk / reference_event_risk)
+  survival_rr <- data.table::as.data.table(
     lmtp::lmtp_contrast(fit, ref = ref, type = "rr")$estimates
   )
-  intervention_mean <- data.table::as.data.table(generics::tidy(fit))$estimate
   expected <- summarize_lmtp_contrast(
     fit = fit,
     reference_fit = ref,
@@ -163,19 +165,24 @@ test_that("run_lmtp_tmle_substitution reports the contrast estimate, not just th
 
   expect_equal(
     expected$mean_risk_ratio,
-    contrast_est$estimate,
+    event_rr$estimate,
     tolerance = 1e-8
   )
   expect_equal(
     expected$mean_risk_substituted,
-    contrast_est$shift,
+    ife::tidy(shifted_event_risk)$estimate,
     tolerance = 1e-8
   )
   expect_false(isTRUE(all.equal(
     expected$mean_risk_ratio,
-    intervention_mean,
+    survival_rr$estimate,
     tolerance = 1e-8
   )))
+  expect_equal(
+    expected$mean_risk_reference,
+    ife::tidy(reference_event_risk)$estimate,
+    tolerance = 1e-8
+  )
   expect_true(all(
     c("mean_risk_substituted", "mean_risk_reference", "mean_risk_ratio") %in%
       names(out)

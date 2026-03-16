@@ -49,36 +49,52 @@ build_lmtp_shifted_data <- function(dt, trt_cols, cens_cols, shifted_trt_dt) {
   shifted_final
 }
 
+tidy_ife_estimate <- function(estimate) {
+  out <- data.table::as.data.table(ife::tidy(estimate))
+  out[, p.value := pnorm(abs(estimate) / std.error, lower.tail = FALSE) * 2]
+  out
+}
+
+summarize_lmtp_event_risk_contrast <- function(
+  fit,
+  reference_fit,
+  substitution,
+  ratio_substituted
+) {
+  shifted_event_risk <- 1 - fit$estimate
+  reference_event_risk <- 1 - reference_fit$estimate
+  event_risk_ratio <- shifted_event_risk / reference_event_risk
+
+  shifted_dt <- tidy_ife_estimate(shifted_event_risk)
+  reference_dt <- tidy_ife_estimate(reference_event_risk)
+  ratio_dt <- tidy_ife_estimate(event_risk_ratio)
+
+  data.table::data.table(
+    from = substitution$from,
+    to = substitution$to,
+    duration = substitution$duration,
+    ratio_substituted = ratio_substituted,
+    mean_risk_substituted = shifted_dt$estimate,
+    mean_risk_reference = reference_dt$estimate,
+    mean_risk_ratio = ratio_dt$estimate,
+    std.error = ratio_dt$std.error,
+    lower_ci = ratio_dt$conf.low,
+    upper_ci = ratio_dt$conf.high,
+    p.value = ratio_dt$p.value
+  )
+}
+
 summarize_lmtp_contrast <- function(
   fit,
   reference_fit,
   substitution,
   ratio_substituted
 ) {
-  contrast_dt <- data.table::as.data.table(
-    lmtp::lmtp_contrast(fit, ref = reference_fit, type = "rr")$estimates
-  )
-  data.table::setnames(
-    contrast_dt,
-    old = c("shift", "ref", "estimate", "conf.low", "conf.high"),
-    new = c(
-      "mean_risk_substituted",
-      "mean_risk_reference",
-      "mean_risk_ratio",
-      "lower_ci",
-      "upper_ci"
-    ),
-    skip_absent = TRUE
-  )
-
-  cbind(
-    data.table::data.table(
-      from = substitution$from,
-      to = substitution$to,
-      duration = substitution$duration,
-      ratio_substituted = ratio_substituted
-    ),
-    contrast_dt
+  summarize_lmtp_event_risk_contrast(
+    fit = fit,
+    reference_fit = reference_fit,
+    substitution = substitution,
+    ratio_substituted = ratio_substituted
   )
 }
 
