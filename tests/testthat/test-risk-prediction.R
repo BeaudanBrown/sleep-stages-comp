@@ -18,6 +18,10 @@ test_that("get_primary_formula includes the current sleep-history contract terms
     )
   }
   expect_match(formula_txt, "\\bs1_incomplete\\b", perl = TRUE)
+  expect_false(grepl("rcs\\(s1_incomplete,", formula_txt, perl = TRUE))
+  expect_match(formula_txt, "\\bage_s1\\b", perl = TRUE)
+  expect_match(formula_txt, "\\bgender\\b", perl = TRUE)
+  expect_match(formula_txt, "\\bhypertension\\b", perl = TRUE)
 
   env_names <- ls(environment(formula_obj))
   for (name in c(
@@ -94,4 +98,22 @@ test_that("default_baseline_covars keeps the intended LMTP sleep-history covaria
   expect_true(all(
     c("n1", "n2", "n3", "rem", "slp_time_s2", "s1_incomplete") %in% covars
   ))
+  expect_true(all(c("age_s1", "gender", "hypertension") %in% covars))
+})
+
+test_that("required sleep-history helpers separate spline and indicator terms", {
+  dt_raw <- make_test_raw_dataset()
+  prepared <- prepare_dataset(dt_raw)
+  cuts <- make_cuts(prepared)
+  surv_dt <- expand_surv_dt(prepared, cuts)
+  wide <- make_surv_wide(surv_dt)
+
+  expect_equal(
+    required_sleep_history_spline_covars(wide),
+    c("n1", "n2", "n3", "rem", "slp_time_s2")
+  )
+  expect_equal(
+    required_sleep_history_covars(wide),
+    c("n1", "n2", "n3", "rem", "slp_time_s2", "s1_incomplete")
+  )
 })

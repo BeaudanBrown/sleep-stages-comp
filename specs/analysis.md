@@ -39,6 +39,7 @@ This means the LMTP path must estimate:
 - The intended exposure composition is the 5-part SHHS-2 set `(N1, N2, N3, WASO, REM)`, so substitution grids and density checks should use 4 ILR coordinates.
 - SHHS-1 `slp_time` should not be adjusted for when SHHS-1 stage components are already included.
 - SHHS-2 `slp_time_s2` should be adjusted for explicitly because the ILR coordinates encode composition, not duration.
+- The current contract keeps `s1_incomplete` as a separate indicator and treats the broader non-sleep confounder set as additive-only until the final confounder sweep is done.
 - The `lmtp` package expects the only differences between `data` and `shifted` to be the treatment and censoring columns; when censoring is supplied, the shifted censoring columns should be all `1`.
 - The current plotting code still reuses the bootstrap plotting helper and should be treated as provisional until the LMTP outputs are stabilized.
 - Simplifying the default learners away from `SL.glmnet` improved the direct LMTP substitution path materially.
@@ -124,6 +125,7 @@ For the intended dementia/MCI analysis:
 
 - **SHHS-1:** adjust for the component minutes (`n1`, `n2`, `n3`, `rem`) and do **not** also adjust for `slp_time`, since it is already determined by the components.
 - **SHHS-2:** adjust for `slp_time_s2` separately, because the SHHS-2 ILR coordinates encode the sleep-stage composition but not the total sleep duration.
+- **Missing SHHS-1 whole:** encode incomplete SHHS-1 stage history with `s1_incomplete` as a separate main-effect indicator rather than trying to spline a missing `slp_time`.
 
 ### Substitution Grid
 

@@ -22,6 +22,41 @@ rcs_term <- function(var) {
   paste0("rcs(", var, ", knots_", var, ")")
 }
 
+required_sleep_history_covars <- function(dt) {
+  intersect(
+    c("n1", "n2", "n3", "rem", "slp_time_s2", "s1_incomplete"),
+    names(dt)
+  )
+}
+
+required_sleep_history_spline_covars <- function(dt) {
+  intersect(c("n1", "n2", "n3", "rem", "slp_time_s2"), names(dt))
+}
+
+provisional_confounder_main_effects <- function(dt) {
+  intersect(
+    c(
+      "age_s1",
+      "bmi_s1",
+      "gender",
+      "educat",
+      "IDTYPE",
+      "waist_circumference",
+      "hypertension",
+      "diabetes",
+      "cvd_status",
+      "smoking_status",
+      "alcohol_use",
+      "physical_activity",
+      "apoe_e4",
+      "sedative_use",
+      "sleeping_pill_use",
+      "antidepressant_use"
+    ),
+    names(dt)
+  )
+}
+
 get_primary_formula <- function(dt) {
   spline_vars <- c(
     ilr_names,
@@ -38,15 +73,16 @@ get_primary_formula <- function(dt) {
     vapply(ilr_names, rcs_term, character(1)),
     if ("timegroup" %in% names(dt)) rcs_term("timegroup"),
     vapply(
-      intersect(c("n1", "n2", "n3", "rem", "slp_time_s2"), names(dt)),
+      required_sleep_history_spline_covars(dt),
       rcs_term,
       character(1)
     ),
-    intersect("s1_incomplete", names(dt))
+    intersect("s1_incomplete", names(dt)),
+    provisional_confounder_main_effects(dt)
   )
 
-  # TODO: add the finalized confounder main effects and reduced interaction
-  # structure once the spec-level variable set is locked down.
+  # The sleep-history contract is fixed here. Broader confounder selection is
+  # still provisional and limited to additive main effects until finalized.
   primary_formula <- as.formula(paste("~", paste(terms, collapse = " + ")))
   environment(primary_formula) <- list2env(knots, parent = parent.frame())
 
@@ -258,32 +294,10 @@ get_lmtp_surv_cols <- function(dt) {
 }
 
 default_baseline_covars <- function(dt) {
-  candidates <- c(
-    "age_s1",
-    "bmi_s1",
-    "gender",
-    "educat",
-    "IDTYPE",
-    "n1",
-    "n2",
-    "n3",
-    "rem",
-    "slp_time_s2",
-    "s1_incomplete",
-    "waist_circumference",
-    "hypertension",
-    "diabetes",
-    "cvd_status",
-    "smoking_status",
-    "alcohol_use",
-    "physical_activity",
-    "apoe_e4",
-    "sedative_use",
-    "sleeping_pill_use",
-    "antidepressant_use"
-  )
-
-  intersect(candidates, names(dt))
+  unique(c(
+    required_sleep_history_covars(dt),
+    provisional_confounder_main_effects(dt)
+  ))
 }
 
 predict_risks <- function(dt, models, timegroup_cuts) {

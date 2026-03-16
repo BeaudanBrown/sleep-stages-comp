@@ -30,7 +30,9 @@ The primary analysis uses a **reduced interaction** specification to avoid overf
 1. **ILR coordinates** (R1, R2, R3, R4) with restricted cubic splines (RCS)
 2. **Time** (`timegroup`) with RCS, interacted with ILR RCS terms (non-proportional hazards)
 3. **Age** (`age_s1`) with RCS, interacted with ILR RCS terms (effect modification by age)
-4. **Full confounder set** as *main effects* (see `specs/data.md`)
+4. **Core baseline/main-effect contract**:
+   - the current implementation locks in the sleep-history terms and a provisional additive confounder set
+   - the final full confounder set is still subject to a later cleanup pass
 5. **SHHS-1 sleep adjustment** as *main effects* (raw minutes, RCS)
 6. **SHHS-2 total sleep time** as a separate covariate (RCS)
 
@@ -56,15 +58,15 @@ primary_formula <- ~
   rcs(R3, knots_R3) * rcs(age_s1, knots_age) +
   rcs(R4, knots_R4) * rcs(age_s1, knots_age) +
 
-  # Main effects: required confounders (exact variable list in specs/data.md)
+  # Provisional additive confounder main effects
   IDTYPE +
   educat +
   gender +
-  ethnicity +
   apoe_e4 +
   rcs(bmi_s1, knots_bmi) +
   hypertension +
   diabetes +
+  cvd_status +
   smoking_status +
   alcohol_use +
   physical_activity +
@@ -87,7 +89,8 @@ primary_formula <- ~
 Notes:
 - `R1`, `R2`, `R3`, `R4` are ILR coordinates derived from the **SHHS-2** 5-part composition `(N1, N2, N3, WASO, REM)`.
 - Coordinate-specific interpretation follows the current SBP matrix in `R/constants.R`.
-- The confounder variable names above are placeholders until the definitive names are confirmed.
+- The sleep-history contract is already implemented in `R/survival_utils.R`: `n1`, `n2`, `n3`, `rem` enter as spline-adjusted SHHS-1 raw minutes, `slp_time_s2` enters separately as the SHHS-2 duration covariate, and `s1_incomplete` enters as an indicator main effect.
+- The broader confounder list above is the current additive implementation contract, not the final scientific lock-down. Do not add reduced interactions beyond the current LMTP/pooled core until that later confounder pass is complete.
 
 ### Knot Placement
 

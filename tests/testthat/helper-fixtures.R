@@ -54,6 +54,10 @@ make_test_model_dt <- function(n = 120L) {
   dt <- data.table::data.table(
     PID = seq_len(n),
     age_s1 = runif(n, 45, 85),
+    bmi_s1 = runif(n, 20, 38),
+    gender = sample(c(0L, 1L), n, replace = TRUE),
+    educat = sample(8:20, n, replace = TRUE),
+    IDTYPE = sample(c(1L, 2L, 7L), n, replace = TRUE),
     n1_s2 = n1_s2,
     n2_s2 = n2_s2,
     n3_s2 = n3_s2,
@@ -64,7 +68,18 @@ make_test_model_dt <- function(n = 120L) {
     n3 = runif(n, 30, 120),
     rem = runif(n, 45, 120),
     s1_incomplete = sample(c(0L, 1L), n, replace = TRUE),
-    slp_time_s2 = n1_s2 + n2_s2 + n3_s2 + rem_s2
+    slp_time_s2 = n1_s2 + n2_s2 + n3_s2 + rem_s2,
+    waist_circumference = runif(n, 70, 130),
+    hypertension = sample(c(0L, 1L), n, replace = TRUE),
+    diabetes = sample(c(0L, 1L), n, replace = TRUE),
+    cvd_status = sample(c(0L, 1L), n, replace = TRUE),
+    smoking_status = sample(c(0L, 1L, 2L), n, replace = TRUE),
+    alcohol_use = sample(c(0L, 1L), n, replace = TRUE),
+    physical_activity = runif(n, 0, 10),
+    apoe_e4 = sample(c(0L, 1L), n, replace = TRUE),
+    sedative_use = sample(c(0L, 1L), n, replace = TRUE),
+    sleeping_pill_use = sample(c(0L, 1L), n, replace = TRUE),
+    antidepressant_use = sample(c(0L, 1L), n, replace = TRUE)
   )
 
   ilrs <- make_ilrs(dt)
@@ -127,6 +142,10 @@ make_test_raw_dataset <- function() {
     impairment_date_1 = c(NA_real_, NA_real_),
     impairment_date_2 = c(NA_real_, NA_real_),
     impairment_date_3 = c(NA_real_, NA_real_),
+    age_s1 = c(64, 71),
+    bmi_s1 = c(24.5, 28.2),
+    gender = c(0L, 1L),
+    educat = c(12L, 16L),
     n1 = c(50, 60),
     n2 = c(180, 170),
     n3 = c(90, 80),
@@ -137,6 +156,17 @@ make_test_raw_dataset <- function() {
     n3_s2 = c(95, 85),
     waso_s2 = c(25, 30),
     rem_s2 = c(85, 80),
-    slp_time_s2 = c(410, 395)
+    slp_time_s2 = c(410, 395),
+    waist_circumference = c(88, 102),
+    hypertension = c(0L, 1L),
+    diabetes = c(0L, 0L),
+    cvd_status = c(0L, 1L),
+    smoking_status = c(0L, 2L),
+    alcohol_use = c(1L, 0L),
+    physical_activity = c(4.5, 2.0),
+    apoe_e4 = c(0L, 1L),
+    sedative_use = c(0L, 0L),
+    sleeping_pill_use = c(0L, 1L),
+    antidepressant_use = c(0L, 1L)
   )
 }
