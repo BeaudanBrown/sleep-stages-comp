@@ -105,3 +105,37 @@ test_that("comparison summary and debug extraction prioritize reversals", {
   expect_equal(nrow(debug_dt), 2L)
   expect_true(debug_dt[1, direction_reversed])
 })
+
+test_that("scale probe distinguishes pooled event and survival ratios", {
+  pooled_substituted_risk <- data.table::data.table(
+    from = c("n1_s2", "n1_s2"),
+    to = c("n2_s2", "n2_s2"),
+    duration = c(-30, 15),
+    timegroup = c(2, 2),
+    mean_risk_baseline = c(0.10, 0.10),
+    mean_risk_substituted = c(0.15, 0.08)
+  )
+  lmtp_summary <- data.table::data.table(
+    from = c("n1_s2", "n1_s2"),
+    to = c("n2_s2", "n2_s2"),
+    duration = c(-30, 15),
+    mean_risk_substituted = c(0.85, 0.92),
+    mean_risk_reference = c(0.90, 0.90),
+    mean_risk_ratio = c(0.94, 1.02)
+  )
+
+  probe <- build_pooled_scale_probe(pooled_substituted_risk, lmtp_summary)
+  summary_dt <- summarize_scale_probe(probe)
+
+  expect_equal(nrow(probe), 2L)
+  expect_equal(probe$pooled_event_rr, c(1.5, 0.8))
+  expect_equal(
+    probe$pooled_survival_rr,
+    c((1 - 0.15) / (1 - 0.10), (1 - 0.08) / (1 - 0.10))
+  )
+  expect_equal(summary_dt$pooled_event_dir_match, 0L)
+  expect_equal(summary_dt$pooled_survival_dir_match, 2L)
+  expect_true(
+    summary_dt$mean_abs_survival_rr_gap < summary_dt$mean_abs_event_rr_gap
+  )
+})

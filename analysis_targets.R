@@ -252,6 +252,17 @@ analysis_comparison_targets <- list(
   tar_target(
     pooled_vs_lmtp_debug_rows,
     extract_comparison_debug_rows(pooled_vs_lmtp_comparison)
+  ),
+  tar_target(
+    pooled_vs_lmtp_scale_probe,
+    build_pooled_scale_probe(
+      pooled_substituted_risk = pooled_substituted_risk,
+      lmtp_summary = lmtp_tmle_substitutions
+    )
+  ),
+  tar_target(
+    pooled_vs_lmtp_scale_probe_summary,
+    summarize_scale_probe(pooled_vs_lmtp_scale_probe)
   )
 )
 

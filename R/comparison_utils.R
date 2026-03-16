@@ -175,3 +175,76 @@ extract_comparison_debug_rows <- function(comparison_dt, n = 12L) {
 
   utils::head(dt, n)
 }
+
+build_pooled_scale_probe <- function(pooled_substituted_risk, lmtp_summary) {
+  pooled_dt <- data.table::as.data.table(pooled_substituted_risk)[,
+    .SD[which.max(timegroup)],
+    by = .(from, to, duration)
+  ]
+  lmtp_dt <- data.table::as.data.table(lmtp_summary)
+
+  pooled_dt[, pooled_event_rr := mean_risk_substituted / mean_risk_baseline]
+  pooled_dt[,
+    pooled_survival_rr := (1 - mean_risk_substituted) / (1 - mean_risk_baseline)
+  ]
+
+  probe <- merge(
+    pooled_dt[, .(
+      from,
+      to,
+      duration,
+      pooled_mean_risk_baseline = mean_risk_baseline,
+      pooled_mean_risk_substituted = mean_risk_substituted,
+      pooled_event_rr,
+      pooled_survival_rr
+    )],
+    lmtp_dt[, .(
+      from,
+      to,
+      duration,
+      lmtp_mean_risk_substituted = mean_risk_substituted,
+      lmtp_mean_risk_reference = mean_risk_reference,
+      lmtp_mean_risk_ratio = mean_risk_ratio
+    )],
+    by = c("from", "to", "duration"),
+    all = FALSE,
+    sort = FALSE
+  )
+
+  probe[,
+    pooled_event_dir_match := (comparison_direction(pooled_event_rr) ==
+      comparison_direction(lmtp_mean_risk_ratio))
+  ]
+  probe[,
+    pooled_survival_dir_match := (comparison_direction(pooled_survival_rr) ==
+      comparison_direction(lmtp_mean_risk_ratio))
+  ]
+  probe[, abs_event_rr_gap := abs(pooled_event_rr - lmtp_mean_risk_ratio)]
+  probe[, abs_survival_rr_gap := abs(pooled_survival_rr - lmtp_mean_risk_ratio)]
+
+  data.table::setorderv(
+    probe,
+    c("abs_event_rr_gap"),
+    order = c(-1L)
+  )
+
+  probe[]
+}
+
+summarize_scale_probe <- function(scale_probe_dt) {
+  dt <- data.table::as.data.table(scale_probe_dt)
+
+  data.table::data.table(
+    n_rows = nrow(dt),
+    pooled_event_dir_match = sum(
+      dt$pooled_event_dir_match %in% TRUE,
+      na.rm = TRUE
+    ),
+    pooled_survival_dir_match = sum(
+      dt$pooled_survival_dir_match %in% TRUE,
+      na.rm = TRUE
+    ),
+    mean_abs_event_rr_gap = mean(dt$abs_event_rr_gap, na.rm = TRUE),
+    mean_abs_survival_rr_gap = mean(dt$abs_survival_rr_gap, na.rm = TRUE)
+  )
+}
