@@ -1,3 +1,47 @@
+make_imputation_methods <- function(imp_dt) {
+  meth <- mice::make.method(imp_dt)
+  meth[] <- ""
+
+  if ("educat" %in% names(meth)) {
+    meth["educat"] <- "pmm"
+  }
+
+  meth
+}
+
+make_imputation_predictor_matrix <- function(imp_dt) {
+  pred <- mice::make.predictorMatrix(imp_dt)
+  pred[,] <- 0
+
+  educat_predictors <- intersect(
+    c(
+      "age_s1",
+      "bmi_s1",
+      "gender",
+      "n1",
+      "n2",
+      "n3",
+      "rem",
+      "waso",
+      "n1_s2",
+      "n2_s2",
+      "n3_s2",
+      "rem_s2",
+      "waso_s2",
+      "dem_or_mci_surv_date",
+      "log_dem_time"
+    ),
+    colnames(pred)
+  )
+
+  if ("educat" %in% rownames(pred)) {
+    pred["educat", educat_predictors] <- 1
+    pred["educat", "educat"] <- 0
+  }
+
+  pred
+}
+
 impute_data <- function(dt, m = 1, maxit = 5) {
   base_covars <- c("age_s1", "bmi_s1", "gender", "educat", "IDTYPE")
   base_covars <- intersect(base_covars, names(dt))
@@ -31,37 +75,8 @@ impute_data <- function(dt, m = 1, maxit = 5) {
   imp_dt <- dt[, ..imp_cols]
   imp_dt[, log_dem_time := log(dem_or_mci_surv_date)]
 
-  init <- mice::mice(imp_dt, maxit = 0, printFlag = FALSE)
-
-  meth <- init$meth
-  meth[c("educat")] <- "pmm"
-
-  meth[c(
-    "dem_or_mci_status",
-    "dem_or_mci_surv_date",
-    "death_status",
-    "death_date",
-    "log_dem_time",
-    "PID"
-  )] <- ""
-
-  pred <- init$pred
-
-  pred[, c(
-    "PID",
-    "death_date"
-  )] <- 0
-
-  pred[
-    c(
-      "PID",
-      "dem_or_mci_status",
-      "dem_or_mci_surv_date",
-      "death_status",
-      "death_date",
-      "log_dem_time"
-    ),
-  ] <- 0
+  meth <- make_imputation_methods(imp_dt)
+  pred <- make_imputation_predictor_matrix(imp_dt)
 
   # Only run mice when at least one configured target still has missingness.
   active_targets <- names(meth)[meth != ""]

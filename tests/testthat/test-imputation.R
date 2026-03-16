@@ -11,6 +11,48 @@ test_that("prepare_dataset recovers missing slp_time from observed S1 stage read
   )
 })
 
+test_that("imputation spec limits educat predictors to the curated set", {
+  dt_raw <- make_test_raw_dataset()
+  prepared <- prepare_dataset(dt_raw)
+
+  imp_cols <- intersect(
+    c(
+      "PID",
+      "age_s1",
+      "bmi_s1",
+      "gender",
+      "educat",
+      "IDTYPE",
+      "n1",
+      "n2",
+      "n3",
+      "rem",
+      "n1_s2",
+      "n2_s2",
+      "n3_s2",
+      "rem_s2",
+      "waso_s2",
+      "slp_time_s2",
+      "dem_or_mci_surv_date",
+      "death_status",
+      "death_date"
+    ),
+    names(prepared)
+  )
+  imp_dt <- prepared[, ..imp_cols]
+  imp_dt[, log_dem_time := log(dem_or_mci_surv_date)]
+
+  meth <- make_imputation_methods(imp_dt)
+  pred <- make_imputation_predictor_matrix(imp_dt)
+
+  expect_equal(unname(meth["educat"]), "pmm")
+  expect_true(all(meth[setdiff(names(meth), "educat")] == ""))
+  expect_false("IDTYPE" %in% names(which(pred["educat", ] == 1)))
+  expect_false("slp_time" %in% names(which(pred["educat", ] == 1)))
+  expect_false("slp_time_s2" %in% names(which(pred["educat", ] == 1)))
+  expect_false("dem_or_mci_status" %in% names(which(pred["educat", ] == 1)))
+})
+
 test_that("impute_data preserves recorded S1 stage reads for incomplete rows", {
   dt_raw <- make_test_raw_dataset()
   dt_raw <- data.table::rbindlist(
