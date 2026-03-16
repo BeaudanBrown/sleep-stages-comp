@@ -138,6 +138,51 @@ test_that("summarize_substitution_coverage returns consistent counts and ratios"
   expect_equal(coverage$ratio_substituted, 0.75)
 })
 
+test_that("summarize_point_estimate_substitutions keeps final-time pooled estimates", {
+  dt <- data.table::data.table(
+    timegroup = c(1, 2),
+    from = c("n2_s2", "n2_s2"),
+    to = c("n3_s2", "n3_s2"),
+    duration = c(15, 15),
+    mean_risk_baseline = c(0.1, 0.2),
+    mean_risk_substituted = c(0.11, 0.18),
+    n_intervened = c(3, 3),
+    n_total = c(4, 4)
+  )
+
+  summary_dt <- summarize_point_estimate_substitutions(dt)
+
+  expect_equal(nrow(summary_dt), 1L)
+  expect_equal(summary_dt$mean_risk_ratio, 0.18 / 0.2)
+  expect_equal(summary_dt$ratio_substituted, 0.75)
+})
+
+test_that("combine_point_estimates_with_bootstrap_cis keeps pooled line and bootstrap interval", {
+  point_dt <- data.table::data.table(
+    from = "n2_s2",
+    to = "n3_s2",
+    duration = 15,
+    mean_risk_ratio = 0.9,
+    ratio_substituted = 0.8
+  )
+  boot_dt <- data.table::data.table(
+    from = "n2_s2",
+    to = "n3_s2",
+    duration = 15,
+    bootstrap_mean_risk_ratio = 0.92,
+    lower_ci = 0.85,
+    upper_ci = 1.01,
+    bootstrap_ratio_substituted = 0.79
+  )
+
+  combined <- combine_point_estimates_with_bootstrap_cis(point_dt, boot_dt)
+
+  expect_equal(combined$mean_risk_ratio, 0.9)
+  expect_equal(combined$ratio_substituted, 0.8)
+  expect_equal(combined$lower_ci, 0.85)
+  expect_equal(combined$upper_ci, 1.01)
+})
+
 test_that("make_lmtp_shift handles negative durations consistently with apply_substitution", {
   dt <- make_test_comp_dt()
   limits <- make_test_comp_limits()

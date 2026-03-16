@@ -15,18 +15,18 @@ bootstrap_resample <- function(dt, seed) {
   boot_dt
 }
 
-run_bootstrap_rep <- function(dt, substitutions, seed) {
-  boot_dt <- bootstrap_resample(dt, seed)
-
-  timegroup_cuts <- make_cuts(boot_dt)
-  fitted_models <- fit_models(boot_dt, timegroup_cuts)
-  comp_limits <- make_comp_limits(boot_dt)
-  baseline_risk <- predict_risks(boot_dt, fitted_models, timegroup_cuts)
-
+compute_substitution_risk_table <- function(
+  dt,
+  substitutions,
+  comp_limits,
+  fitted_models,
+  timegroup_cuts,
+  baseline_risk
+) {
   res_list <- lapply(seq_len(nrow(substitutions)), function(i) {
     row <- substitutions[i]
     compute_substituted_risk(
-      boot_dt,
+      dt,
       row$from,
       row$to,
       row$duration,
@@ -40,18 +40,99 @@ run_bootstrap_rep <- function(dt, substitutions, seed) {
   data.table::rbindlist(res_list)
 }
 
-summarize_bootstrap_substitutions <- function(boot_substituted_risk) {
-  dt <- copy(boot_substituted_risk)
+summarize_substituted_risk_final_time <- function(dt, by_cols = NULL) {
+  dt <- data.table::copy(dt)
   dt[, risk_ratio := mean_risk_substituted / mean_risk_baseline]
+  dt[, ratio_substituted := n_intervened / n_total]
 
-  dt[, max_timegroup := max(timegroup), by = bootstrap_seed]
+  group_cols <- unique(c(by_cols, "from", "to", "duration"))
+  dt[, max_timegroup := max(timegroup), by = by_cols]
   dt <- dt[timegroup == max_timegroup]
+
+  dt[, c("max_timegroup") := NULL]
+
+  dt[,
+    .(risk_ratio, ratio_substituted),
+    by = group_cols
+  ]
+}
+
+summarize_point_estimate_substitutions <- function(substituted_risk) {
+  summarize_substituted_risk_final_time(substituted_risk)[,
+    .(
+      mean_risk_ratio = risk_ratio,
+      ratio_substituted = ratio_substituted
+    ),
+    by = .(from, to, duration)
+  ]
+}
+
+summarize_bootstrap_substitution_intervals <- function(boot_substituted_risk) {
+  dt <- summarize_substituted_risk_final_time(
+    boot_substituted_risk,
+    by_cols = "bootstrap_seed"
+  )
 
   dt[,
     .(
-      risk_ratio_mean = mean(risk_ratio),
-      risk_ratio_lo = quantile(risk_ratio, 0.025),
-      risk_ratio_hi = quantile(risk_ratio, 0.975)
+      bootstrap_mean_risk_ratio = mean(risk_ratio),
+      lower_ci = quantile(risk_ratio, 0.025),
+      upper_ci = quantile(risk_ratio, 0.975),
+      bootstrap_ratio_substituted = mean(ratio_substituted)
+    ),
+    by = .(from, to, duration)
+  ]
+}
+
+combine_point_estimates_with_bootstrap_cis <- function(
+  point_estimates,
+  bootstrap_summary
+) {
+  merged <- merge(
+    data.table::as.data.table(point_estimates),
+    data.table::as.data.table(bootstrap_summary),
+    by = c("from", "to", "duration"),
+    all.x = TRUE,
+    sort = FALSE
+  )
+
+  merged[, .(
+    from,
+    to,
+    duration,
+    mean_risk_ratio,
+    lower_ci,
+    upper_ci,
+    ratio_substituted,
+    bootstrap_mean_risk_ratio,
+    bootstrap_ratio_substituted
+  )]
+}
+
+run_bootstrap_rep <- function(dt, substitutions, seed) {
+  boot_dt <- bootstrap_resample(dt, seed)
+
+  timegroup_cuts <- make_cuts(boot_dt)
+  fitted_models <- fit_models(boot_dt, timegroup_cuts)
+  comp_limits <- make_comp_limits(boot_dt)
+  baseline_risk <- predict_risks(boot_dt, fitted_models, timegroup_cuts)
+
+  compute_substitution_risk_table(
+    dt = boot_dt,
+    substitutions = substitutions,
+    comp_limits = comp_limits,
+    fitted_models = fitted_models,
+    timegroup_cuts = timegroup_cuts,
+    baseline_risk = baseline_risk
+  )
+}
+
+summarize_bootstrap_substitutions <- function(boot_substituted_risk) {
+  summarize_bootstrap_substitution_intervals(boot_substituted_risk)[,
+    .(
+      risk_ratio_mean = bootstrap_mean_risk_ratio,
+      risk_ratio_lo = lower_ci,
+      risk_ratio_hi = upper_ci
     ),
     by = .(from, to, duration)
   ]

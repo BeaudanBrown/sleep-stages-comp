@@ -124,6 +124,29 @@ analysis_lmtp_targets <- list(
 
 analysis_bootstrap_targets <- list(
   tar_target(
+    pooled_fitted_models,
+    fit_models(imp, timegroup_cuts)
+  ),
+  tar_target(
+    pooled_baseline_risk,
+    predict_risks(imp, pooled_fitted_models, timegroup_cuts)
+  ),
+  tar_target(
+    pooled_substituted_risk,
+    compute_substitution_risk_table(
+      dt = imp,
+      substitutions = substitutions,
+      comp_limits = comp_limits,
+      fitted_models = pooled_fitted_models,
+      timegroup_cuts = timegroup_cuts,
+      baseline_risk = pooled_baseline_risk
+    )
+  ),
+  tar_target(
+    pooled_risk_overall,
+    summarize_point_estimate_substitutions(pooled_substituted_risk)
+  ),
+  tar_target(
     bootstrap_seeds,
     {
       set.seed(tar_seed())
@@ -158,20 +181,14 @@ analysis_bootstrap_targets <- list(
   tar_target(
     boot_substituted_risk,
     {
-      res_list <- lapply(seq_len(nrow(substitutions)), function(i) {
-        row <- substitutions[i]
-        compute_substituted_risk(
-          boot_dt,
-          row$from,
-          row$to,
-          row$duration,
-          boot_comp_limits,
-          boot_fitted_models,
-          boot_timegroup_cuts,
-          boot_baseline_risk
-        )
-      })
-      out <- data.table::rbindlist(res_list)
+      out <- compute_substitution_risk_table(
+        dt = boot_dt,
+        substitutions = substitutions,
+        comp_limits = boot_comp_limits,
+        fitted_models = boot_fitted_models,
+        timegroup_cuts = boot_timegroup_cuts,
+        baseline_risk = boot_baseline_risk
+      )
       out[, bootstrap_seed := bootstrap_seeds]
       out
     },
@@ -186,31 +203,21 @@ analysis_bootstrap_targets <- list(
   ),
   tar_target(
     boot_risk_summary,
-    {
-      dt <- data.table::copy(boot_substituted_risk)
-      dt[, risk_ratio := mean_risk_substituted / mean_risk_baseline]
-      dt[, ratio_substituted := n_intervened / n_total]
-
-      dt[, max_timegroup := max(timegroup), by = bootstrap_seed]
-      dt <- dt[timegroup == max_timegroup]
-
-      dt[,
-        .(risk_ratio, ratio_substituted),
-        by = .(bootstrap_seed, from, to, duration)
-      ]
-    }
+    summarize_substituted_risk_final_time(
+      boot_substituted_risk,
+      by_cols = "bootstrap_seed"
+    )
+  ),
+  tar_target(
+    boot_risk_intervals,
+    summarize_bootstrap_substitution_intervals(boot_substituted_risk)
   ),
   tar_target(
     boot_risk_overall,
-    boot_risk_summary[,
-      .(
-        mean_risk_ratio = mean(risk_ratio),
-        lower_ci = quantile(risk_ratio, 0.025),
-        upper_ci = quantile(risk_ratio, 0.975),
-        ratio_substituted = mean(ratio_substituted)
-      ),
-      by = .(from, to, duration)
-    ]
+    combine_point_estimates_with_bootstrap_cis(
+      point_estimates = pooled_risk_overall,
+      bootstrap_summary = boot_risk_intervals
+    )
   ),
   tar_target(
     plot_boot_substitutions,
