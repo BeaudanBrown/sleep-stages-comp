@@ -179,7 +179,9 @@ run_lmtp_tmle_substitution <- function(
         fit = fit,
         reference_fit = reference_fit,
         substitution = substitution,
-        ratio_substituted = mean(shifted_dt$substituted)
+        ratio_substituted = summarize_substitution_coverage(
+          shifted_dt
+        )$ratio_substituted
       )
     },
     error = function(e) {

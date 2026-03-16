@@ -33,46 +33,69 @@ compute_substitution_mask <- function(dt, from, to, duration, comp_limits) {
   (max_from_change >= abs_dur) & (max_to_change >= abs_dur)
 }
 
+compute_shifted_exposures <- function(dt, from, to, duration, comp_limits) {
+  dt <- as.data.table(dt)
+  can_substitute <- compute_substitution_mask(
+    dt = dt,
+    from = from,
+    to = to,
+    duration = duration,
+    comp_limits = comp_limits
+  )
+
+  shifted_dt <- copy(dt)
+  shifted_dt[[from]] <- shifted_dt[[from]] - (can_substitute * duration)
+  shifted_dt[[to]] <- shifted_dt[[to]] + (can_substitute * duration)
+  shifted_dt[["substituted"]] <- can_substitute
+
+  ilr_vars <- make_ilrs(shifted_dt)
+  shifted_dt[, (ilr_names) := ilr_vars]
+
+  shifted_dt
+}
+
+extract_shifted_treatment <- function(shifted_dt, trt_cols) {
+  as.data.frame(
+    as.data.table(shifted_dt)[, trt_cols, with = FALSE],
+    check.names = FALSE
+  )
+}
+
+summarize_substitution_coverage <- function(shifted_dt) {
+  substituted <- as.data.table(shifted_dt)[["substituted"]]
+  if (is.null(substituted)) {
+    stop("shifted_dt must contain a 'substituted' column.", call. = FALSE)
+  }
+
+  list(
+    n_intervened = sum(substituted),
+    n_total = length(substituted),
+    ratio_substituted = mean(substituted)
+  )
+}
+
 make_lmtp_shift <- function(from, to, duration, comp_limits) {
   function(data, trt) {
-    dt <- as.data.table(data)
-    can_substitute <- compute_substitution_mask(
-      dt = dt,
+    shifted_dt <- compute_shifted_exposures(
+      dt = data,
       from = from,
       to = to,
       duration = duration,
       comp_limits = comp_limits
     )
 
-    dt[[from]] <- dt[[from]] - (can_substitute * duration)
-    dt[[to]] <- dt[[to]] + (can_substitute * duration)
-
-    ilr_vars <- make_ilrs(dt)
-    dt[, (ilr_names) := ilr_vars]
-
-    as.data.frame(dt[, trt, with = FALSE], check.names = FALSE)
+    extract_shifted_treatment(shifted_dt, trt)
   }
 }
 
 apply_substitution <- function(dt, from_var, to_var, duration, comp_limits) {
-  dt <- as.data.table(dt)
-  can_substitute <- compute_substitution_mask(
+  compute_shifted_exposures(
     dt = dt,
     from = from_var,
     to = to_var,
     duration = duration,
     comp_limits = comp_limits
   )
-
-  sub <- copy(dt)
-  sub[[from_var]] <- sub[[from_var]] - (can_substitute * duration)
-  sub[[to_var]] <- sub[[to_var]] + (can_substitute * duration)
-  sub[["substituted"]] <- can_substitute
-
-  ilr_vars <- make_ilrs(sub)
-  sub[, (ilr_names) := ilr_vars]
-
-  sub
 }
 
 compute_substituted_risk <- function(
@@ -99,12 +122,14 @@ compute_substituted_risk <- function(
   baseline_dt <- copy(baseline_risk)
   setnames(baseline_dt, "risk", "mean_risk_baseline")
 
+  coverage <- summarize_substitution_coverage(sub_dt)
+
   risk_dt[, `:=`(
     from = from,
     to = to,
     duration = duration,
-    n_intervened = sum(sub_dt$substituted),
-    n_total = nrow(sub_dt)
+    n_intervened = coverage$n_intervened,
+    n_total = coverage$n_total
   )]
 
   merge(

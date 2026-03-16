@@ -97,6 +97,47 @@ test_that("make_lmtp_shift matches apply_substitution on treatment columns", {
   expect_equal(as.data.table(shifted_trt), expected[, ..trt])
 })
 
+test_that("compute_shifted_exposures is the canonical source for apply_substitution", {
+  dt <- make_test_comp_dt()
+  limits <- make_test_comp_limits()
+
+  shifted <- suppressWarnings(compute_shifted_exposures(
+    dt,
+    "n2_s2",
+    "n3_s2",
+    15,
+    limits
+  ))
+  expected <- suppressWarnings(apply_substitution(
+    dt,
+    "n2_s2",
+    "n3_s2",
+    15,
+    limits
+  ))
+
+  expect_equal(shifted, expected)
+})
+
+test_that("summarize_substitution_coverage returns consistent counts and ratios", {
+  dt <- make_test_comp_dt()
+  limits <- make_test_comp_limits()
+  dt[1, n2_s2 := 125]
+
+  shifted <- suppressWarnings(apply_substitution(
+    dt,
+    "n2_s2",
+    "n3_s2",
+    15,
+    limits
+  ))
+  coverage <- summarize_substitution_coverage(shifted)
+
+  expect_equal(coverage$n_intervened, 3)
+  expect_equal(coverage$n_total, 4)
+  expect_equal(coverage$ratio_substituted, 0.75)
+})
+
 test_that("make_lmtp_shift handles negative durations consistently with apply_substitution", {
   dt <- make_test_comp_dt()
   limits <- make_test_comp_limits()
