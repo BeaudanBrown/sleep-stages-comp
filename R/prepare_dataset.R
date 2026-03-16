@@ -45,8 +45,11 @@ prepare_dataset <- function(dt_raw) {
     )
   ]
 
-  dt <- dt_raw[, `:=`(
-    s1_incomplete = as.integer(is.na(slp_time)),
+  dt <- data.table::copy(dt_raw)
+
+  dt[, s1_incomplete := as.integer(is.na(slp_time))]
+  dt[is.na(slp_time), slp_time := n1 + n2 + n3 + rem]
+  dt[, `:=`(
     wake = 24 * 60 - (n1 + n2 + n3 + rem),
     wake_s2 = 24 * 60 - (n1_s2 + n2_s2 + n3_s2 + rem_s2)
   )]

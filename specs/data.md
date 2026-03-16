@@ -53,7 +53,7 @@ Used as confounders to adjust for prior sleep patterns.
 | `n2` | Time in N2 at S1 | Raw minutes |
 | `n3` | Time in N3 at S1 | Raw minutes |
 | `rem` | Time in REM at S1 | Raw minutes |
-| `slp_time` | Total sleep time at S1 | NA indicates battery failure |
+| `slp_time` | Total sleep time at S1 | Recover as `n1 + n2 + n3 + rem` when missing due to battery failure |
 | `waso` | WASO at S1 | |
 | `oahi` | Apnea-hypopnea index at S1 | |
 
@@ -62,9 +62,9 @@ Some SHHS-1 recordings were cut short due to battery failure. These are identifi
 ```r
 s1_incomplete <- is.na(slp_time)
 ```
-An indicator variable should be included in models to adjust for this.
-
-In addition, SHHS-1 stage minutes affected by battery failure are treated as missing and handled via multiple imputation (see Imputation section).
+The analysis keeps the recorded SHHS-1 stage reads as observed, recovers missing
+`slp_time` deterministically as `n1 + n2 + n3 + rem`, and includes the
+`s1_incomplete` indicator in the models to adjust for incomplete recordings.
 
 ---
 
@@ -142,11 +142,11 @@ Derived variables:
 Apply in this order:
 
 1. **Missing SHHS-2 PSG exposure:** Exclude if any of `n1_s2, n2_s2, n3_s2, waso_s2, rem_s2` are missing.
-2. **Missing SHHS-1 PSG stage minutes:** Do **not** exclude solely for missingness caused by SHHS-1 battery failure; instead, set affected stage minutes to missing and impute (see Imputation). Exclude only if SHHS-1 stage minutes are missing for other reasons that prevent analysis *(TBD: operational rule once missingness patterns are confirmed)*.
+2. **Missing SHHS-1 PSG stage minutes:** Do **not** exclude solely for missingness caused by SHHS-1 battery failure if the stage reads themselves are present. Keep the recorded `n1`/`n2`/`n3`/`rem`, recover `slp_time` from their sum, and carry `s1_incomplete` into the models. Exclude only if SHHS-1 stage minutes are missing for other reasons that prevent analysis *(TBD: operational rule once missingness patterns are confirmed)*.
 
    **Operational rule:**
-   - If `slp_time` is `NA` (battery failure), set `n1`, `n2`, `n3`, `rem` to missing for imputation.
-   - Otherwise, exclude participants with missing `n1`/`n2`/`n3`/`rem`.
+   - If `slp_time` is `NA` (battery failure) but `n1`/`n2`/`n3`/`rem` are present, set `s1_incomplete = 1` and recover `slp_time = n1 + n2 + n3 + rem`.
+   - Exclude participants with missing `n1`/`n2`/`n3`/`rem` that cannot be resolved this way.
 3. **Pre-existing dementia/MCI:** Exclude if `dem_or_mci_surv_date <= 0` (event before SHHS-2).
 4. **Pre-existing CVD:** Exclude if **any CVD event** occurred before SHHS-2 *(TBD: define event types and variable(s) once identified)*.
 
@@ -184,14 +184,15 @@ Where:
 ## Imputation
 
 ### Goal
-Handle missingness in **SHHS-1 sleep-stage minutes** due to battery failure while preserving uncertainty in downstream causal contrasts.
+Handle the remaining missing covariates while treating SHHS-1 battery-failure stage
+reads as observed and preserving uncertainty in downstream causal contrasts.
 
 ### Approach
 Use **multiple imputation** via `{mice}` with **m = 10** imputations, then pool model parameters using **Rubin's Rules**.
 
 ### Variables to impute
-Primary targets for imputation:
-- `n1`, `n2`, `n3`, `rem` (SHHS-1 stage minutes) when missing due to `s1_incomplete`.
+Current targets for imputation:
+- Covariates with unresolved missingness that remain in the accepted analysis contract (currently the narrow development path only imputes `educat`).
 
 Potential additional imputation targets (if missingness is non-trivial):
 - Confounders in the required set (demographics, health, lifestyle, medications) *(TBD once variable availability/missingness is confirmed)*.
@@ -204,9 +205,10 @@ Include:
 - Auxiliary variables that improve missingness prediction without introducing post-exposure bias *(TBD)
 
 ### Constraints / bounds
-Impute stage minutes using a method that respects plausible bounds (e.g., truncated normal). Minimum constraints:
-- Imputed stage minutes must be non-negative.
-- If using raw stage minutes from incomplete recordings as lower bounds, enforce imputed values ≥ recorded minutes.
+For SHHS-1 battery-failure rows:
+- Keep the recorded stage reads as observed.
+- Recover `slp_time` deterministically as `n1 + n2 + n3 + rem`.
+- Include `s1_incomplete` as a model covariate rather than imputing the stage minutes.
 
 ### Pooling
 For each analysis component (dementia model, death model, MRI model), fit the model in each imputed dataset and pool coefficients and variance using Rubin's Rules (for coefficient tables and diagnostics).

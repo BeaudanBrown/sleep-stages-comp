@@ -75,7 +75,7 @@ primary_formula <- ~
   sleeping_pill_use +
   antidepressant_use +
 
-  # SHHS-1 sleep adjustment (raw times; battery failures handled via MI + indicator)
+  # SHHS-1 sleep adjustment (raw times; battery failures handled via recovered slp_time + indicator)
   rcs(n1, knots_n1_s1) +
   rcs(n2, knots_n2_s1) +
   rcs(n3, knots_n3_s1) +
