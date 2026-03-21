@@ -123,3 +123,41 @@ test_that("complete_imputed_datasets materializes one ILR-ready dataset per impu
     logical(1)
   )))
 })
+
+test_that("complete_imputed_datasets preserves positive finite survival follow-up", {
+  dt_raw <- make_test_raw_dataset()
+  dt_raw <- data.table::rbindlist(
+    list(
+      dt_raw,
+      data.table::copy(dt_raw)[, `:=`(
+        PID = PID + 2L,
+        age_s1 = age_s1 + 4,
+        bmi_s1 = bmi_s1 + 2,
+        educat = educat + 1L,
+        DEM_SURVDATE = DEM_SURVDATE + 60
+      )]
+    ),
+    use.names = TRUE
+  )
+  dt_raw[2, educat := NA_integer_]
+  prepared <- prepare_dataset(dt_raw)
+  imp <- suppressWarnings(impute_data(prepared, m = 3, maxit = 1))
+
+  completed <- complete_imputed_datasets(imp = imp, dt = prepared)
+
+  expect_true(all(vapply(
+    completed,
+    function(x) "dem_or_mci_surv_date" %in% names(x),
+    logical(1)
+  )))
+  expect_true(all(vapply(
+    completed,
+    function(x) all(is.finite(x$dem_or_mci_surv_date)),
+    logical(1)
+  )))
+  expect_true(all(vapply(
+    completed,
+    function(x) all(x$dem_or_mci_surv_date > 0),
+    logical(1)
+  )))
+})

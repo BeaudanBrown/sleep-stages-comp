@@ -61,14 +61,9 @@ analysis_lmtp_targets <- list(
     5
   ),
   tar_target(
-    mi_lmtp_timegroup_cuts,
-    make_cuts(imp_datasets),
-    pattern = map(imp_datasets)
-  ),
-  tar_target(
     mi_dt_surv_long,
-    expand_surv_dt(imp_datasets, mi_lmtp_timegroup_cuts),
-    pattern = map(imp_datasets, mi_lmtp_timegroup_cuts)
+    expand_surv_dt(imp_datasets, mi_timegroup_cuts),
+    pattern = map(imp_datasets, mi_timegroup_cuts)
   ),
   tar_target(
     mi_dt_surv_wide,
