@@ -181,52 +181,18 @@ analysis_bootstrap_targets <- list(
     }
   ),
   tar_target(
-    boot_dt,
-    bootstrap_resample(imp, seed = bootstrap_seeds),
-    pattern = map(bootstrap_seeds)
-  ),
-  tar_target(
-    boot_timegroup_cuts,
-    make_cuts(boot_dt),
-    pattern = map(boot_dt)
-  ),
-  tar_target(
-    boot_fitted_models,
-    fit_models(boot_dt, boot_timegroup_cuts),
-    pattern = map(boot_dt, boot_timegroup_cuts)
-  ),
-  tar_target(
-    boot_comp_limits,
-    make_comp_limits(boot_dt),
-    pattern = map(boot_dt)
-  ),
-  tar_target(
-    boot_baseline_risk,
-    predict_risks(boot_dt, boot_fitted_models, boot_timegroup_cuts),
-    pattern = map(boot_dt, boot_fitted_models, boot_timegroup_cuts)
-  ),
-  tar_target(
     boot_substituted_risk,
     {
-      out <- compute_substitution_risk_table(
-        dt = boot_dt,
+      out <- run_bootstrap_rep(
+        dt = dt,
         substitutions = substitutions,
-        comp_limits = boot_comp_limits,
-        fitted_models = boot_fitted_models,
-        timegroup_cuts = boot_timegroup_cuts,
-        baseline_risk = boot_baseline_risk
+        seed = bootstrap_seeds,
+        m = bootstrap_config$m
       )
       out[, bootstrap_seed := bootstrap_seeds]
       out
     },
-    pattern = map(
-      boot_dt,
-      boot_comp_limits,
-      boot_fitted_models,
-      boot_timegroup_cuts,
-      boot_baseline_risk,
-      bootstrap_seeds
-    )
+    pattern = map(bootstrap_seeds)
   ),
   tar_target(
     boot_risk_summary,

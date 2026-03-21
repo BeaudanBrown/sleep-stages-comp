@@ -127,21 +127,29 @@ combine_point_estimates_with_bootstrap_cis <- function(
   )]
 }
 
-run_bootstrap_rep <- function(dt, substitutions, seed) {
+run_bootstrap_rep <- function(dt, substitutions, seed, m = 10, maxit = 5) {
   boot_dt <- bootstrap_resample(dt, seed)
+  boot_imp <- impute_data(boot_dt, m = m, maxit = maxit)
+  boot_imp_datasets <- complete_imputed_datasets(imp = boot_imp, dt = boot_dt)
 
-  timegroup_cuts <- make_cuts(boot_dt)
-  fitted_models <- fit_models(boot_dt, timegroup_cuts)
-  comp_limits <- make_comp_limits(boot_dt)
-  baseline_risk <- predict_risks(boot_dt, fitted_models, timegroup_cuts)
+  boot_substitutions <- lapply(boot_imp_datasets, function(boot_imp_dt) {
+    timegroup_cuts <- make_cuts(boot_imp_dt)
+    fitted_models <- fit_models(boot_imp_dt, timegroup_cuts)
+    comp_limits <- make_comp_limits(boot_imp_dt)
+    baseline_risk <- predict_risks(boot_imp_dt, fitted_models, timegroup_cuts)
 
-  compute_substitution_risk_table(
-    dt = boot_dt,
-    substitutions = substitutions,
-    comp_limits = comp_limits,
-    fitted_models = fitted_models,
-    timegroup_cuts = timegroup_cuts,
-    baseline_risk = baseline_risk
+    compute_substitution_risk_table(
+      dt = boot_imp_dt,
+      substitutions = substitutions,
+      comp_limits = comp_limits,
+      fitted_models = fitted_models,
+      timegroup_cuts = timegroup_cuts,
+      baseline_risk = baseline_risk
+    )
+  })
+
+  average_imputation_substitution_risk(
+    data.table::rbindlist(boot_substitutions, idcol = "imputation_id")
   )
 }
 
