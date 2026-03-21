@@ -42,7 +42,7 @@ make_imputation_predictor_matrix <- function(imp_dt) {
   pred
 }
 
-impute_data <- function(dt, m = 1, maxit = 5) {
+make_imputation_input_dt <- function(dt) {
   base_covars <- c("age_s1", "bmi_s1", "gender", "educat", "IDTYPE")
   base_covars <- intersect(base_covars, names(dt))
 
@@ -75,6 +75,23 @@ impute_data <- function(dt, m = 1, maxit = 5) {
   imp_dt <- dt[, ..imp_cols]
   imp_dt[, log_dem_time := log(dem_or_mci_surv_date)]
 
+  imp_dt
+}
+
+add_imputed_columns <- function(dt, comp_dt) {
+  out_dt <- data.table::copy(dt)
+  update_cols <- setdiff(names(comp_dt), "PID")
+  out_dt[comp_dt, (update_cols) := mget(paste0("i.", update_cols)), on = "PID"]
+
+  ilr_vars <- make_ilrs(out_dt)
+  out_dt[, (ilr_names) := ilr_vars]
+
+  out_dt
+}
+
+impute_data <- function(dt, m = 1, maxit = 5) {
+  imp_dt <- make_imputation_input_dt(dt)
+
   meth <- make_imputation_methods(imp_dt)
   pred <- make_imputation_predictor_matrix(imp_dt)
 
@@ -89,13 +106,17 @@ impute_data <- function(dt, m = 1, maxit = 5) {
   ))
 
   if (!needs_imputation) {
-    out_dt <- data.table::copy(dt)
-    ilr_vars <- make_ilrs(out_dt)
-    out_dt[, (ilr_names) := ilr_vars]
-    return(out_dt)
+    return(mice::mice(
+      imp_dt,
+      m = m,
+      maxit = 0,
+      meth = meth,
+      pred = pred,
+      printFlag = FALSE
+    ))
   }
 
-  imp <- mice::mice(
+  mice::mice(
     imp_dt,
     m = m,
     maxit = maxit,
@@ -103,19 +124,22 @@ impute_data <- function(dt, m = 1, maxit = 5) {
     pred = pred,
     printFlag = FALSE
   )
+}
 
-  comp_dt <- data.table::as.data.table(mice::complete(imp, action = 1))
-
+complete_imputed_dataset <- function(imp, dt, action = 1) {
+  comp_dt <- data.table::as.data.table(mice::complete(imp, action = action))
   drop_cols <- c("log_dem_time")
-  comp_dt[, (drop_cols) := NULL]
+  drop_cols <- intersect(drop_cols, names(comp_dt))
 
-  out_dt <- data.table::copy(dt)
-  update_cols <- setdiff(names(comp_dt), "PID")
+  if (length(drop_cols) > 0) {
+    comp_dt[, (drop_cols) := NULL]
+  }
 
-  out_dt[comp_dt, (update_cols) := mget(paste0("i.", update_cols)), on = "PID"]
+  add_imputed_columns(dt, comp_dt)
+}
 
-  ilr_vars <- make_ilrs(out_dt)
-  out_dt[, (ilr_names) := ilr_vars]
-
-  out_dt
+complete_imputed_datasets <- function(imp, dt) {
+  lapply(seq_len(imp$m), function(action) {
+    complete_imputed_dataset(imp = imp, dt = dt, action = action)
+  })
 }

@@ -79,8 +79,11 @@ test_that("impute_data preserves recorded S1 stage reads for incomplete rows", {
   dt_raw[2, educat := NA_integer_]
   prepared <- prepare_dataset(dt_raw)
 
-  imputed <- suppressWarnings(impute_data(prepared, m = 1, maxit = 1))
+  imp <- suppressWarnings(impute_data(prepared, m = 2, maxit = 1))
+  imputed <- complete_imputed_dataset(imp = imp, dt = prepared, action = 1)
 
+  expect_s3_class(imp, "mids")
+  expect_equal(imp$m, 2L)
   expect_equal(imputed$s1_incomplete, prepared$s1_incomplete)
   expect_equal(imputed$slp_time, prepared$slp_time)
   expect_equal(imputed$n1, prepared$n1)
@@ -88,4 +91,35 @@ test_that("impute_data preserves recorded S1 stage reads for incomplete rows", {
   expect_equal(imputed$n3, prepared$n3)
   expect_equal(imputed$rem, prepared$rem)
   expect_false(anyNA(imputed$educat))
+})
+
+test_that("complete_imputed_datasets materializes one ILR-ready dataset per imputation", {
+  dt_raw <- make_test_raw_dataset()
+  dt_raw <- data.table::rbindlist(
+    list(
+      dt_raw,
+      data.table::copy(dt_raw)[, `:=`(
+        PID = PID + 2L,
+        age_s1 = age_s1 + 4,
+        bmi_s1 = bmi_s1 + 2,
+        educat = educat + 1L,
+        DEM_SURVDATE = DEM_SURVDATE + 60
+      )]
+    ),
+    use.names = TRUE
+  )
+  dt_raw[2, educat := NA_integer_]
+  prepared <- prepare_dataset(dt_raw)
+  imp <- suppressWarnings(impute_data(prepared, m = 3, maxit = 1))
+
+  completed <- complete_imputed_datasets(imp = imp, dt = prepared)
+
+  expect_length(completed, 3L)
+  expect_true(all(vapply(completed, data.table::is.data.table, logical(1))))
+  expect_true(all(vapply(completed, function(x) !anyNA(x$educat), logical(1))))
+  expect_true(all(vapply(
+    completed,
+    function(x) all(ilr_names %in% names(x)),
+    logical(1)
+  )))
 })
