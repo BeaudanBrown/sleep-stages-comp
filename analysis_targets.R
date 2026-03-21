@@ -50,11 +50,11 @@ analysis_survival_targets <- list(
 analysis_lmtp_targets <- list(
   tar_target(
     lmtp_learners_outcome,
-    c("SL.mean", "SL.glm")
+    c("SL.mean", "SL.glm", "SL.glm.interaction")
   ),
   tar_target(
     lmtp_learners_trt,
-    "SL.glm"
+    c("SL.glm", "SL.glm.interaction")
   ),
   tar_target(
     lmtp_folds,
