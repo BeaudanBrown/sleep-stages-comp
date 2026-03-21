@@ -61,49 +61,75 @@ analysis_lmtp_targets <- list(
     5
   ),
   tar_target(
-    lmtp_tmle_reference,
-    run_lmtp_tmle_reference(
-      dt_surv_wide,
-      lmtp_surv_cols$outcome,
-      lmtp_surv_cols$cens,
-      lmtp_surv_cols$compete,
-      comparison_contract$trt_cols,
-      lmtp_baseline_covars,
-      lmtp_learners_outcome,
-      lmtp_learners_trt,
-      lmtp_folds
-    )
+    mi_lmtp_timegroup_cuts,
+    make_cuts(imp_datasets),
+    pattern = map(imp_datasets)
   ),
   tar_target(
-    lmtp_tmle_substitutions,
+    mi_dt_surv_long,
+    expand_surv_dt(imp_datasets, mi_lmtp_timegroup_cuts),
+    pattern = map(imp_datasets, mi_lmtp_timegroup_cuts)
+  ),
+  tar_target(
+    mi_dt_surv_wide,
+    make_surv_wide(mi_dt_surv_long),
+    pattern = map(mi_dt_surv_long)
+  ),
+  tar_target(
+    mi_lmtp_surv_cols,
+    get_lmtp_surv_cols(mi_dt_surv_wide),
+    pattern = map(mi_dt_surv_wide)
+  ),
+  tar_target(
+    mi_lmtp_baseline_covars,
+    default_baseline_covars(mi_dt_surv_wide),
+    pattern = map(mi_dt_surv_wide)
+  ),
+  tar_target(
+    mi_lmtp_comp_limits,
+    make_comp_limits(mi_dt_surv_wide),
+    pattern = map(mi_dt_surv_wide)
+  ),
+  tar_target(
+    mi_lmtp_tmle_substitutions,
     tryCatch(
-      run_lmtp_tmle_substitution(
-        dt_surv_wide,
-        lmtp_surv_cols$outcome,
-        lmtp_surv_cols$cens,
-        lmtp_surv_cols$compete,
-        comparison_contract$trt_cols,
-        lmtp_baseline_covars,
-        comp_limits,
-        lmtp_tmle_reference,
-        substitutions,
-        lmtp_learners_outcome,
-        lmtp_learners_trt,
-        lmtp_folds
+      run_lmtp_tmle_substitutions_for_dataset(
+        dt = mi_dt_surv_wide,
+        outcome_cols = mi_lmtp_surv_cols$outcome,
+        cens_cols = mi_lmtp_surv_cols$cens,
+        compete_cols = mi_lmtp_surv_cols$compete,
+        trt_cols = comparison_contract$trt_cols,
+        baseline_covars = mi_lmtp_baseline_covars,
+        comp_limits = mi_lmtp_comp_limits,
+        substitutions = substitutions,
+        learners_outcome = lmtp_learners_outcome,
+        learners_trt = lmtp_learners_trt,
+        folds = lmtp_folds
       ),
       error = function(e) {
         stop(
           paste0(
-            "targets branch lmtp_tmle_substitutions failed [",
-            format_lmtp_substitution(substitutions),
-            "]: ",
+            "MI LMTP branch failed: ",
             conditionMessage(e)
           ),
           call. = FALSE
         )
       }
     ),
-    pattern = map(substitutions)
+    pattern = map(
+      mi_dt_surv_wide,
+      mi_lmtp_surv_cols,
+      mi_lmtp_baseline_covars,
+      mi_lmtp_comp_limits
+    )
+  ),
+  tar_target(
+    lmtp_tmle_substitutions_by_imputation,
+    data.table::rbindlist(mi_lmtp_tmle_substitutions, idcol = "imputation_id")
+  ),
+  tar_target(
+    lmtp_tmle_substitutions,
+    average_lmtp_imputation_summaries(lmtp_tmle_substitutions_by_imputation)
   ),
   tar_target(
     plot_lmtp_tmle_substitutions,

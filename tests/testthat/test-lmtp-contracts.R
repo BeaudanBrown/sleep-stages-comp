@@ -188,3 +188,29 @@ test_that("run_lmtp_tmle_substitution reports the event-risk contrast, not the s
       names(out)
   ))
 })
+
+test_that("average_lmtp_imputation_summaries averages scalar LMTP summaries by substitution", {
+  dt <- data.table::data.table(
+    imputation_id = c("1", "2"),
+    from = c("n2_s2", "n2_s2"),
+    to = c("n3_s2", "n3_s2"),
+    duration = c(15, 15),
+    ratio_substituted = c(0.8, 0.9),
+    mean_risk_substituted = c(0.12, 0.14),
+    mean_risk_reference = c(0.1, 0.11),
+    mean_risk_ratio = c(1.2, 1.27),
+    std.error = c(0.05, 0.07),
+    lower_ci = c(1.05, 1.11),
+    upper_ci = c(1.35, 1.43),
+    p.value = c(0.02, 0.03)
+  )
+
+  out <- average_lmtp_imputation_summaries(dt)
+
+  expect_equal(nrow(out), 1L)
+  expect_equal(out$ratio_substituted, 0.85)
+  expect_equal(out$mean_risk_substituted, 0.13)
+  expect_equal(out$mean_risk_reference, 0.105)
+  expect_equal(out$mean_risk_ratio, 1.235)
+  expect_equal(out$std.error, 0.06)
+})

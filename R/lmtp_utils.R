@@ -98,6 +98,28 @@ summarize_lmtp_contrast <- function(
   )
 }
 
+average_lmtp_imputation_summaries <- function(summary_dt) {
+  dt <- data.table::as.data.table(summary_dt)
+
+  if (!"imputation_id" %in% names(dt)) {
+    return(dt)
+  }
+
+  dt[,
+    .(
+      ratio_substituted = mean(ratio_substituted),
+      mean_risk_substituted = mean(mean_risk_substituted),
+      mean_risk_reference = mean(mean_risk_reference),
+      mean_risk_ratio = mean(mean_risk_ratio),
+      std.error = mean(std.error),
+      lower_ci = mean(lower_ci),
+      upper_ci = mean(upper_ci),
+      p.value = mean(p.value)
+    ),
+    by = .(from, to, duration)
+  ]
+}
+
 format_lmtp_substitution <- function(substitution) {
   sprintf(
     "from=%s to=%s duration=%s",
@@ -218,4 +240,49 @@ run_lmtp_tmle_substitution <- function(
       )
     }
   )
+}
+
+run_lmtp_tmle_substitutions_for_dataset <- function(
+  dt,
+  outcome_cols,
+  cens_cols,
+  compete_cols,
+  trt_cols,
+  baseline_covars,
+  comp_limits,
+  substitutions,
+  learners_outcome,
+  learners_trt,
+  folds
+) {
+  reference_fit <- run_lmtp_tmle_reference(
+    dt = dt,
+    outcome_cols = outcome_cols,
+    cens_cols = cens_cols,
+    compete_cols = compete_cols,
+    trt_cols = trt_cols,
+    baseline_covars = baseline_covars,
+    learners_outcome = learners_outcome,
+    learners_trt = learners_trt,
+    folds = folds
+  )
+
+  out <- lapply(seq_len(nrow(substitutions)), function(i) {
+    run_lmtp_tmle_substitution(
+      dt = dt,
+      outcome_cols = outcome_cols,
+      cens_cols = cens_cols,
+      compete_cols = compete_cols,
+      trt_cols = trt_cols,
+      baseline_covars = baseline_covars,
+      comp_limits = comp_limits,
+      reference_fit = reference_fit,
+      substitution = substitutions[i],
+      learners_outcome = learners_outcome,
+      learners_trt = learners_trt,
+      folds = folds
+    )
+  })
+
+  data.table::rbindlist(out)
 }
