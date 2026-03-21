@@ -105,19 +105,30 @@ average_lmtp_imputation_summaries <- function(summary_dt) {
     return(dt)
   }
 
-  dt[,
-    .(
-      ratio_substituted = mean(ratio_substituted),
-      mean_risk_substituted = mean(mean_risk_substituted),
-      mean_risk_reference = mean(mean_risk_reference),
-      mean_risk_ratio = mean(mean_risk_ratio),
-      std.error = mean(std.error),
-      lower_ci = mean(lower_ci),
-      upper_ci = mean(upper_ci),
-      p.value = mean(p.value)
+  pooled_rr <- dt[,
+    pool_log_risk_ratio_rubin(
+      risk_ratio = mean_risk_ratio,
+      std.error = std.error
     ),
     by = .(from, to, duration)
   ]
+
+  averaged_levels <- dt[,
+    .(
+      ratio_substituted = mean(ratio_substituted),
+      mean_risk_substituted = mean(mean_risk_substituted),
+      mean_risk_reference = mean(mean_risk_reference)
+    ),
+    by = .(from, to, duration)
+  ]
+
+  merge(
+    averaged_levels,
+    pooled_rr,
+    by = c("from", "to", "duration"),
+    all = FALSE,
+    sort = FALSE
+  )
 }
 
 format_lmtp_substitution <- function(substitution) {

@@ -206,11 +206,33 @@ test_that("average_lmtp_imputation_summaries averages scalar LMTP summaries by s
   )
 
   out <- average_lmtp_imputation_summaries(dt)
+  pooled_log_rr <- pool_scalar_rubin(
+    estimates = log(dt$mean_risk_ratio),
+    variances = (dt$std.error / dt$mean_risk_ratio)^2
+  )
 
   expect_equal(nrow(out), 1L)
   expect_equal(out$ratio_substituted, 0.85)
   expect_equal(out$mean_risk_substituted, 0.13)
   expect_equal(out$mean_risk_reference, 0.105)
-  expect_equal(out$mean_risk_ratio, 1.235)
-  expect_equal(out$std.error, 0.06)
+  expect_equal(out$mean_risk_ratio, exp(pooled_log_rr$estimate))
+  expect_equal(
+    out$std.error,
+    exp(pooled_log_rr$estimate) * pooled_log_rr$std.error
+  )
+  expect_equal(out$lower_ci, exp(pooled_log_rr$conf.low))
+  expect_equal(out$upper_ci, exp(pooled_log_rr$conf.high))
+})
+
+test_that("pool_scalar_rubin returns the expected pooled variance components", {
+  out <- pool_scalar_rubin(
+    estimates = c(0.1, 0.2, 0.15),
+    variances = c(0.01, 0.02, 0.015)
+  )
+
+  expect_equal(out$m, 3)
+  expect_equal(out$estimate, mean(c(0.1, 0.2, 0.15)))
+  expect_true(out$within_variance > 0)
+  expect_true(out$total_variance >= out$within_variance)
+  expect_true(is.finite(out$std.error))
 })
