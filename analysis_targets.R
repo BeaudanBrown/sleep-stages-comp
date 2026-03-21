@@ -124,23 +124,50 @@ analysis_lmtp_targets <- list(
 
 analysis_bootstrap_targets <- list(
   tar_target(
-    pooled_fitted_models,
-    fit_models(imp, timegroup_cuts)
+    mi_timegroup_cuts,
+    make_cuts(imp_datasets),
+    pattern = map(imp_datasets)
   ),
   tar_target(
-    pooled_baseline_risk,
-    predict_risks(imp, pooled_fitted_models, timegroup_cuts)
+    mi_pooled_fitted_models,
+    fit_models(imp_datasets, mi_timegroup_cuts),
+    pattern = map(imp_datasets, mi_timegroup_cuts)
+  ),
+  tar_target(
+    mi_comp_limits,
+    make_comp_limits(imp_datasets),
+    pattern = map(imp_datasets)
+  ),
+  tar_target(
+    mi_pooled_baseline_risk,
+    predict_risks(imp_datasets, mi_pooled_fitted_models, mi_timegroup_cuts),
+    pattern = map(imp_datasets, mi_pooled_fitted_models, mi_timegroup_cuts)
+  ),
+  tar_target(
+    mi_pooled_substituted_risk,
+    compute_substitution_risk_table(
+      dt = imp_datasets,
+      substitutions = substitutions,
+      comp_limits = mi_comp_limits,
+      fitted_models = mi_pooled_fitted_models,
+      timegroup_cuts = mi_timegroup_cuts,
+      baseline_risk = mi_pooled_baseline_risk
+    ),
+    pattern = map(
+      imp_datasets,
+      mi_comp_limits,
+      mi_pooled_fitted_models,
+      mi_timegroup_cuts,
+      mi_pooled_baseline_risk
+    )
+  ),
+  tar_target(
+    pooled_substituted_risk_by_imputation,
+    data.table::rbindlist(mi_pooled_substituted_risk, idcol = "imputation_id")
   ),
   tar_target(
     pooled_substituted_risk,
-    compute_substitution_risk_table(
-      dt = imp,
-      substitutions = substitutions,
-      comp_limits = comp_limits,
-      fitted_models = pooled_fitted_models,
-      timegroup_cuts = timegroup_cuts,
-      baseline_risk = pooled_baseline_risk
-    )
+    average_imputation_substitution_risk(pooled_substituted_risk_by_imputation)
   ),
   tar_target(
     pooled_risk_overall,

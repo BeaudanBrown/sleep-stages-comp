@@ -72,5 +72,6 @@ data_targets <- list(
   ),
   tar_target(dt, prepare_dataset(dt_raw)),
   tar_target(imp_mids, impute_data(dt = dt, m = 10, maxit = 5)),
+  tar_target(imp_datasets, complete_imputed_datasets(imp = imp_mids, dt = dt)),
   tar_target(imp, complete_imputed_dataset(imp = imp_mids, dt = dt, action = 1))
 )

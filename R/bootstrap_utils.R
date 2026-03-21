@@ -67,6 +67,24 @@ summarize_point_estimate_substitutions <- function(substituted_risk) {
   ]
 }
 
+average_imputation_substitution_risk <- function(substituted_risk) {
+  dt <- data.table::as.data.table(substituted_risk)
+
+  if (!"imputation_id" %in% names(dt)) {
+    return(dt)
+  }
+
+  dt[,
+    .(
+      mean_risk_baseline = mean(mean_risk_baseline),
+      mean_risk_substituted = mean(mean_risk_substituted),
+      n_intervened = mean(n_intervened),
+      n_total = mean(n_total)
+    ),
+    by = .(from, to, duration, timegroup)
+  ]
+}
+
 summarize_bootstrap_substitution_intervals <- function(boot_substituted_risk) {
   dt <- summarize_substituted_risk_final_time(
     boot_substituted_risk,

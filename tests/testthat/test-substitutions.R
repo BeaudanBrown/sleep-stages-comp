@@ -157,6 +157,28 @@ test_that("summarize_point_estimate_substitutions keeps final-time pooled estima
   expect_equal(summary_dt$ratio_substituted, 0.75)
 })
 
+test_that("average_imputation_substitution_risk averages substitution curves across imputations", {
+  dt <- data.table::data.table(
+    imputation_id = c("1", "1", "2", "2"),
+    timegroup = c(1, 2, 1, 2),
+    from = "n2_s2",
+    to = "n3_s2",
+    duration = 15,
+    mean_risk_baseline = c(0.1, 0.2, 0.12, 0.24),
+    mean_risk_substituted = c(0.11, 0.18, 0.132, 0.21),
+    n_intervened = c(3, 3, 3, 3),
+    n_total = c(4, 4, 4, 4)
+  )
+
+  averaged <- average_imputation_substitution_risk(dt)
+
+  expect_equal(nrow(averaged), 2L)
+  expect_equal(averaged$mean_risk_baseline, c(0.11, 0.22))
+  expect_equal(averaged$mean_risk_substituted, c(0.121, 0.195))
+  expect_equal(averaged$n_intervened, c(3, 3))
+  expect_equal(averaged$n_total, c(4, 4))
+})
+
 test_that("combine_point_estimates_with_bootstrap_cis keeps pooled line and bootstrap interval", {
   point_dt <- data.table::data.table(
     from = "n2_s2",
