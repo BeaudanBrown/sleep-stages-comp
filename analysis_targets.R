@@ -211,7 +211,6 @@ analysis_bootstrap_targets <- list(
   tar_target(
     bootstrap_seeds,
     {
-      set.seed(tar_seed_get())
       sample.int(.Machine$integer.max, bootstrap_config$B)
     }
   ),
