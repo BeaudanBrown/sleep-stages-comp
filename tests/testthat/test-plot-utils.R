@@ -82,6 +82,35 @@ test_that("method wrappers render identical shared comparison plots", {
   )
 })
 
+test_that("make_substitution_plots uses bidirectional titles and direction guides", {
+  dt <- data.table::data.table(
+    from = c("n1_s2", "n1_s2"),
+    to = c("n2_s2", "n2_s2"),
+    duration = c(-15, 15),
+    ratio_substituted = c(0.8, 0.9),
+    mean_risk_ratio = c(1.02, 0.98),
+    lower_ci = c(0.97, 0.94),
+    upper_ci = c(1.07, 1.02)
+  )
+
+  plot_dt <- make_substitution_plots(dt, ratio_threshold = 0.75)
+  plot_obj <- plot_dt$plot[[1]]
+  plot_build <- ggplot2::ggplot_build(plot_obj)
+  labels <- unique(unlist(lapply(plot_build$data, function(layer) {
+    if ("label" %in% names(layer)) {
+      layer$label
+    } else {
+      NULL
+    }
+  })))
+
+  expect_equal(
+    plot_obj$labels$title,
+    "Reallocate minutes between N1 and N2"
+  )
+  expect_true(all(c("N1 <- N2", "N1 -> N2") %in% labels))
+})
+
 test_that("make_substitution_plots applies shared scales across all pairs", {
   dt <- data.table::data.table(
     from = c("n1_s2", "n1_s2", "n2_s2", "n2_s2"),

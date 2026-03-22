@@ -5,14 +5,6 @@ analysis_config_targets <- list(
       B = 100,
       m = 10
     )
-  ),
-  tar_target(
-    substitutions,
-    comparison_substitution_grid()
-  ),
-  tar_target(
-    substitutions_list,
-    split(substitutions, seq_len(nrow(substitutions)))
   )
 )
 
@@ -43,7 +35,7 @@ analysis_survival_targets <- list(
   ),
   tar_target(
     comparison_contract,
-    build_comparison_contract(dt_surv_wide)
+    build_comparison_contract(dt_surv_wide, substitutions = substitutions)
   )
 )
 
@@ -88,6 +80,26 @@ analysis_lmtp_targets <- list(
     mi_lmtp_comp_limits,
     make_comp_limits(mi_dt_surv_wide),
     pattern = map(mi_dt_surv_wide)
+  ),
+  tar_target(
+    mi_substitution_support_frontiers,
+    compute_directional_support_frontiers(
+      dt = imp_datasets,
+      comp_limits = mi_comp_limits
+    ),
+    pattern = map(imp_datasets, mi_comp_limits)
+  ),
+  tar_target(
+    substitution_support_frontiers,
+    combine_imputation_support_frontiers(mi_substitution_support_frontiers)
+  ),
+  tar_target(
+    substitutions,
+    build_support_aware_substitution_grid(substitution_support_frontiers)
+  ),
+  tar_target(
+    substitutions_list,
+    split(substitutions, seq_len(nrow(substitutions)))
   ),
   tar_target(
     mi_lmtp_tmle_substitutions,

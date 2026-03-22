@@ -6,6 +6,59 @@ base_substitution_theme <- function() {
     )
 }
 
+substitution_plot_title <- function(from_label, to_label) {
+  sprintf("Reallocate minutes between %s and %s", from_label, to_label)
+}
+
+substitution_direction_guide_dt <- function(from_label, to_label, scales) {
+  rr_span <- diff(scales$rr_limits)
+  if (!is.finite(rr_span) || rr_span <= 0) {
+    rr_span <- 0.1
+  }
+
+  guide_y <- scales$rr_limits[1] + (0.05 * rr_span)
+  label_y <- guide_y + (0.04 * rr_span)
+
+  data.table::data.table(
+    x = c(-12, 12),
+    xend = c(-56, 56),
+    y = guide_y,
+    yend = guide_y,
+    label_x = c(-34, 34),
+    label_y = label_y,
+    label = c(
+      sprintf("%s <- %s", from_label, to_label),
+      sprintf("%s -> %s", from_label, to_label)
+    )
+  )
+}
+
+add_substitution_direction_guides <- function(
+  plot,
+  from_label,
+  to_label,
+  scales
+) {
+  guide_dt <- substitution_direction_guide_dt(from_label, to_label, scales)
+
+  plot +
+    ggplot2::geom_segment(
+      data = guide_dt,
+      ggplot2::aes(x = x, xend = xend, y = y, yend = yend),
+      inherit.aes = FALSE,
+      linewidth = 0.35,
+      color = "grey40",
+      arrow = grid::arrow(length = grid::unit(0.08, "inches"), type = "closed")
+    ) +
+    ggplot2::geom_text(
+      data = guide_dt,
+      ggplot2::aes(x = label_x, y = label_y, label = label),
+      inherit.aes = FALSE,
+      size = 3,
+      color = "grey30"
+    )
+}
+
 compute_substitution_plot_scales <- function(
   summary_dt,
   ratio_threshold = 0.75,
@@ -210,82 +263,93 @@ plot_substitutions <- function(
 
   from_label <- stage_labels[from]
   to_label <- stage_labels[to]
+  title <- substitution_plot_title(from_label, to_label)
 
   if (!plot_data$has_data) {
-    return(empty_substitution_plot(
-      title = sprintf("Shift %s -> %s", from_label, to_label),
-      subtitle = sprintf(
-        "No data above %d%% substitution coverage",
-        round(ratio_threshold * 100)
+    return(add_substitution_direction_guides(
+      empty_substitution_plot(
+        title = title,
+        subtitle = sprintf(
+          "No data above %d%% substitution coverage",
+          round(ratio_threshold * 100)
+        ),
+        y_label = "Risk ratio",
+        scales = scales
       ),
-      y_label = "Risk ratio",
+      from_label = from_label,
+      to_label = to_label,
       scales = scales
     ))
   }
 
-  ggplot2::ggplot() +
-    ggplot2::geom_hline(
-      yintercept = 1,
-      linetype = "dashed",
-      linewidth = 0.5,
-      color = "grey40"
-    ) +
-    ggplot2::geom_ribbon(
-      data = dt_risk,
-      ggplot2::aes(
-        x = duration,
-        ymin = pmin(lower_ci, upper_ci),
-        ymax = pmax(lower_ci, upper_ci)
+  add_substitution_direction_guides(
+    ggplot2::ggplot() +
+      ggplot2::geom_hline(
+        yintercept = 1,
+        linetype = "dashed",
+        linewidth = 0.5,
+        color = "grey40"
+      ) +
+      ggplot2::geom_ribbon(
+        data = dt_risk,
+        ggplot2::aes(
+          x = duration,
+          ymin = pmin(lower_ci, upper_ci),
+          ymax = pmax(lower_ci, upper_ci)
+        ),
+        alpha = 0.2,
+        color = NA,
+        fill = "grey70"
+      ) +
+      ggplot2::geom_line(
+        data = dt_risk,
+        ggplot2::aes(x = duration, y = mean_risk_ratio),
+        linewidth = 0.9
+      ) +
+      ggplot2::geom_point(
+        data = dt_risk,
+        ggplot2::aes(x = duration, y = mean_risk_ratio),
+        size = 1.8
+      ) +
+      ggplot2::geom_line(
+        data = dt_ratio,
+        ggplot2::aes(x = duration, y = ratio_substituted_scaled),
+        linewidth = 0.7,
+        color = "steelblue"
+      ) +
+      ggplot2::geom_point(
+        data = dt_ratio,
+        ggplot2::aes(x = duration, y = ratio_substituted_scaled),
+        size = 1.4,
+        color = "steelblue"
+      ) +
+      base_substitution_theme() +
+      ggplot2::scale_y_continuous(
+        name = "Risk ratio",
+        limits = scales$rr_limits,
+        sec.axis = ggplot2::sec_axis(
+          transform = ~ scales$rr_to_ratio(.),
+          name = "Ratio substituted",
+          labels = function(x) sprintf("%d%%", round(x * 100))
+        )
+      ) +
+      ggplot2::scale_x_continuous(
+        breaks = seq(-60, 60, by = 15),
+        limits = c(-60, 60)
+      ) +
+      ggplot2::labs(
+        x = "Minutes shifted",
+        y = "Risk ratio",
+        title = title,
+        subtitle = sprintf(
+          "Shown only when ratio substituted \u2265 %d%%",
+          round(ratio_threshold * 100)
+        )
       ),
-      alpha = 0.2,
-      color = NA,
-      fill = "grey70"
-    ) +
-    ggplot2::geom_line(
-      data = dt_risk,
-      ggplot2::aes(x = duration, y = mean_risk_ratio),
-      linewidth = 0.9
-    ) +
-    ggplot2::geom_point(
-      data = dt_risk,
-      ggplot2::aes(x = duration, y = mean_risk_ratio),
-      size = 1.8
-    ) +
-    ggplot2::geom_line(
-      data = dt_ratio,
-      ggplot2::aes(x = duration, y = ratio_substituted_scaled),
-      linewidth = 0.7,
-      color = "steelblue"
-    ) +
-    ggplot2::geom_point(
-      data = dt_ratio,
-      ggplot2::aes(x = duration, y = ratio_substituted_scaled),
-      size = 1.4,
-      color = "steelblue"
-    ) +
-    base_substitution_theme() +
-    ggplot2::scale_y_continuous(
-      name = "Risk ratio",
-      limits = scales$rr_limits,
-      sec.axis = ggplot2::sec_axis(
-        transform = ~ scales$rr_to_ratio(.),
-        name = "Ratio substituted",
-        labels = function(x) sprintf("%d%%", round(x * 100))
-      )
-    ) +
-    ggplot2::scale_x_continuous(
-      breaks = seq(-60, 60, by = 15),
-      limits = c(-60, 60)
-    ) +
-    ggplot2::labs(
-      x = "Minutes shifted",
-      y = "Risk ratio",
-      title = sprintf("Shift %s -> %s", from_label, to_label),
-      subtitle = sprintf(
-        "Shown only when ratio substituted \u2265 %d%%",
-        round(ratio_threshold * 100)
-      )
-    )
+    from_label = from_label,
+    to_label = to_label,
+    scales = scales
+  )
 }
 
 make_substitution_plots <- function(

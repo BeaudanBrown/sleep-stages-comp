@@ -16,6 +16,58 @@ make_substitution_grid <- function(durations, directed = TRUE) {
   pair_dt[, .(duration = durations), by = .(from, to)]
 }
 
+compute_feasible_shift_minutes <- function(dt, from, to, comp_limits) {
+  dt <- as.data.table(dt)
+
+  max_from_change <- dt[[from]] - comp_limits[[from]]$lower
+  max_to_change <- comp_limits[[to]]$upper - dt[[to]]
+
+  pmax(0, pmin(max_from_change, max_to_change))
+}
+
+compute_directional_support_frontier <- function(
+  dt,
+  from,
+  to,
+  comp_limits,
+  ratio_threshold = 0.75,
+  max_minutes = 60
+) {
+  feasible <- compute_feasible_shift_minutes(
+    dt = dt,
+    from = from,
+    to = to,
+    comp_limits = comp_limits
+  )
+  feasible <- feasible[is.finite(feasible)]
+
+  if (
+    !is.numeric(ratio_threshold) ||
+      length(ratio_threshold) != 1L ||
+      ratio_threshold < 0 ||
+      ratio_threshold > 1
+  ) {
+    stop(
+      "ratio_threshold must be a single number between 0 and 1.",
+      call. = FALSE
+    )
+  }
+
+  if (length(feasible) == 0L) {
+    return(0L)
+  }
+
+  if (ratio_threshold <= 0) {
+    return(as.integer(floor(min(max(feasible), max_minutes))))
+  }
+
+  required_count <- ceiling(ratio_threshold * length(feasible))
+  order_index <- length(feasible) - required_count + 1L
+  frontier <- sort(feasible, partial = order_index)[[order_index]]
+
+  as.integer(max(0, floor(min(frontier, max_minutes))))
+}
+
 compute_substitution_mask <- function(dt, from, to, duration, comp_limits) {
   if (duration == 0) {
     return(rep(TRUE, nrow(dt)))
