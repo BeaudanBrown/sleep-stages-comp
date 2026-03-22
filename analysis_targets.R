@@ -87,7 +87,8 @@ analysis_lmtp_targets <- list(
       dt = imp_datasets,
       comp_limits = mi_comp_limits
     ),
-    pattern = map(imp_datasets, mi_comp_limits)
+    pattern = map(imp_datasets, mi_comp_limits),
+    iteration = "list"
   ),
   tar_target(
     substitution_support_frontiers,
