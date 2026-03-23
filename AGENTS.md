@@ -193,6 +193,16 @@ When you find yourself repeating the same diagnostic commands:
 
 ## Quick Reference for Agents
 
+### Current MI state
+
+- `imp_mids` is a real `mice::mids` object.
+- `imp_datasets` is the canonical bundle of completed datasets materialized from `imp_mids`.
+- `imp` is still a legacy single-complete convenience target and should not be used for new analysis wiring.
+- If you are changing the analysis graph, prefer `imp_datasets` or `imp_mids` over `imp`.
+- On branch `lmtp`, the remaining single-imputation drift is the legacy analysis scaffold in `analysis_targets.R` (`timegroup_cuts`, `dt_surv_long`, `dt_surv_wide`, `comp_limits`, `lmtp_surv_cols`, `lmtp_baseline_covars`, and the top-level `comparison_contract`).
+- The support-aware substitution grid is already MI-first: directional support frontiers are computed per imputation and then combined conservatively across imputations.
+- `R/bootstrap_utils.R::run_bootstrap_rep()` already follows bootstrap-resample -> imputation -> complete all datasets -> fit within each completed dataset -> average across imputations.
+
 ### To understand the data structure:
 → Read `specs/data.md`
 

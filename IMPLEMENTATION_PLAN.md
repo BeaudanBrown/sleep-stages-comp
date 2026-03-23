@@ -45,6 +45,23 @@ This file is a compact technical roadmap. Live implementation status, blockers, 
 - Add pooling utilities and MI-aware fitting/prediction helpers.
 - Rewire targets so MI is part of the main analysis path instead of a side branch.
 
+Current branch state on `lmtp`:
+
+- `data_targets.R` already returns a real `imp_mids` target plus `imp_datasets` materialized from all imputations.
+- The main remaining single-imputation drift is the legacy analysis scaffold in `analysis_targets.R` that still depends on `imp` for:
+  - `timegroup_cuts`
+  - `dt_surv_long`
+  - `dt_surv_wide`
+  - `comp_limits`
+  - `lmtp_surv_cols`
+  - `lmtp_baseline_covars`
+  - the top-level `comparison_contract`
+- The MI-first migration order should be:
+  - move the shared analysis scaffold above both pooled and LMTP onto completed-dataset bundles instead of `imp`
+  - keep `imp` only as a temporary compatibility target until no analysis targets depend on it
+  - once no analysis targets depend on `imp`, demote or remove the legacy single-complete target
+- The support-aware substitution grid is already MI-driven: directional support frontiers are computed per imputation and combined conservatively across imputations before downstream analysis.
+
 ### Phase 4: Isotemporal Substitution
 
 - Complete the substitution grid, bounded shift application, density screening, and summary targets for the 5-part exposure.
@@ -60,6 +77,19 @@ This file is a compact technical roadmap. Live implementation status, blockers, 
 - Add the bootstrap x MI execution structure.
 - Compute uncertainty intervals for substitution and ideal-composition outputs.
 - Generate and filter the ideal-composition grid under the finalized density/modeling rules.
+
+Current branch state on `lmtp`:
+
+- `R/bootstrap_utils.R::run_bootstrap_rep()` already follows the intended bootstrap-within-MI execution order:
+  - bootstrap resample raw prepared data
+  - run `impute_data()` in the bootstrap sample
+  - materialize all completed datasets
+  - fit pooled models and substitution summaries inside each completed dataset
+  - average contrasts across imputations for one bootstrap replicate
+- The remaining bootstrap work is now mostly graph/documentation/test cleanup:
+  - verify the top-level bootstrap targets continue to consume the MI-aware pooled lane and shared substitution contract
+  - add target-graph tests that lock in resample-before-impute ordering
+  - update Beads/docs so the remaining work is not described as if bootstrap still uses a single completed dataset
 
 ### Phase 7: Reporting
 
