@@ -8,53 +8,19 @@ analysis_config_targets <- list(
   )
 )
 
-analysis_survival_targets <- list(
-  tar_target(
-    timegroup_cuts,
-    make_cuts(imp)
-  ),
-  tar_target(
-    dt_surv_long,
-    expand_surv_dt(imp, timegroup_cuts)
-  ),
-  tar_target(
-    dt_surv_wide,
-    make_surv_wide(dt_surv_long)
-  ),
-  tar_target(
-    comp_limits,
-    make_comp_limits(imp)
-  ),
-  tar_target(
-    lmtp_surv_cols,
-    get_lmtp_surv_cols(dt_surv_wide)
-  ),
-  tar_target(
-    lmtp_baseline_covars,
-    default_baseline_covars(dt_surv_wide)
-  ),
-  tar_target(
-    comparison_contract,
-    build_comparison_contract(dt_surv_wide, substitutions = substitutions)
-  )
-)
-
-analysis_lmtp_targets <- list(
-  tar_target(
-    lmtp_learners_outcome,
-    c("SL.mean", "SL.glm", "SL.glm.interaction")
-  ),
-  tar_target(
-    lmtp_learners_trt,
-    c("SL.glm", "SL.glm.interaction")
-  ),
-  tar_target(
-    lmtp_folds,
-    5
-  ),
+analysis_shared_mi_targets <- list(
   tar_target(
     imp_dataset_ids,
     seq_len(length(imp_datasets))
+  ),
+  tar_target(
+    mi_timegroup_cuts,
+    make_cuts(imp_datasets),
+    pattern = map(imp_datasets)
+  ),
+  tar_target(
+    timegroup_cuts,
+    combine_timegroup_cuts(mi_timegroup_cuts)
   ),
   tar_target(
     mi_dt_surv_long,
@@ -72,14 +38,26 @@ analysis_lmtp_targets <- list(
     pattern = map(mi_dt_surv_wide)
   ),
   tar_target(
-    mi_lmtp_baseline_covars,
-    default_baseline_covars(mi_dt_surv_wide),
-    pattern = map(mi_dt_surv_wide)
+    lmtp_surv_cols,
+    combine_lmtp_surv_cols(mi_lmtp_surv_cols)
   ),
   tar_target(
-    mi_lmtp_comp_limits,
-    make_comp_limits(mi_dt_surv_wide),
-    pattern = map(mi_dt_surv_wide)
+    mi_lmtp_baseline_covars,
+    default_baseline_covars(imp_datasets),
+    pattern = map(imp_datasets)
+  ),
+  tar_target(
+    lmtp_baseline_covars,
+    combine_imputation_character_vectors(mi_lmtp_baseline_covars)
+  ),
+  tar_target(
+    mi_comp_limits,
+    make_comp_limits(imp_datasets),
+    pattern = map(imp_datasets)
+  ),
+  tar_target(
+    comp_limits,
+    combine_imputation_comp_limits(mi_comp_limits)
   ),
   tar_target(
     mi_substitution_support_frontiers,
@@ -103,6 +81,28 @@ analysis_lmtp_targets <- list(
     split(substitutions, seq_len(nrow(substitutions)))
   ),
   tar_target(
+    comparison_contract,
+    build_shared_comparison_contract(
+      imp_datasets,
+      substitutions = substitutions
+    )
+  )
+)
+
+analysis_lmtp_targets <- list(
+  tar_target(
+    lmtp_learners_outcome,
+    c("SL.mean", "SL.glm", "SL.glm.interaction")
+  ),
+  tar_target(
+    lmtp_learners_trt,
+    c("SL.glm", "SL.glm.interaction")
+  ),
+  tar_target(
+    lmtp_folds,
+    5
+  ),
+  tar_target(
     mi_lmtp_tmle_substitutions,
     {
       out <- tryCatch(
@@ -113,7 +113,7 @@ analysis_lmtp_targets <- list(
           compete_cols = mi_lmtp_surv_cols$compete,
           trt_cols = comparison_contract$trt_cols,
           baseline_covars = mi_lmtp_baseline_covars,
-          comp_limits = mi_lmtp_comp_limits,
+          comp_limits = mi_comp_limits,
           substitutions = substitutions,
           learners_outcome = lmtp_learners_outcome,
           learners_trt = lmtp_learners_trt,
@@ -136,7 +136,7 @@ analysis_lmtp_targets <- list(
       mi_dt_surv_wide,
       mi_lmtp_surv_cols,
       mi_lmtp_baseline_covars,
-      mi_lmtp_comp_limits,
+      mi_comp_limits,
       imp_dataset_ids
     )
   ),
@@ -167,19 +167,9 @@ analysis_lmtp_targets <- list(
 
 analysis_bootstrap_targets <- list(
   tar_target(
-    mi_timegroup_cuts,
-    make_cuts(imp_datasets),
-    pattern = map(imp_datasets)
-  ),
-  tar_target(
     mi_pooled_fitted_models,
     fit_models(imp_datasets, mi_timegroup_cuts),
     pattern = map(imp_datasets, mi_timegroup_cuts)
-  ),
-  tar_target(
-    mi_comp_limits,
-    make_comp_limits(imp_datasets),
-    pattern = map(imp_datasets)
   ),
   tar_target(
     mi_pooled_baseline_risk,
@@ -308,7 +298,7 @@ analysis_comparison_targets <- list(
 
 analysis_targets <- c(
   analysis_config_targets,
-  analysis_survival_targets,
+  analysis_shared_mi_targets,
   analysis_lmtp_targets,
   analysis_bootstrap_targets,
   analysis_comparison_targets

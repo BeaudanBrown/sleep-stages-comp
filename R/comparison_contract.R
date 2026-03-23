@@ -144,6 +144,80 @@ comparison_summary_output_cols <- function() {
   )
 }
 
+combine_timegroup_cuts <- function(cuts) {
+  if (!length(cuts)) {
+    stop("cuts must contain at least one element.", call. = FALSE)
+  }
+
+  baseline <- cuts[[1]]
+  for (idx in seq_along(cuts)[-1]) {
+    if (!isTRUE(all.equal(baseline, cuts[[idx]], check.attributes = FALSE))) {
+      stop("Timegroup cuts differ across imputations.", call. = FALSE)
+    }
+  }
+
+  baseline
+}
+
+combine_imputation_comp_limits <- function(comp_limits_list) {
+  if (!length(comp_limits_list)) {
+    stop("comp_limits_list must contain at least one element.", call. = FALSE)
+  }
+
+  limit_names <- names(comp_limits_list[[1]])
+  setNames(
+    lapply(limit_names, function(var) {
+      lowers <- vapply(
+        comp_limits_list,
+        function(limits) limits[[var]]$lower,
+        numeric(1)
+      )
+      uppers <- vapply(
+        comp_limits_list,
+        function(limits) limits[[var]]$upper,
+        numeric(1)
+      )
+
+      list(
+        lower = max(lowers),
+        upper = min(uppers)
+      )
+    }),
+    limit_names
+  )
+}
+
+combine_lmtp_surv_cols <- function(cols_list) {
+  if (!length(cols_list)) {
+    stop("cols_list must contain at least one element.", call. = FALSE)
+  }
+
+  baseline <- cols_list[[1]]
+  component_names <- names(baseline)
+
+  out <- setNames(vector("list", length(component_names)), component_names)
+  for (component in component_names) {
+    keep_n <- min(vapply(
+      cols_list,
+      function(cols) {
+        length(cols[[component]])
+      },
+      integer(1)
+    ))
+    out[[component]] <- baseline[[component]][seq_len(keep_n)]
+  }
+
+  out
+}
+
+combine_imputation_character_vectors <- function(values) {
+  if (!length(values)) {
+    stop("values must contain at least one element.", call. = FALSE)
+  }
+
+  Reduce(intersect, values)
+}
+
 build_comparison_contract <- function(
   dt,
   substitutions = comparison_substitution_grid()
@@ -166,4 +240,35 @@ build_comparison_contract <- function(
     )),
     summary_output_cols = comparison_summary_output_cols()
   )
+}
+
+build_shared_comparison_contract <- function(
+  dt_list,
+  substitutions = comparison_substitution_grid()
+) {
+  if (!length(dt_list)) {
+    stop("dt_list must contain at least one completed dataset.", call. = FALSE)
+  }
+
+  contract <- build_comparison_contract(
+    dt_list[[1]],
+    substitutions = substitutions
+  )
+  contract$sleep_history_covars <- combine_imputation_character_vectors(lapply(
+    dt_list,
+    required_sleep_history_covars
+  ))
+  contract$sleep_history_spline_covars <- combine_imputation_character_vectors(
+    lapply(dt_list, required_sleep_history_spline_covars)
+  )
+  contract$confounder_main_effects <- combine_imputation_character_vectors(lapply(
+    dt_list,
+    provisional_confounder_main_effects
+  ))
+  contract$baseline_covars <- unique(c(
+    contract$sleep_history_covars,
+    contract$confounder_main_effects
+  ))
+
+  contract
 }
