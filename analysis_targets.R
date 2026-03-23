@@ -16,7 +16,8 @@ analysis_shared_mi_targets <- list(
   tar_target(
     mi_timegroup_cuts,
     make_cuts(imp_datasets),
-    pattern = map(imp_datasets)
+    pattern = map(imp_datasets),
+    iteration = "list"
   ),
   tar_target(
     timegroup_cuts,
@@ -35,7 +36,8 @@ analysis_shared_mi_targets <- list(
   tar_target(
     mi_lmtp_surv_cols,
     get_lmtp_surv_cols(mi_dt_surv_wide),
-    pattern = map(mi_dt_surv_wide)
+    pattern = map(mi_dt_surv_wide),
+    iteration = "list"
   ),
   tar_target(
     lmtp_surv_cols,
@@ -44,7 +46,8 @@ analysis_shared_mi_targets <- list(
   tar_target(
     mi_lmtp_baseline_covars,
     default_baseline_covars(imp_datasets),
-    pattern = map(imp_datasets)
+    pattern = map(imp_datasets),
+    iteration = "list"
   ),
   tar_target(
     lmtp_baseline_covars,
@@ -53,7 +56,8 @@ analysis_shared_mi_targets <- list(
   tar_target(
     mi_comp_limits,
     make_comp_limits(imp_datasets),
-    pattern = map(imp_datasets)
+    pattern = map(imp_datasets),
+    iteration = "list"
   ),
   tar_target(
     comp_limits,
