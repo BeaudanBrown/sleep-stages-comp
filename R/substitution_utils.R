@@ -12,71 +12,35 @@ make_substitution_grid <- function(durations, directed = TRUE) {
   pair_dt[, .(duration = durations), by = .(from, to)]
 }
 
-compute_feasible_shift_minutes <- function(dt, from, to, comp_limits) {
-  dt <- as.data.table(dt)
-
-  max_from_change <- dt[[from]] - comp_limits[[from]]$lower
-  max_to_change <- comp_limits[[to]]$upper - dt[[to]]
-
-  pmax(0, pmin(max_from_change, max_to_change))
-}
-
-compute_directional_support_frontier <- function(
-  dt,
-  from,
-  to,
-  comp_limits,
-  ratio_threshold = 0.75,
-  max_minutes = 60
-) {
-  feasible <- compute_feasible_shift_minutes(
-    dt = dt,
-    from = from,
-    to = to,
-    comp_limits = comp_limits
-  )
-  feasible <- feasible[is.finite(feasible)]
-
-  if (length(feasible) == 0L) {
-    return(0L)
-  }
-
-  if (ratio_threshold <= 0) {
-    return(as.integer(floor(min(max(feasible), max_minutes))))
-  }
-
-  required_count <- ceiling(ratio_threshold * length(feasible))
-  order_index <- length(feasible) - required_count + 1L
-  frontier <- sort(feasible, partial = order_index)[[order_index]]
-
-  as.integer(max(0, floor(min(frontier, max_minutes))))
-}
-
-compute_substitution_mask <- function(dt, from, to, duration, comp_limits) {
+compute_substitution_mask <- function(dt, from, to, duration, comp_hull) {
   if (duration == 0) {
     return(rep(TRUE, nrow(dt)))
   }
 
-  if (duration > 0) {
-    max_from_change <- dt[[from]] - comp_limits[[from]]$lower
-    max_to_change <- comp_limits[[to]]$upper - dt[[to]]
-    return((max_from_change >= duration) & (max_to_change >= duration))
+  if (!is_substitution_mask_table(comp_hull)) {
+    stop(
+      "Substitution support must be supplied as a Julia-generated mask table.",
+      call. = FALSE
+    )
   }
 
-  abs_dur <- abs(duration)
-  max_from_change <- comp_limits[[from]]$upper - dt[[from]]
-  max_to_change <- dt[[to]] - comp_limits[[to]]$lower
-  (max_from_change >= abs_dur) & (max_to_change >= abs_dur)
+  lookup_substitution_mask(
+    dt = dt,
+    substitution_masks = comp_hull,
+    from = from,
+    to = to,
+    duration = duration
+  )
 }
 
-compute_shifted_exposures <- function(dt, from, to, duration, comp_limits) {
+compute_shifted_exposures <- function(dt, from, to, duration, comp_hull) {
   dt <- as.data.table(dt)
   can_substitute <- compute_substitution_mask(
     dt = dt,
     from = from,
     to = to,
     duration = duration,
-    comp_limits = comp_limits
+    comp_hull = comp_hull
   )
 
   shifted_dt <- copy(dt)
@@ -107,27 +71,27 @@ summarize_substitution_coverage <- function(shifted_dt) {
   )
 }
 
-make_lmtp_shift <- function(from, to, duration, comp_limits) {
+make_lmtp_shift <- function(from, to, duration, comp_hull) {
   function(data, trt) {
     shifted_dt <- compute_shifted_exposures(
       dt = data,
       from = from,
       to = to,
       duration = duration,
-      comp_limits = comp_limits
+      comp_hull = comp_hull
     )
 
     extract_shifted_treatment(shifted_dt, trt)
   }
 }
 
-apply_substitution <- function(dt, from_var, to_var, duration, comp_limits) {
+apply_substitution <- function(dt, from_var, to_var, duration, comp_hull) {
   compute_shifted_exposures(
     dt = dt,
     from = from_var,
     to = to_var,
     duration = duration,
-    comp_limits = comp_limits
+    comp_hull = comp_hull
   )
 }
 
@@ -136,7 +100,7 @@ compute_substituted_risk <- function(
   from,
   to,
   duration,
-  comp_limits,
+  comp_hull,
   fitted_models,
   timegroup_cuts,
   baseline_risk
@@ -146,7 +110,7 @@ compute_substituted_risk <- function(
     from,
     to,
     duration,
-    comp_limits
+    comp_hull
   )
 
   risk_dt <- predict_risks(sub_dt, fitted_models, timegroup_cuts)

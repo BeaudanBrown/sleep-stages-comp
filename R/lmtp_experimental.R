@@ -5,7 +5,7 @@ run_lmtp_tmle_substitution_sim <- function(
   compete_cols,
   trt_cols,
   baseline_covars,
-  comp_limits,
+  comp_hull,
   substitution,
   learners_outcome,
   learners_trt,
@@ -76,7 +76,7 @@ run_lmtp_tmle_substitution_sim <- function(
     substitution$from,
     substitution$to,
     substitution$duration,
-    comp_limits
+    comp_hull
   )
 
   fit <- lmtp::lmtp_tmle(

@@ -311,10 +311,20 @@ load_shhs_covars <- function(shhs_covar_file) {
     age_s1,
     bmi_s1,
     gender,
+    waist,
+    HTNDerv_s1,
+    ParRptDiab,
+    Alcoh,
+    SLPILL15,
     educat
   )
 
   covs <- covs[, ..vars]
+  setnames(
+    covs,
+    c("HTNDerv_s1", "ParRptDiab", "SLPILL15", "Alcoh"),
+    c("hypertension", "diabetes", "sleeping_pills", "alcohol_use")
+  )
   covs
 }
 

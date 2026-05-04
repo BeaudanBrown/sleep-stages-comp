@@ -39,6 +39,14 @@
             with pkgs;
             [
               R
+              (julia.withPackages [
+                "CSV"
+                "Convex"
+                "DataFrames"
+                "GeometryTypes"
+                "Polyhedra"
+                "SCS"
+              ])
               quarto
             ]
             ++ (with pkgsUnstable; [
@@ -48,11 +56,13 @@
               languageserver
               dotenv
               targets
+              visNetwork
               tarchetypes
               qs2
               crew
               testthat
               withr
+              yaml
 
               psych
               ggplot2

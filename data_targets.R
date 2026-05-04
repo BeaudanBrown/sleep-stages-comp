@@ -76,6 +76,5 @@ data_targets <- list(
     imp_datasets,
     complete_imputed_datasets(imp = imp_mids, dt = dt),
     iteration = "list"
-  ),
-  tar_target(imp, complete_imputed_dataset(imp = imp_mids, dt = dt, action = 1))
+  )
 )

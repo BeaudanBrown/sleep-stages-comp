@@ -130,7 +130,7 @@ run_lmtp_tmle_substitution <- function(
   compete_cols,
   trt_cols,
   baseline_covars,
-  comp_limits,
+  comp_hull,
   reference_fit,
   substitution,
   learners_outcome,
@@ -142,7 +142,7 @@ run_lmtp_tmle_substitution <- function(
     substitution$from,
     substitution$to,
     substitution$duration,
-    comp_limits
+    comp_hull
   )
 
   shifted_final <- build_lmtp_shifted_data(
@@ -185,7 +185,7 @@ run_lmtp_tmle_substitutions_for_dataset <- function(
   compete_cols,
   trt_cols,
   baseline_covars,
-  comp_limits,
+  comp_hull,
   substitutions,
   learners_outcome,
   learners_trt,
@@ -212,7 +212,7 @@ run_lmtp_tmle_substitutions_for_dataset <- function(
       compete_cols = compete_cols,
       trt_cols = trt_cols,
       baseline_covars = baseline_covars,
-      comp_limits = comp_limits,
+      comp_hull = comp_hull,
       reference_fit = reference_fit,
       substitution = substitutions[i],
       learners_outcome = learners_outcome,

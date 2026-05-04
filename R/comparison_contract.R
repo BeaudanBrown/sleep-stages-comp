@@ -33,28 +33,6 @@ comparison_substitution_grid <- function() {
   )
 }
 
-compute_directional_support_frontiers <- function(
-  dt,
-  comp_limits,
-  ratio_threshold = comparison_ratio_threshold(),
-  max_minutes = comparison_duration_limit()
-) {
-  pairs <- make_substitution_grid(durations = 0, directed = TRUE)[, !"duration"]
-  unique(pairs)[,
-    .(
-      max_supported_minutes = compute_directional_support_frontier(
-        dt = dt,
-        from = from,
-        to = to,
-        comp_limits = comp_limits,
-        ratio_threshold = ratio_threshold,
-        max_minutes = max_minutes
-      )
-    ),
-    by = .(from, to)
-  ]
-}
-
 combine_imputation_support_frontiers <- function(frontier_dt_list) {
   frontier_dt <- data.table::rbindlist(
     frontier_dt_list,

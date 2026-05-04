@@ -6,7 +6,7 @@ dotenv::load_dot_env()
 cache_dir <- Sys.getenv("CACHE_DIR")
 framingham_dir <- Sys.getenv("FRAMINGHAM_DIR")
 shhs_dir <- Sys.getenv("SHHS_DIR")
-ncpus <- future::availableCores() - 1
+ncpus <- future::availableCores() - 4
 
 # Ensure single threaded within targets
 Sys.setenv(R_DATATABLE_NUM_THREADS = 1)
@@ -29,9 +29,9 @@ tar_option_set(
     "rms",
     "survival"
   ),
-  controller = crew_controller_local(
-    workers = ncpus
-  ),
+  # controller = crew_controller_local(
+  #   workers = ncpus
+  # ),
   format = "qs",
   seed = 20260202
 )

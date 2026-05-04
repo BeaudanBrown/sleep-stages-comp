@@ -18,7 +18,7 @@ bootstrap_resample <- function(dt, seed) {
 compute_substitution_risk_table <- function(
   dt,
   substitutions,
-  comp_limits,
+  comp_hull,
   fitted_models,
   timegroup_cuts,
   baseline_risk,
@@ -31,7 +31,7 @@ compute_substitution_risk_table <- function(
       row$from,
       row$to,
       row$duration,
-      comp_limits,
+      comp_hull,
       fitted_models,
       timegroup_cuts,
       baseline_risk
@@ -139,13 +139,17 @@ compute_completed_dataset_substitution_risk <- function(
 ) {
   timegroup_cuts <- make_cuts(dt)
   fitted_models <- fit_models(dt, timegroup_cuts)
-  comp_limits <- make_comp_limits(dt)
+  comp_hull <- compute_comp_hull_masks_for_dt(
+    dt = dt,
+    substitutions = substitutions,
+    imputation_id = if (is.null(imputation_id)) "1" else imputation_id
+  )
   baseline_risk <- predict_risks(dt, fitted_models, timegroup_cuts)
 
   compute_substitution_risk_table(
     dt = dt,
     substitutions = substitutions,
-    comp_limits = comp_limits,
+    comp_hull = comp_hull,
     fitted_models = fitted_models,
     timegroup_cuts = timegroup_cuts,
     baseline_risk = baseline_risk,
