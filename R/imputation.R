@@ -2,8 +2,20 @@ make_imputation_methods <- function(imp_dt) {
   meth <- mice::make.method(imp_dt)
   meth[] <- ""
 
-  if ("educat" %in% names(meth)) {
-    meth["educat"] <- "pmm"
+  no_impute <- intersect(imputation_no_impute_vars(), names(meth))
+  candidate_cols <- setdiff(names(meth), no_impute)
+
+  for (col in candidate_cols) {
+    if (!anyNA(imp_dt[[col]])) {
+      next
+    }
+
+    if (is.numeric(imp_dt[[col]]) || is.integer(imp_dt[[col]])) {
+      meth[col] <- "pmm"
+    } else if (is.factor(imp_dt[[col]])) {
+      n_levels <- length(levels(droplevels(imp_dt[[col]])))
+      meth[col] <- if (n_levels <= 2L) "logreg" else "polyreg"
+    }
   }
 
   meth
@@ -13,67 +25,42 @@ make_imputation_predictor_matrix <- function(imp_dt) {
   pred <- mice::make.predictorMatrix(imp_dt)
   pred[,] <- 0
 
-  educat_predictors <- intersect(
-    c(
-      "age_s1",
-      "bmi_s1",
-      "gender",
-      "n1",
-      "n2",
-      "n3",
-      "rem",
-      "waso",
-      "n1_s2",
-      "n2_s2",
-      "n3_s2",
-      "rem_s2",
-      "waso_s2",
-      "dem_or_mci_surv_date",
-      "log_dem_time"
-    ),
-    colnames(pred)
-  )
+  candidate_predictors <- intersect(imputation_predictor_vars(), colnames(pred))
 
-  if ("educat" %in% rownames(pred)) {
-    pred["educat", educat_predictors] <- 1
-    pred["educat", "educat"] <- 0
+  meth <- make_imputation_methods(imp_dt)
+  active_targets <- names(meth)[meth != ""]
+
+  for (target in active_targets) {
+    predictors <- setdiff(candidate_predictors, target)
+    pred[target, predictors] <- 1
   }
 
   pred
 }
 
 make_imputation_input_dt <- function(dt) {
-  base_covars <- c("age_s1", "bmi_s1", "gender", "educat", "IDTYPE")
-  base_covars <- intersect(base_covars, names(dt))
-
-  sleep_vars <- c(
-    "n1",
-    "n2",
-    "n3",
-    "rem",
-    "waso",
-    "slp_time",
-    "n1_s2",
-    "n2_s2",
-    "n3_s2",
-    "rem_s2",
-    "waso_s2",
-    "slp_time_s2"
-  )
-
-  outcome_vars <- c(
-    "dem_or_mci_status",
-    "dem_or_mci_surv_date",
-    "death_status",
-    "death_date"
-  )
+  model_covars <- unique(c(
+    "age_s1",
+    "bmi_s1",
+    "gender",
+    "educat",
+    "IDTYPE",
+    provisional_confounder_main_effects(dt)
+  ))
+  model_covars <- intersect(model_covars, names(dt))
 
   imp_cols <- intersect(
-    c("PID", base_covars, sleep_vars, outcome_vars),
+    c(
+      "PID",
+      model_covars,
+      sleep_history_vars,
+      sleep_exposure_vars,
+      survival_model_outcome_vars
+    ),
     names(dt)
   )
   imp_dt <- dt[, ..imp_cols]
-  imp_dt[, log_dem_time := log(dem_or_mci_surv_date)]
+  imp_dt[, (imputation_auxiliary_vars) := log(get(survival_outcome_vars[[2L]]))]
 
   imp_dt
 }
@@ -127,7 +114,7 @@ impute_data <- function(dt, m = 1, maxit = 5) {
 
 complete_imputed_dataset <- function(imp, dt, action = 1) {
   comp_dt <- data.table::as.data.table(mice::complete(imp, action = action))
-  drop_cols <- c("log_dem_time")
+  drop_cols <- imputation_auxiliary_vars
   drop_cols <- intersect(drop_cols, names(comp_dt))
 
   if (length(drop_cols) > 0) {

@@ -23,14 +23,11 @@ rcs_term <- function(var) {
 }
 
 required_sleep_history_covars <- function(dt) {
-  intersect(
-    c("n1", "n2", "n3", "rem", "slp_time_s2", "s1_incomplete"),
-    names(dt)
-  )
+  intersect(sleep_history_model_vars, names(dt))
 }
 
 required_sleep_history_spline_covars <- function(dt) {
-  intersect(c("n1", "n2", "n3", "rem", "slp_time_s2"), names(dt))
+  intersect(sleep_history_spline_vars, names(dt))
 }
 
 provisional_confounder_main_effects <- function(dt) {
@@ -62,11 +59,7 @@ get_primary_formula <- function(dt) {
   spline_vars <- c(
     comparison_contract$trt_cols,
     "timegroup",
-    "n1",
-    "n2",
-    "n3",
-    "rem",
-    "slp_time_s2"
+    sleep_history_spline_vars
   )
   knots <- make_formula_knots(dt, spline_vars)
 
@@ -92,7 +85,7 @@ get_primary_formula <- function(dt) {
 
 make_cuts <- function(dt) {
   max_follow_up <- max(
-    dt$dem_or_mci_surv_date,
+    dt[[survival_outcome_vars[[2L]]]],
     na.rm = TRUE
   )
 
@@ -111,8 +104,14 @@ make_cuts <- function(dt) {
 }
 
 expand_surv_dt <- function(dt, timegroup_cuts) {
+  surv_formula <- as.formula(sprintf(
+    "Surv(time = %s, event = %s) ~ .",
+    survival_outcome_vars[[2L]],
+    survival_outcome_vars[[1L]]
+  ))
+
   surv_dt <- survSplit(
-    Surv(time = dem_or_mci_surv_date, event = dem_or_mci_status) ~ .,
+    surv_formula,
     data = dt,
     cut = timegroup_cuts,
     episode = "timegroup",
@@ -126,8 +125,8 @@ expand_surv_dt <- function(dt, timegroup_cuts) {
 
   surv_dt[,
     death := fcase(
-      death_status == 1 & end >= death_date ,
-                                          1 ,
+      get(competing_event_vars[[1L]]) == 1 & end >= get(competing_event_vars[[2L]]) ,
+                                                                                  1 ,
       default = 0
     )
   ]
@@ -139,11 +138,17 @@ expand_for_prediction <- function(dt, timegroup_cuts) {
   dt_pred <- copy(dt)
 
   max_time <- max(timegroup_cuts)
-  dt_pred[, dem_or_mci_surv_date := max_time]
-  dt_pred[, dem_or_mci_status := 0]
+  dt_pred[, (survival_outcome_vars[[2L]]) := max_time]
+  dt_pred[, (survival_outcome_vars[[1L]]) := 0]
+
+  surv_formula <- as.formula(sprintf(
+    "Surv(time = %s, event = %s) ~ .",
+    survival_outcome_vars[[2L]],
+    survival_outcome_vars[[1L]]
+  ))
 
   surv_dt <- survSplit(
-    Surv(time = dem_or_mci_surv_date, event = dem_or_mci_status) ~ .,
+    surv_formula,
     data = dt_pred,
     cut = timegroup_cuts,
     episode = "timegroup",
@@ -226,10 +231,7 @@ make_surv_wide <- function(dt_surv_long, id_var = "PID") {
       "dem_or_mci",
       "death",
       "cens",
-      "dem_or_mci_status",
-      "dem_or_mci_surv_date",
-      "death_status",
-      "death_date"
+      survival_model_outcome_vars
     ),
     names(dt)
   )
@@ -296,6 +298,16 @@ predict_risks <- function(dt, models, timegroup_cuts) {
   surv_dt[,
     haz_death := predict(models$death, newdata = surv_dt, type = "response")
   ]
+
+  if (anyNA(surv_dt$haz_dem) || anyNA(surv_dt$haz_death)) {
+    stop(
+      paste(
+        "Risk prediction produced missing hazards.",
+        "Check for missing covariates in the prediction data."
+      ),
+      call. = FALSE
+    )
+  }
 
   setorder(surv_dt, PID, timegroup)
 
