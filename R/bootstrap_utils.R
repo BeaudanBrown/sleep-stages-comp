@@ -132,32 +132,66 @@ combine_point_estimates_with_bootstrap_cis <- function(
   )]
 }
 
+compute_completed_dataset_substitution_risk <- function(
+  dt,
+  substitutions,
+  imputation_id = NULL
+) {
+  timegroup_cuts <- make_cuts(dt)
+  fitted_models <- fit_models(dt, timegroup_cuts)
+  comp_limits <- make_comp_limits(dt)
+  baseline_risk <- predict_risks(dt, fitted_models, timegroup_cuts)
+
+  compute_substitution_risk_table(
+    dt = dt,
+    substitutions = substitutions,
+    comp_limits = comp_limits,
+    fitted_models = fitted_models,
+    timegroup_cuts = timegroup_cuts,
+    baseline_risk = baseline_risk,
+    imputation_id = imputation_id
+  )
+}
+
+compute_bootstrap_substitution_risk_by_imputation <- function(
+  boot_imp_datasets,
+  substitutions
+) {
+  res_list <- lapply(seq_along(boot_imp_datasets), function(i) {
+    compute_completed_dataset_substitution_risk(
+      dt = boot_imp_datasets[[i]],
+      substitutions = substitutions,
+      imputation_id = i
+    )
+  })
+
+  data.table::rbindlist(res_list)
+}
+
+average_bootstrap_substitution_replicate <- function(
+  boot_substituted_risk_by_imputation,
+  seed
+) {
+  out <- average_imputation_substitution_risk(
+    boot_substituted_risk_by_imputation
+  )
+  out[, bootstrap_seed := seed]
+  out
+}
+
 run_bootstrap_rep <- function(dt, substitutions, seed, m = 10, maxit = 5) {
   boot_dt <- bootstrap_resample(dt, seed)
   boot_imp <- impute_data(boot_dt, m = m, maxit = maxit)
   boot_imp_datasets <- complete_imputed_datasets(imp = boot_imp, dt = boot_dt)
-
-  boot_substitutions <- lapply(boot_imp_datasets, function(boot_imp_dt) {
-    timegroup_cuts <- make_cuts(boot_imp_dt)
-    fitted_models <- fit_models(boot_imp_dt, timegroup_cuts)
-    comp_limits <- make_comp_limits(boot_imp_dt)
-    baseline_risk <- predict_risks(boot_imp_dt, fitted_models, timegroup_cuts)
-
-    compute_substitution_risk_table(
-      dt = boot_imp_dt,
-      substitutions = substitutions,
-      comp_limits = comp_limits,
-      fitted_models = fitted_models,
-      timegroup_cuts = timegroup_cuts,
-      baseline_risk = baseline_risk
-    )
-  })
-
-  out <- average_imputation_substitution_risk(
-    data.table::rbindlist(boot_substitutions, idcol = "imputation_id")
+  boot_substitutions <- compute_bootstrap_substitution_risk_by_imputation(
+    boot_imp_datasets = boot_imp_datasets,
+    substitutions = substitutions
   )
-  out[, bootstrap_seed := seed]
-  out
+
+  average_bootstrap_substitution_replicate(
+    boot_substituted_risk_by_imputation = boot_substitutions,
+    seed = seed
+  )
 }
 
 summarize_bootstrap_substitutions <- function(boot_substituted_risk) {

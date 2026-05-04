@@ -201,14 +201,35 @@ analysis_bootstrap_targets <- list(
     }
   ),
   tar_target(
-    boot_substituted_risk,
-    run_bootstrap_rep(
-      dt = dt,
-      substitutions = substitutions,
-      seed = bootstrap_seeds,
-      m = bootstrap_config$m
-    ),
+    boot_resampled_dt,
+    bootstrap_resample(dt, bootstrap_seeds),
     pattern = map(bootstrap_seeds)
+  ),
+  tar_target(
+    boot_imp_mids,
+    impute_data(boot_resampled_dt, m = bootstrap_config$m),
+    pattern = map(boot_resampled_dt)
+  ),
+  tar_target(
+    boot_imp_datasets,
+    complete_imputed_datasets(imp = boot_imp_mids, dt = boot_resampled_dt),
+    pattern = map(boot_imp_mids, boot_resampled_dt)
+  ),
+  tar_target(
+    boot_substituted_risk_by_imputation,
+    compute_bootstrap_substitution_risk_by_imputation(
+      boot_imp_datasets = boot_imp_datasets,
+      substitutions = substitutions
+    ),
+    pattern = map(boot_imp_datasets)
+  ),
+  tar_target(
+    boot_substituted_risk,
+    average_bootstrap_substitution_replicate(
+      boot_substituted_risk_by_imputation = boot_substituted_risk_by_imputation,
+      seed = bootstrap_seeds
+    ),
+    pattern = map(boot_substituted_risk_by_imputation, bootstrap_seeds)
   ),
   tar_target(
     boot_risk_summary,

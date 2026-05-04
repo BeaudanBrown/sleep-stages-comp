@@ -18,6 +18,29 @@ test_that("analysis targets do not reference single-imputation helpers", {
   expect_false(any(matches))
 })
 
+test_that("bootstrap targets expose resampling, imputation, completion, and averaging", {
+  path <- file.path(project_root, "analysis_targets.R")
+  text <- paste(readLines(path, warn = FALSE), collapse = "\n")
+
+  expected_targets <- c(
+    "boot_resampled_dt",
+    "boot_imp_mids",
+    "boot_imp_datasets",
+    "boot_substituted_risk_by_imputation",
+    "boot_substituted_risk"
+  )
+
+  for (target_name in expected_targets) {
+    expect_match(text, sprintf("tar_target\\(\\s*%s\\b", target_name))
+  }
+
+  expect_match(text, "bootstrap_resample\\(dt, bootstrap_seeds\\)")
+  expect_match(text, "impute_data\\(boot_resampled_dt")
+  expect_match(text, "complete_imputed_datasets\\(imp = boot_imp_mids")
+  expect_match(text, "compute_bootstrap_substitution_risk_by_imputation\\(")
+  expect_match(text, "average_bootstrap_substitution_replicate\\(")
+})
+
 test_that("bootstrapping executes raw-data resample before imputation and branch fitting", {
   calls <- character()
   substitutions <- data.table::data.table(
@@ -118,7 +141,8 @@ test_that("bootstrapping executes raw-data resample before imputation and branch
       comp_limits,
       fitted_models,
       timegroup_cuts,
-      baseline_risk
+      baseline_risk,
+      imputation_id = NULL
     ) {
       calls <<- c(calls, "compute_substitution_risk_table")
       data.table::data.table(
@@ -129,7 +153,8 @@ test_that("bootstrapping executes raw-data resample before imputation and branch
         mean_risk_baseline = 0.10,
         mean_risk_substituted = 0.11,
         n_intervened = 10L,
-        n_total = 20L
+        n_total = 20L,
+        imputation_id = as.character(imputation_id)
       )
     },
     envir = globalenv()
