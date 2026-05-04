@@ -155,18 +155,6 @@ normalize_substitution_plot_summary <- function(
   required_cols = comparison_summary_output_cols()
 ) {
   dt <- data.table::as.data.table(summary_dt)
-  missing_cols <- setdiff(required_cols, names(dt))
-
-  if (length(missing_cols) > 0L) {
-    stop(
-      sprintf(
-        "summary_dt is missing required plot columns: %s",
-        paste(missing_cols, collapse = ", ")
-      ),
-      call. = FALSE
-    )
-  }
-
   dt <- data.table::copy(dt)[, ..required_cols]
   data.table::setorderv(dt, c("from", "to", "duration"))
 

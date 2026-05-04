@@ -83,7 +83,7 @@ run_lmtp_tmle_substitution_sim <- function(
     data = data,
     trt = trt_cols,
     outcome = outcome_cols,
-    baseline = baseline_covars_or_null(baseline_covars),
+    baseline = if (length(baseline_covars)) baseline_covars else NULL,
     time_vary = NULL,
     cens = cens_cols,
     compete = compete_cols,

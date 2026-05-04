@@ -45,6 +45,7 @@ test_that("make_surv_wide carries forward outcomes and uses lmtp censoring conve
   surv_dt <- expand_surv_dt(dt, cuts)
   wide <- suppressWarnings(make_surv_wide(surv_dt))
 
+  expect_s3_class(wide, "data.table")
   expect_true(all(
     c("Y_1", "Y_2", "Y_3", "D_1", "D_2", "D_3", "C_1", "C_2", "C_3") %in%
       names(wide)

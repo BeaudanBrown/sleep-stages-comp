@@ -91,7 +91,6 @@ add_imputed_columns <- function(dt, comp_dt) {
 
 impute_data <- function(dt, m = 1, maxit = 5) {
   imp_dt <- make_imputation_input_dt(dt)
-
   meth <- make_imputation_methods(imp_dt)
   pred <- make_imputation_predictor_matrix(imp_dt)
 

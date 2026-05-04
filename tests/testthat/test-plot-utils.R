@@ -35,10 +35,7 @@ test_that("normalize_substitution_plot_summary enforces the shared comparison sc
   )
   expect_equal(normalized$method, "bootstrap")
 
-  expect_error(
-    normalize_substitution_plot_summary(dt[, !"upper_ci"]),
-    "missing required plot columns"
-  )
+  expect_error(normalize_substitution_plot_summary(dt[, !"upper_ci"]))
 })
 
 test_that("method wrappers render identical shared comparison plots", {

@@ -21,7 +21,8 @@ compute_substitution_risk_table <- function(
   comp_limits,
   fitted_models,
   timegroup_cuts,
-  baseline_risk
+  baseline_risk,
+  imputation_id = NULL
 ) {
   res_list <- lapply(seq_len(nrow(substitutions)), function(i) {
     row <- substitutions[i]
@@ -37,7 +38,11 @@ compute_substitution_risk_table <- function(
     )
   })
 
-  data.table::rbindlist(res_list)
+  out <- data.table::rbindlist(res_list)
+  if (!is.null(imputation_id)) {
+    out[, imputation_id := as.character(imputation_id)]
+  }
+  out
 }
 
 summarize_substituted_risk_final_time <- function(dt, by_cols = NULL) {
@@ -148,9 +153,11 @@ run_bootstrap_rep <- function(dt, substitutions, seed, m = 10, maxit = 5) {
     )
   })
 
-  average_imputation_substitution_risk(
+  out <- average_imputation_substitution_risk(
     data.table::rbindlist(boot_substitutions, idcol = "imputation_id")
   )
+  out[, bootstrap_seed := seed]
+  out
 }
 
 summarize_bootstrap_substitutions <- function(boot_substituted_risk) {

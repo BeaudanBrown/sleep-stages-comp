@@ -1,11 +1,3 @@
-baseline_covars_or_null <- function(baseline_covars) {
-  if (length(baseline_covars) == 0) {
-    NULL
-  } else {
-    baseline_covars
-  }
-}
-
 run_lmtp_tmle_reference <- function(
   dt,
   outcome_cols,
@@ -21,7 +13,7 @@ run_lmtp_tmle_reference <- function(
     data = as.data.frame(dt),
     trt = list(trt_cols),
     outcome = outcome_cols,
-    baseline = baseline_covars_or_null(baseline_covars),
+    baseline = if (length(baseline_covars)) baseline_covars else NULL,
     time_vary = NULL,
     cens = cens_cols,
     compete = compete_cols,
@@ -131,49 +123,6 @@ average_lmtp_imputation_summaries <- function(summary_dt) {
   )
 }
 
-format_lmtp_substitution <- function(substitution) {
-  sprintf(
-    "from=%s to=%s duration=%s",
-    substitution$from[[1]],
-    substitution$to[[1]],
-    as.character(substitution$duration[[1]])
-  )
-}
-
-validate_lmtp_substitution <- function(substitution) {
-  required_cols <- c("from", "to", "duration")
-  missing_cols <- setdiff(required_cols, names(substitution))
-  if (length(missing_cols) > 0) {
-    stop(
-      sprintf(
-        "substitution is missing required columns: %s",
-        paste(missing_cols, collapse = ", ")
-      ),
-      call. = FALSE
-    )
-  }
-
-  if (nrow(substitution) != 1L) {
-    stop(
-      sprintf(
-        "substitution must have exactly 1 row, got %s",
-        nrow(substitution)
-      ),
-      call. = FALSE
-    )
-  }
-
-  if (
-    length(substitution$from) != 1L ||
-      length(substitution$to) != 1L ||
-      length(substitution$duration) != 1L
-  ) {
-    stop("substitution columns must each have length 1", call. = FALSE)
-  }
-
-  invisible(substitution)
-}
-
 run_lmtp_tmle_substitution <- function(
   dt,
   outcome_cols,
@@ -188,68 +137,44 @@ run_lmtp_tmle_substitution <- function(
   learners_trt,
   folds
 ) {
-  validate_lmtp_substitution(substitution)
-  substitution_label <- format_lmtp_substitution(substitution)
+  shifted_dt <- compute_shifted_exposures(
+    dt,
+    substitution$from,
+    substitution$to,
+    substitution$duration,
+    comp_limits
+  )
 
-  tryCatch(
-    {
-      shifted_dt <- apply_substitution(
-        dt,
-        substitution$from,
-        substitution$to,
-        substitution$duration,
-        comp_limits
-      )
+  shifted_final <- build_lmtp_shifted_data(
+    dt = dt,
+    trt_cols = trt_cols,
+    cens_cols = cens_cols,
+    shifted_trt_dt = shifted_dt
+  )
 
-      shifted_final <- build_lmtp_shifted_data(
-        dt = dt,
-        trt_cols = trt_cols,
-        cens_cols = cens_cols,
-        shifted_trt_dt = shifted_dt
-      )
+  fit <- lmtp::lmtp_tmle(
+    data = as.data.frame(dt),
+    trt = list(trt_cols),
+    outcome = outcome_cols,
+    baseline = if (length(baseline_covars)) baseline_covars else NULL,
+    time_vary = NULL,
+    cens = cens_cols,
+    compete = compete_cols,
+    shifted = as.data.frame(shifted_final),
+    mtp = TRUE,
+    outcome_type = "survival",
+    learners_outcome = learners_outcome,
+    learners_trt = learners_trt,
+    folds = folds
+  )
 
-      fit <- lmtp::lmtp_tmle(
-        data = as.data.frame(dt),
-        trt = list(trt_cols),
-        outcome = outcome_cols,
-        baseline = baseline_covars_or_null(baseline_covars),
-        time_vary = NULL,
-        cens = cens_cols,
-        compete = compete_cols,
-        shifted = as.data.frame(shifted_final),
-        mtp = TRUE,
-        outcome_type = "survival",
-        learners_outcome = learners_outcome,
-        learners_trt = learners_trt,
-        folds = folds
-      )
-
-      summarize_lmtp_contrast(
-        fit = fit,
-        reference_fit = reference_fit,
-        substitution = substitution,
-        ratio_substituted = summarize_substitution_coverage(
-          shifted_dt
-        )$ratio_substituted
-      )
-    },
-    error = function(e) {
-      stop(
-        paste0(
-          "LMTP substitution failed [",
-          substitution_label,
-          "] with folds=",
-          folds,
-          ", outcome_learners=",
-          paste(learners_outcome, collapse = ","),
-          ", trt_learners=",
-          paste(learners_trt, collapse = ","),
-          ": ",
-          conditionMessage(e)
-        ),
-        call. = FALSE
-      )
-    }
+  summarize_lmtp_contrast(
+    fit = fit,
+    reference_fit = reference_fit,
+    substitution = substitution,
+    ratio_substituted = summarize_substitution_coverage(
+      shifted_dt
+    )$ratio_substituted
   )
 }
 
@@ -264,7 +189,8 @@ run_lmtp_tmle_substitutions_for_dataset <- function(
   substitutions,
   learners_outcome,
   learners_trt,
-  folds
+  folds,
+  imputation_id = NULL
 ) {
   reference_fit <- run_lmtp_tmle_reference(
     dt = dt,
@@ -295,5 +221,10 @@ run_lmtp_tmle_substitutions_for_dataset <- function(
     )
   })
 
-  data.table::rbindlist(out)
+  out <- data.table::rbindlist(out)
+  if (!is.null(imputation_id)) {
+    out[, imputation_id := as.character(imputation_id)]
+  }
+
+  out
 }

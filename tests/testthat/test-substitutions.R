@@ -1,8 +1,8 @@
-test_that("apply_substitution preserves composition totals and changes only the targeted parts", {
+test_that("compute_shifted_exposures preserves totals and changes targeted parts", {
   dt <- make_test_comp_dt()
   limits <- make_test_comp_limits()
 
-  shifted <- suppressWarnings(apply_substitution(
+  shifted <- suppressWarnings(compute_shifted_exposures(
     dt,
     "n2_s2",
     "n3_s2",
@@ -21,12 +21,12 @@ test_that("apply_substitution preserves composition totals and changes only the 
   expect_named(shifted[, ..ilr_names], ilr_names)
 })
 
-test_that("apply_substitution leaves infeasible rows unchanged and flags them", {
+test_that("compute_shifted_exposures leaves infeasible rows unchanged", {
   dt <- make_test_comp_dt()
   limits <- make_test_comp_limits()
   dt[1, n2_s2 := 125]
 
-  shifted <- suppressWarnings(apply_substitution(
+  shifted <- suppressWarnings(compute_shifted_exposures(
     dt,
     "n2_s2",
     "n3_s2",
@@ -39,11 +39,11 @@ test_that("apply_substitution leaves infeasible rows unchanged and flags them", 
   expect_true(all(shifted$substituted[-1]))
 })
 
-test_that("apply_substitution handles negative durations as reverse shifts", {
+test_that("compute_shifted_exposures handles negative durations as reverse shifts", {
   dt <- make_test_comp_dt()
   limits <- make_test_comp_limits()
 
-  shifted <- suppressWarnings(apply_substitution(
+  shifted <- suppressWarnings(compute_shifted_exposures(
     dt,
     "n2_s2",
     "n3_s2",
@@ -64,7 +64,7 @@ test_that("zero-duration substitutions mark every row as substituted", {
   dt[1, n2_s2 := limits$n2_s2$upper + 5]
   dt[2, n2_s2 := limits$n2_s2$lower - 5]
 
-  shifted <- suppressWarnings(apply_substitution(
+  shifted <- suppressWarnings(compute_shifted_exposures(
     dt,
     "n2_s2",
     "n3_s2",
@@ -76,7 +76,7 @@ test_that("zero-duration substitutions mark every row as substituted", {
   expect_true(all(shifted$substituted))
 })
 
-test_that("make_lmtp_shift matches apply_substitution on treatment columns", {
+test_that("make_lmtp_shift matches shifted exposure treatment columns", {
   dt <- make_test_comp_dt()
   dt[, extra_covariate := c(1, 2, 3, 4)]
   limits <- make_test_comp_limits()
@@ -84,7 +84,7 @@ test_that("make_lmtp_shift matches apply_substitution on treatment columns", {
 
   shift_fn <- make_lmtp_shift("n2_s2", "n3_s2", 15, limits)
   shifted_trt <- suppressWarnings(shift_fn(dt, trt))
-  expected <- suppressWarnings(apply_substitution(
+  expected <- suppressWarnings(compute_shifted_exposures(
     dt,
     "n2_s2",
     "n3_s2",
@@ -97,18 +97,18 @@ test_that("make_lmtp_shift matches apply_substitution on treatment columns", {
   expect_equal(as.data.table(shifted_trt), expected[, ..trt])
 })
 
-test_that("compute_shifted_exposures is the canonical source for apply_substitution", {
+test_that("apply_substitution remains a compatibility alias", {
   dt <- make_test_comp_dt()
   limits <- make_test_comp_limits()
 
-  shifted <- suppressWarnings(compute_shifted_exposures(
+  expected <- suppressWarnings(compute_shifted_exposures(
     dt,
     "n2_s2",
     "n3_s2",
     15,
     limits
   ))
-  expected <- suppressWarnings(apply_substitution(
+  shifted <- suppressWarnings(apply_substitution(
     dt,
     "n2_s2",
     "n3_s2",
@@ -124,7 +124,7 @@ test_that("summarize_substitution_coverage returns consistent counts and ratios"
   limits <- make_test_comp_limits()
   dt[1, n2_s2 := 125]
 
-  shifted <- suppressWarnings(apply_substitution(
+  shifted <- suppressWarnings(compute_shifted_exposures(
     dt,
     "n2_s2",
     "n3_s2",
@@ -212,7 +212,7 @@ test_that("make_lmtp_shift handles negative durations consistently with apply_su
 
   shift_fn <- make_lmtp_shift("n2_s2", "n3_s2", -10, limits)
   shifted_trt <- suppressWarnings(shift_fn(dt, trt))
-  expected <- suppressWarnings(apply_substitution(
+  expected <- suppressWarnings(compute_shifted_exposures(
     dt,
     "n2_s2",
     "n3_s2",
@@ -231,7 +231,7 @@ test_that("make_lmtp_shift respects infeasibility for reverse shifts", {
 
   shift_fn <- make_lmtp_shift("n2_s2", "n3_s2", -10, limits)
   shifted_trt <- suppressWarnings(shift_fn(dt, trt))
-  expected <- suppressWarnings(apply_substitution(
+  expected <- suppressWarnings(compute_shifted_exposures(
     dt,
     "n2_s2",
     "n3_s2",

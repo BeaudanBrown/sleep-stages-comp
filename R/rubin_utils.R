@@ -76,3 +76,47 @@ pool_log_risk_ratio_rubin <- function(
     p.value = p.value
   )]
 }
+
+pool_coefficient_table_rubin <- function(
+  coefficient_tables,
+  by = "term",
+  estimate_col = "estimate",
+  std_error_col = "std.error",
+  conf.level = 0.95
+) {
+  long_dt <- data.table::rbindlist(
+    lapply(seq_along(coefficient_tables), function(i) {
+      dt <- data.table::as.data.table(coefficient_tables[[i]])
+      dt[, imputation_id := as.character(i)]
+      dt
+    }),
+    use.names = TRUE,
+    fill = TRUE
+  )
+
+  data.table::as.data.table(long_dt)[,
+    {
+      keep <- is.finite(get(estimate_col)) &
+        is.finite(get(std_error_col)) &
+        get(std_error_col) >= 0
+
+      pooled <- pool_scalar_rubin(
+        estimates = get(estimate_col)[keep],
+        variances = (get(std_error_col)[keep])^2,
+        conf.level = conf.level
+      )
+
+      .(
+        estimate = pooled$estimate,
+        std.error = pooled$std.error,
+        conf.low = pooled$conf.low,
+        conf.high = pooled$conf.high,
+        p.value = pooled$p.value,
+        m = pooled$m
+      )
+    },
+    by = by
+  ][
+    order(get(by))
+  ]
+}

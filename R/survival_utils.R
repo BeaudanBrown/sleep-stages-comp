@@ -90,17 +90,6 @@ get_primary_formula <- function(dt) {
   primary_formula
 }
 
-fit_model <- function(dt) {
-  model_formula <- get_primary_formula(dt)
-  dem_model_formula <- update(model_formula, dem_or_mci_status ~ .)
-  death_model_formula <- update(model_formula, death ~ .)
-
-  dem_model <- lm(dem_model_formula, dt)
-  death_model <- lm(death_model_formula, dt)
-
-  list(dem = strip_lm(dem_model), death = strip_lm(death_model))
-}
-
 make_cuts <- function(dt) {
   max_follow_up <- max(
     dt$dem_or_mci_surv_date,
@@ -250,10 +239,10 @@ make_surv_wide <- function(dt_surv_long, id_var = "PID") {
     by = id_var
   )
 
-  as.data.frame(Reduce(
+  Reduce(
     \(x, y) merge(x, y, by = id_var, sort = FALSE),
     list(base_dt, y_wide, d_wide, c_wide)
-  ))
+  )
 }
 
 get_surv_cols <- function(dt, prefix) {

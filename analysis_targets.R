@@ -81,10 +81,6 @@ analysis_shared_mi_targets <- list(
     build_support_aware_substitution_grid(substitution_support_frontiers)
   ),
   tar_target(
-    substitutions_list,
-    split(substitutions, seq_len(nrow(substitutions)))
-  ),
-  tar_target(
     comparison_contract,
     build_shared_comparison_contract(
       imp_datasets,
@@ -108,34 +104,20 @@ analysis_lmtp_targets <- list(
   ),
   tar_target(
     mi_lmtp_tmle_substitutions,
-    {
-      out <- tryCatch(
-        run_lmtp_tmle_substitutions_for_dataset(
-          dt = mi_dt_surv_wide,
-          outcome_cols = mi_lmtp_surv_cols$outcome,
-          cens_cols = mi_lmtp_surv_cols$cens,
-          compete_cols = mi_lmtp_surv_cols$compete,
-          trt_cols = comparison_contract$trt_cols,
-          baseline_covars = mi_lmtp_baseline_covars,
-          comp_limits = mi_comp_limits,
-          substitutions = substitutions,
-          learners_outcome = lmtp_learners_outcome,
-          learners_trt = lmtp_learners_trt,
-          folds = lmtp_folds
-        ),
-        error = function(e) {
-          stop(
-            paste0(
-              "MI LMTP branch failed: ",
-              conditionMessage(e)
-            ),
-            call. = FALSE
-          )
-        }
-      )
-      out[, imputation_id := as.character(imp_dataset_ids)]
-      out
-    },
+    run_lmtp_tmle_substitutions_for_dataset(
+      dt = mi_dt_surv_wide,
+      outcome_cols = mi_lmtp_surv_cols$outcome,
+      cens_cols = mi_lmtp_surv_cols$cens,
+      compete_cols = mi_lmtp_surv_cols$compete,
+      trt_cols = comparison_contract$trt_cols,
+      baseline_covars = mi_lmtp_baseline_covars,
+      comp_limits = mi_comp_limits,
+      substitutions = substitutions,
+      learners_outcome = lmtp_learners_outcome,
+      learners_trt = lmtp_learners_trt,
+      folds = lmtp_folds,
+      imputation_id = imp_dataset_ids
+    ),
     pattern = map(
       mi_dt_surv_wide,
       mi_lmtp_surv_cols,
@@ -182,18 +164,15 @@ analysis_bootstrap_targets <- list(
   ),
   tar_target(
     mi_pooled_substituted_risk,
-    {
-      out <- compute_substitution_risk_table(
-        dt = imp_datasets,
-        substitutions = substitutions,
-        comp_limits = mi_comp_limits,
-        fitted_models = mi_pooled_fitted_models,
-        timegroup_cuts = mi_timegroup_cuts,
-        baseline_risk = mi_pooled_baseline_risk
-      )
-      out[, imputation_id := as.character(imp_dataset_ids)]
-      out
-    },
+    compute_substitution_risk_table(
+      dt = imp_datasets,
+      substitutions = substitutions,
+      comp_limits = mi_comp_limits,
+      fitted_models = mi_pooled_fitted_models,
+      timegroup_cuts = mi_timegroup_cuts,
+      baseline_risk = mi_pooled_baseline_risk,
+      imputation_id = imp_dataset_ids
+    ),
     pattern = map(
       imp_datasets,
       mi_comp_limits,
@@ -223,16 +202,12 @@ analysis_bootstrap_targets <- list(
   ),
   tar_target(
     boot_substituted_risk,
-    {
-      out <- run_bootstrap_rep(
-        dt = dt,
-        substitutions = substitutions,
-        seed = bootstrap_seeds,
-        m = bootstrap_config$m
-      )
-      out[, bootstrap_seed := bootstrap_seeds]
-      out
-    },
+    run_bootstrap_rep(
+      dt = dt,
+      substitutions = substitutions,
+      seed = bootstrap_seeds,
+      m = bootstrap_config$m
+    ),
     pattern = map(bootstrap_seeds)
   ),
   tar_target(
@@ -282,7 +257,10 @@ analysis_comparison_targets <- list(
   tar_target(
     pooled_vs_lmtp_comparison_summary,
     summarize_method_comparison(pooled_vs_lmtp_comparison)
-  ),
+  )
+)
+
+analysis_diagnostic_targets <- list(
   tar_target(
     pooled_vs_lmtp_debug_rows,
     extract_comparison_debug_rows(pooled_vs_lmtp_comparison)
@@ -305,5 +283,6 @@ analysis_targets <- c(
   analysis_shared_mi_targets,
   analysis_lmtp_targets,
   analysis_bootstrap_targets,
-  analysis_comparison_targets
+  analysis_comparison_targets,
+  analysis_diagnostic_targets
 )

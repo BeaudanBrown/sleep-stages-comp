@@ -1,13 +1,29 @@
+comparison_settings <- list(
+  substitution_durations = seq(-60, 60, by = 15),
+  duration_limit = 60L,
+  points_per_direction = 4L,
+  ratio_threshold = 0.75,
+  summary_output_cols = c(
+    "from",
+    "to",
+    "duration",
+    "ratio_substituted",
+    "mean_risk_ratio",
+    "lower_ci",
+    "upper_ci"
+  )
+)
+
 comparison_substitution_durations <- function() {
-  seq(-60, 60, by = 15)
+  comparison_settings$substitution_durations
 }
 
 comparison_duration_limit <- function() {
-  60L
+  comparison_settings$duration_limit
 }
 
 comparison_points_per_direction <- function() {
-  4L
+  comparison_settings$points_per_direction
 }
 
 comparison_substitution_grid <- function() {
@@ -57,12 +73,6 @@ select_supported_duration_points <- function(
   max_supported_minutes,
   points_per_direction = comparison_points_per_direction()
 ) {
-  if (
-    !is.numeric(max_supported_minutes) || length(max_supported_minutes) != 1L
-  ) {
-    stop("max_supported_minutes must be a single numeric value.", call. = FALSE)
-  }
-
   max_supported_minutes <- as.integer(floor(max_supported_minutes))
   if (max_supported_minutes <= 0L) {
     return(integer())
@@ -129,26 +139,14 @@ comparison_treatment_cols <- function() {
 }
 
 comparison_ratio_threshold <- function() {
-  0.75
+  comparison_settings$ratio_threshold
 }
 
 comparison_summary_output_cols <- function() {
-  c(
-    "from",
-    "to",
-    "duration",
-    "ratio_substituted",
-    "mean_risk_ratio",
-    "lower_ci",
-    "upper_ci"
-  )
+  comparison_settings$summary_output_cols
 }
 
 combine_timegroup_cuts <- function(cuts) {
-  if (!length(cuts)) {
-    stop("cuts must contain at least one element.", call. = FALSE)
-  }
-
   baseline <- cuts[[1]]
   for (idx in seq_along(cuts)[-1]) {
     if (!isTRUE(all.equal(baseline, cuts[[idx]], check.attributes = FALSE))) {
@@ -160,10 +158,6 @@ combine_timegroup_cuts <- function(cuts) {
 }
 
 combine_imputation_comp_limits <- function(comp_limits_list) {
-  if (!length(comp_limits_list)) {
-    stop("comp_limits_list must contain at least one element.", call. = FALSE)
-  }
-
   limit_names <- names(comp_limits_list[[1]])
   setNames(
     lapply(limit_names, function(var) {
@@ -188,10 +182,6 @@ combine_imputation_comp_limits <- function(comp_limits_list) {
 }
 
 combine_lmtp_surv_cols <- function(cols_list) {
-  if (!length(cols_list)) {
-    stop("cols_list must contain at least one element.", call. = FALSE)
-  }
-
   baseline <- cols_list[[1]]
   component_names <- names(baseline)
 
@@ -211,10 +201,6 @@ combine_lmtp_surv_cols <- function(cols_list) {
 }
 
 combine_imputation_character_vectors <- function(values) {
-  if (!length(values)) {
-    stop("values must contain at least one element.", call. = FALSE)
-  }
-
   Reduce(intersect, values)
 }
 
@@ -246,10 +232,6 @@ build_shared_comparison_contract <- function(
   dt_list,
   substitutions = comparison_substitution_grid()
 ) {
-  if (!length(dt_list)) {
-    stop("dt_list must contain at least one completed dataset.", call. = FALSE)
-  }
-
   contract <- build_comparison_contract(
     dt_list[[1]],
     substitutions = substitutions

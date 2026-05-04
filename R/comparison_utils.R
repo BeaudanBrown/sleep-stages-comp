@@ -11,24 +11,6 @@ comparison_direction <- function(risk_ratio, tolerance = 1e-8) {
 
 normalize_method_comparison_summary <- function(summary_dt) {
   dt <- data.table::as.data.table(summary_dt)
-  required_cols <- c(
-    "from",
-    "to",
-    "duration",
-    "ratio_substituted",
-    "mean_risk_ratio"
-  )
-  missing_cols <- setdiff(required_cols, names(dt))
-
-  if (length(missing_cols) > 0L) {
-    stop(
-      sprintf(
-        "summary_dt is missing required comparison columns: %s",
-        paste(missing_cols, collapse = ", ")
-      ),
-      call. = FALSE
-    )
-  }
 
   if (!"lower_ci" %in% names(dt)) {
     dt[, lower_ci := NA_real_]

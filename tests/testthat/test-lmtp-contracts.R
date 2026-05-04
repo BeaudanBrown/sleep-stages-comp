@@ -2,7 +2,7 @@ test_that("build_lmtp_shifted_data only changes treatment and censoring columns"
   inputs <- make_test_lmtp_inputs()
   wide <- data.table::as.data.table(inputs$wide)
   cols <- inputs$cols
-  shifted_trt <- suppressWarnings(apply_substitution(
+  shifted_trt <- suppressWarnings(compute_shifted_exposures(
     wide,
     "n2_s2",
     "n3_s2",
@@ -105,7 +105,7 @@ test_that("run_lmtp_tmle_substitution reports the event-risk contrast, not the s
     duration = 15
   )
 
-  shifted_dt <- suppressWarnings(apply_substitution(
+  shifted_dt <- suppressWarnings(compute_shifted_exposures(
     inputs$wide,
     substitution$from,
     substitution$to,
@@ -235,4 +235,132 @@ test_that("pool_scalar_rubin returns the expected pooled variance components", {
   expect_true(out$within_variance > 0)
   expect_true(out$total_variance >= out$within_variance)
   expect_true(is.finite(out$std.error))
+})
+
+test_that("pool_coefficient_table_rubin pools MI coefficient tables", {
+  coef_tables <- list(
+    data.table::data.table(
+      term = c("(Intercept)", "R1"),
+      estimate = c(0.10, 0.20),
+      std.error = c(0.05, 0.07)
+    ),
+    data.table::data.table(
+      term = c("(Intercept)", "R1"),
+      estimate = c(0.12, 0.22),
+      std.error = c(0.06, 0.09)
+    )
+  )
+
+  out <- pool_coefficient_table_rubin(coef_tables)
+
+  expect_equal(nrow(out), 2L)
+  expect_true(all(
+    c("term", "estimate", "std.error", "conf.low", "conf.high") %in%
+      names(out)
+  ))
+  intercept <- out[term == "(Intercept)"]
+  r1 <- out[term == "R1"]
+
+  pooled_intercept <- pool_scalar_rubin(
+    c(0.10, 0.12),
+    c(0.05, 0.06)^2
+  )
+  pooled_r1 <- pool_scalar_rubin(
+    c(0.20, 0.22),
+    c(0.07, 0.09)^2
+  )
+
+  expect_equal(intercept$estimate, pooled_intercept$estimate, tolerance = 1e-8)
+  expect_equal(
+    intercept$std.error,
+    pooled_intercept$std.error,
+    tolerance = 1e-8
+  )
+  expect_equal(intercept$conf.low, pooled_intercept$conf.low, tolerance = 1e-8)
+  expect_equal(
+    intercept$conf.high,
+    pooled_intercept$conf.high,
+    tolerance = 1e-8
+  )
+  expect_equal(r1$estimate, pooled_r1$estimate, tolerance = 1e-8)
+})
+
+test_that("run_lmtp_tmle_substitutions_for_dataset tags outputs with imputation_id", {
+  original <- list(
+    reference = run_lmtp_tmle_reference,
+    substitution = run_lmtp_tmle_substitution
+  )
+
+  assign(
+    "run_lmtp_tmle_reference",
+    function(...) {
+      list(ref = TRUE)
+    },
+    envir = globalenv()
+  )
+  assign(
+    "run_lmtp_tmle_substitution",
+    function(
+      dt,
+      outcome_cols,
+      cens_cols,
+      compete_cols,
+      trt_cols,
+      baseline_covars,
+      comp_limits,
+      reference_fit,
+      substitution,
+      learners_outcome,
+      learners_trt,
+      folds
+    ) {
+      data.table::data.table(
+        from = substitution$from,
+        to = substitution$to,
+        duration = substitution$duration,
+        ratio_substituted = 1,
+        mean_risk_substituted = 0.10,
+        mean_risk_reference = 0.10,
+        mean_risk_ratio = 1,
+        std.error = 0.01,
+        lower_ci = 0.8,
+        upper_ci = 1.2,
+        p.value = 0.5
+      )
+    },
+    envir = globalenv()
+  )
+  on.exit(
+    {
+      assign("run_lmtp_tmle_reference", original$reference, envir = globalenv())
+      assign(
+        "run_lmtp_tmle_substitution",
+        original$substitution,
+        envir = globalenv()
+      )
+    },
+    add = TRUE
+  )
+
+  out <- run_lmtp_tmle_substitutions_for_dataset(
+    dt = data.table::data.table(),
+    outcome_cols = character(),
+    cens_cols = character(),
+    compete_cols = character(),
+    trt_cols = character(),
+    baseline_covars = character(),
+    comp_limits = list(),
+    substitutions = data.table::data.table(
+      from = "n1_s2",
+      to = "n2_s2",
+      duration = 15L
+    ),
+    learners_outcome = "SL.mean",
+    learners_trt = "SL.glm",
+    folds = 2,
+    imputation_id = "7"
+  )
+
+  expect_equal(out$imputation_id, "7")
+  expect_equal(nrow(out), 1L)
 })

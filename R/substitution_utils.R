@@ -1,8 +1,4 @@
 make_substitution_grid <- function(durations, directed = TRUE) {
-  if (!is.numeric(durations) || length(durations) == 0L) {
-    stop("durations must be a non-empty numeric vector.", call. = FALSE)
-  }
-
   pairs <- t(combn(comp_vars, 2))
   pair_dt <- data.table::data.table(from = pairs[, 1], to = pairs[, 2])
 
@@ -40,18 +36,6 @@ compute_directional_support_frontier <- function(
     comp_limits = comp_limits
   )
   feasible <- feasible[is.finite(feasible)]
-
-  if (
-    !is.numeric(ratio_threshold) ||
-      length(ratio_threshold) != 1L ||
-      ratio_threshold < 0 ||
-      ratio_threshold > 1
-  ) {
-    stop(
-      "ratio_threshold must be a single number between 0 and 1.",
-      call. = FALSE
-    )
-  }
 
   if (length(feasible) == 0L) {
     return(0L)
@@ -115,9 +99,6 @@ extract_shifted_treatment <- function(shifted_dt, trt_cols) {
 
 summarize_substitution_coverage <- function(shifted_dt) {
   substituted <- as.data.table(shifted_dt)[["substituted"]]
-  if (is.null(substituted)) {
-    stop("shifted_dt must contain a 'substituted' column.", call. = FALSE)
-  }
 
   list(
     n_intervened = sum(substituted),
@@ -160,7 +141,7 @@ compute_substituted_risk <- function(
   timegroup_cuts,
   baseline_risk
 ) {
-  sub_dt <- apply_substitution(
+  sub_dt <- compute_shifted_exposures(
     dt,
     from,
     to,
