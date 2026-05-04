@@ -7,7 +7,7 @@ test_that("build_lmtp_shifted_data only changes treatment and censoring columns"
     "n2_s2",
     "n3_s2",
     15,
-    inputs$comp_limits
+    inputs$comp_hull
   ))
 
   shifted <- build_lmtp_shifted_data(
@@ -70,7 +70,7 @@ test_that("run_lmtp_tmle_substitution returns a near-null risk ratio for a zero 
     compete_cols = inputs$cols$compete,
     trt_cols = ilr_names,
     baseline_covars = character(0),
-    comp_limits = inputs$comp_limits,
+    comp_hull = inputs$comp_hull,
     reference_fit = ref,
     substitution = substitution,
     learners_outcome = "SL.mean",
@@ -110,7 +110,7 @@ test_that("run_lmtp_tmle_substitution reports the event-risk contrast, not the s
     substitution$from,
     substitution$to,
     substitution$duration,
-    inputs$comp_limits
+    inputs$comp_hull
   ))
   shifted_final <- build_lmtp_shifted_data(
     dt = inputs$wide,
@@ -155,7 +155,7 @@ test_that("run_lmtp_tmle_substitution reports the event-risk contrast, not the s
     compete_cols = inputs$cols$compete,
     trt_cols = ilr_names,
     baseline_covars = character(0),
-    comp_limits = inputs$comp_limits,
+    comp_hull = inputs$comp_hull,
     reference_fit = ref,
     substitution = substitution,
     learners_outcome = "SL.mean",
@@ -307,7 +307,7 @@ test_that("run_lmtp_tmle_substitutions_for_dataset tags outputs with imputation_
       compete_cols,
       trt_cols,
       baseline_covars,
-      comp_limits,
+      comp_hull,
       reference_fit,
       substitution,
       learners_outcome,
@@ -349,7 +349,7 @@ test_that("run_lmtp_tmle_substitutions_for_dataset tags outputs with imputation_
     compete_cols = character(),
     trt_cols = character(),
     baseline_covars = character(),
-    comp_limits = list(),
+    comp_hull = list(),
     substitutions = data.table::data.table(
       from = "n1_s2",
       to = "n2_s2",

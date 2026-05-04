@@ -135,15 +135,11 @@ combine_point_estimates_with_bootstrap_cis <- function(
 compute_completed_dataset_substitution_risk <- function(
   dt,
   substitutions,
+  comp_hull,
   imputation_id = NULL
 ) {
   timegroup_cuts <- make_cuts(dt)
   fitted_models <- fit_models(dt, timegroup_cuts)
-  comp_hull <- compute_comp_hull_masks_for_dt(
-    dt = dt,
-    substitutions = substitutions,
-    imputation_id = if (is.null(imputation_id)) "1" else imputation_id
-  )
   baseline_risk <- predict_risks(dt, fitted_models, timegroup_cuts)
 
   compute_substitution_risk_table(
@@ -159,12 +155,14 @@ compute_completed_dataset_substitution_risk <- function(
 
 compute_bootstrap_substitution_risk_by_imputation <- function(
   boot_imp_datasets,
-  substitutions
+  substitutions,
+  comp_hull
 ) {
   res_list <- lapply(seq_along(boot_imp_datasets), function(i) {
     compute_completed_dataset_substitution_risk(
       dt = boot_imp_datasets[[i]],
       substitutions = substitutions,
+      comp_hull = comp_hull,
       imputation_id = i
     )
   })
@@ -183,13 +181,21 @@ average_bootstrap_substitution_replicate <- function(
   out
 }
 
-run_bootstrap_rep <- function(dt, substitutions, seed, m = 10, maxit = 5) {
+run_bootstrap_rep <- function(
+  dt,
+  substitutions,
+  comp_hull,
+  seed,
+  m = 10,
+  maxit = 5
+) {
   boot_dt <- bootstrap_resample(dt, seed)
   boot_imp <- impute_data(boot_dt, m = m, maxit = maxit)
   boot_imp_datasets <- complete_imputed_datasets(imp = boot_imp, dt = boot_dt)
   boot_substitutions <- compute_bootstrap_substitution_risk_by_imputation(
     boot_imp_datasets = boot_imp_datasets,
-    substitutions = substitutions
+    substitutions = substitutions,
+    comp_hull = comp_hull
   )
 
   average_bootstrap_substitution_replicate(

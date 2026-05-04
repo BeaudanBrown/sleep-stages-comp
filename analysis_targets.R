@@ -54,45 +54,28 @@ analysis_shared_mi_targets <- list(
     combine_imputation_character_vectors(mi_lmtp_baseline_covars)
   ),
   tar_target(
-    mi_comp_hull_input_diagnostics,
-    validate_comp_hull_input(imp_datasets),
-    pattern = map(imp_datasets),
-    iteration = "list"
-  ),
-  tar_target(
     comp_hull_input_diagnostics,
-    data.table::rbindlist(
-      mi_comp_hull_input_diagnostics,
-      idcol = "imputation_id"
-    )
+    validate_comp_hull_input(dt)
   ),
   tar_target(
-    mi_comp_hull_input_files,
+    comp_hull_input_file,
     write_comp_hull_input_file(
-      dt = imp_datasets,
-      imputation_id = imp_dataset_ids
+      dt = dt,
+      imputation_id = "observed"
     ),
-    pattern = map(imp_datasets, imp_dataset_ids),
     format = "file"
   ),
   tar_target(
-    mi_comp_hull_frontier_files,
+    comp_hull_frontier_file,
     run_julia_comp_hull_frontiers(
-      input_file = mi_comp_hull_input_files,
-      imputation_id = imp_dataset_ids
+      input_file = comp_hull_input_file,
+      imputation_id = "observed"
     ),
-    pattern = map(mi_comp_hull_input_files, imp_dataset_ids),
     format = "file"
-  ),
-  tar_target(
-    mi_substitution_support_frontiers,
-    read_comp_hull_frontiers(mi_comp_hull_frontier_files),
-    pattern = map(mi_comp_hull_frontier_files),
-    iteration = "list"
   ),
   tar_target(
     substitution_support_frontiers,
-    combine_imputation_support_frontiers(mi_substitution_support_frontiers)
+    read_comp_hull_frontiers(comp_hull_frontier_file)
   ),
   tar_target(
     substitutions,
@@ -104,20 +87,17 @@ analysis_shared_mi_targets <- list(
     format = "file"
   ),
   tar_target(
-    mi_comp_hull_mask_files,
+    comp_hull_mask_file,
     run_julia_comp_hull_masks(
-      input_file = mi_comp_hull_input_files,
+      input_file = comp_hull_input_file,
       substitutions_file = comp_hull_substitutions_file,
-      imputation_id = imp_dataset_ids
+      imputation_id = "observed"
     ),
-    pattern = map(mi_comp_hull_input_files, imp_dataset_ids),
     format = "file"
   ),
   tar_target(
-    mi_comp_hull_masks,
-    read_comp_hull_masks(mi_comp_hull_mask_files),
-    pattern = map(mi_comp_hull_mask_files),
-    iteration = "list"
+    comp_hull_masks,
+    read_comp_hull_masks(comp_hull_mask_file)
   ),
   tar_target(
     comparison_contract,
@@ -150,7 +130,7 @@ analysis_lmtp_targets <- list(
       compete_cols = mi_lmtp_surv_cols$compete,
       trt_cols = comparison_contract$trt_cols,
       baseline_covars = mi_lmtp_baseline_covars,
-      comp_hull = mi_comp_hull_masks,
+      comp_hull = comp_hull_masks,
       substitutions = substitutions,
       learners_outcome = lmtp_learners_outcome,
       learners_trt = lmtp_learners_trt,
@@ -161,7 +141,6 @@ analysis_lmtp_targets <- list(
       mi_dt_surv_wide,
       mi_lmtp_surv_cols,
       mi_lmtp_baseline_covars,
-      mi_comp_hull_masks,
       imp_dataset_ids
     )
   ),
@@ -206,7 +185,7 @@ analysis_bootstrap_targets <- list(
     compute_substitution_risk_table(
       dt = imp_datasets,
       substitutions = substitutions,
-      comp_hull = mi_comp_hull_masks,
+      comp_hull = comp_hull_masks,
       fitted_models = mi_pooled_fitted_models,
       timegroup_cuts = mi_timegroup_cuts,
       baseline_risk = mi_pooled_baseline_risk,
@@ -214,7 +193,6 @@ analysis_bootstrap_targets <- list(
     ),
     pattern = map(
       imp_datasets,
-      mi_comp_hull_masks,
       mi_pooled_fitted_models,
       mi_timegroup_cuts,
       mi_pooled_baseline_risk,
@@ -258,7 +236,8 @@ analysis_bootstrap_targets <- list(
     boot_substituted_risk_by_imputation,
     compute_bootstrap_substitution_risk_by_imputation(
       boot_imp_datasets = boot_imp_datasets,
-      substitutions = substitutions
+      substitutions = substitutions,
+      comp_hull = comp_hull_masks
     ),
     pattern = map(boot_imp_datasets)
   ),

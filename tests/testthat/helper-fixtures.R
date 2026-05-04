@@ -19,6 +19,44 @@ make_test_comp_limits <- function() {
   )
 }
 
+make_test_comp_hull <- function() {
+  make_test_substitution_masks(
+    make_test_comp_dt(),
+    data.table::data.table(
+      from = c("n2_s2", "n2_s2"),
+      to = c("n3_s2", "n3_s2"),
+      duration = c(15L, -10L)
+    )
+  )
+}
+
+make_test_substitution_masks <- function(
+  dt,
+  substitutions,
+  substituted = TRUE
+) {
+  dt <- data.table::as.data.table(dt)
+  substitutions <- data.table::as.data.table(substitutions)
+
+  data.table::rbindlist(lapply(seq_len(nrow(substitutions)), function(i) {
+    row <- substitutions[i]
+    mask <- if (length(substituted) == 1L) {
+      rep(as.logical(substituted), nrow(dt))
+    } else {
+      as.logical(substituted)
+    }
+
+    data.table::data.table(
+      from = row$from,
+      to = row$to,
+      duration = as.integer(row$duration),
+      row_id = seq_len(nrow(dt)),
+      PID = as.character(dt$PID),
+      substituted = mask
+    )
+  }))
+}
+
 comp_total <- function(dt) {
   rowSums(as.matrix(dt[, ..comp_vars]))
 }
@@ -122,7 +160,14 @@ make_test_lmtp_inputs <- function(n = 120L) {
     surv_dt = surv_dt,
     wide = wide,
     cols = cols,
-    comp_limits = make_comp_limits(wide)
+    comp_hull = make_test_substitution_masks(
+      wide,
+      data.table::data.table(
+        from = "n2_s2",
+        to = "n3_s2",
+        duration = 15L
+      )
+    )
   )
 }
 

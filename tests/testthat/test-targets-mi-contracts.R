@@ -59,7 +59,6 @@ test_that("bootstrapping executes raw-data resample before imputation and branch
     complete_imputed_datasets = complete_imputed_datasets,
     make_cuts = make_cuts,
     fit_models = fit_models,
-    make_comp_limits = make_comp_limits,
     predict_risks = predict_risks,
     compute_substitution_risk_table = compute_substitution_risk_table
   )
@@ -116,14 +115,6 @@ test_that("bootstrapping executes raw-data resample before imputation and branch
     envir = globalenv()
   )
   assign(
-    "make_comp_limits",
-    function(dt) {
-      calls <<- c(calls, "make_comp_limits")
-      list(lower = 0L, upper = 100L)
-    },
-    envir = globalenv()
-  )
-  assign(
     "predict_risks",
     function(dt, fitted_models, timegroup_cuts) {
       calls <<- c(calls, "predict_risks")
@@ -138,7 +129,7 @@ test_that("bootstrapping executes raw-data resample before imputation and branch
     function(
       dt,
       substitutions,
-      comp_limits,
+      comp_hull,
       fitted_models,
       timegroup_cuts,
       baseline_risk,
@@ -175,11 +166,6 @@ test_that("bootstrapping executes raw-data resample before imputation and branch
       assign("make_cuts", original_bindings$make_cuts, envir = globalenv())
       assign("fit_models", original_bindings$fit_models, envir = globalenv())
       assign(
-        "make_comp_limits",
-        original_bindings$make_comp_limits,
-        envir = globalenv()
-      )
-      assign(
         "predict_risks",
         original_bindings$predict_risks,
         envir = globalenv()
@@ -196,6 +182,13 @@ test_that("bootstrapping executes raw-data resample before imputation and branch
   out <- run_bootstrap_rep(
     dt = base_dt,
     substitutions = substitutions,
+    comp_hull = data.table::data.table(
+      from = "n1_s2",
+      to = "n2_s2",
+      duration = 0L,
+      PID = as.character(base_dt$PID),
+      substituted = TRUE
+    ),
     seed = 123L,
     m = 2L,
     maxit = 3L
@@ -212,7 +205,6 @@ test_that("bootstrapping executes raw-data resample before imputation and branch
         c(
           "make_cuts",
           "fit_models",
-          "make_comp_limits",
           "predict_risks",
           "compute_substitution_risk_table"
         ),
@@ -236,7 +228,7 @@ test_that("substitution risk tables can tag imputation branches internally", {
       from,
       to,
       duration,
-      comp_limits,
+      comp_hull,
       fitted_models,
       timegroup_cuts,
       baseline_risk
@@ -266,7 +258,7 @@ test_that("substitution risk tables can tag imputation branches internally", {
       to = "n2_s2",
       duration = c(0L, 15L)
     ),
-    comp_limits = list(),
+    comp_hull = list(),
     fitted_models = list(),
     timegroup_cuts = c(1L, 2L),
     baseline_risk = data.table::data.table(),

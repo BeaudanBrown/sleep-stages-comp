@@ -35,34 +35,6 @@ test_that("make_substitution_grid supports undirected signed-duration policies",
   expect_false(any(reverse_keys %in% pair_keys))
 })
 
-test_that("compute_directional_support_frontier finds the largest supported whole-minute shift", {
-  dt <- make_test_comp_dt()
-  limits <- make_test_comp_limits()
-
-  expect_equal(
-    compute_directional_support_frontier(
-      dt = dt,
-      from = "n2_s2",
-      to = "n3_s2",
-      comp_limits = limits,
-      ratio_threshold = 0.75,
-      max_minutes = 60
-    ),
-    30L
-  )
-  expect_equal(
-    compute_directional_support_frontier(
-      dt = dt,
-      from = "n3_s2",
-      to = "n2_s2",
-      comp_limits = limits,
-      ratio_threshold = 0.75,
-      max_minutes = 60
-    ),
-    20L
-  )
-})
-
 test_that("combine_imputation_support_frontiers takes the conservative minimum", {
   frontier_a <- data.table::data.table(
     from = c("n2_s2", "n3_s2"),

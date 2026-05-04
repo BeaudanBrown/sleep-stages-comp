@@ -118,8 +118,17 @@ run_julia_comp_hull_masks <- function(
 }
 
 run_julia_comp_hull_support <- function(args) {
-  script <- file.path("scripts", "comp_hull_support.jl")
-  res <- system2("julia", c(script, args), stdout = TRUE, stderr = TRUE)
+  script <- normalizePath(
+    file.path("scripts", "comp_hull_support.jl"),
+    winslash = "/",
+    mustWork = TRUE
+  )
+  julia <- Sys.which("julia")
+  if (!nzchar(julia)) {
+    stop("Could not find julia on PATH.", call. = FALSE)
+  }
+
+  res <- system2(julia, c(script, args), stdout = TRUE, stderr = TRUE)
   status <- attr(res, "status")
 
   if (!is.null(status) && status != 0L) {
@@ -143,6 +152,9 @@ read_comp_hull_masks <- function(mask_file) {
   out <- data.table::fread(mask_file)
   out[, duration := as.integer(duration)]
   out[, substituted := as.logical(substituted)]
+  if ("PID" %in% names(out)) {
+    out[, PID := as.character(PID)]
+  }
   out
 }
 
@@ -159,7 +171,10 @@ lookup_substitution_mask <- function(
   duration
 ) {
   dt <- data.table::as.data.table(dt)
-  masks <- data.table::as.data.table(substitution_masks)
+  masks <- data.table::copy(data.table::as.data.table(substitution_masks))
+  if ("PID" %in% names(masks)) {
+    masks[, PID := as.character(PID)]
+  }
   duration_value <- as.integer(duration)
   from_value <- from
   to_value <- to
@@ -182,11 +197,19 @@ lookup_substitution_mask <- function(
     )
   }
 
-  if ("PID" %in% names(dt) && "PID" %in% names(mask_dt)) {
+  if ("PID_original" %in% names(dt) && "PID" %in% names(mask_dt)) {
+    lookup <- mask_dt[
+      data.table::data.table(PID = as.character(dt$PID_original)),
+      on = "PID",
+      substituted,
+      allow.cartesian = TRUE
+    ]
+  } else if ("PID" %in% names(dt) && "PID" %in% names(mask_dt)) {
     lookup <- mask_dt[
       data.table::data.table(PID = as.character(dt$PID)),
       on = "PID",
-      substituted
+      substituted,
+      allow.cartesian = TRUE
     ]
   } else if ("row_id" %in% names(mask_dt)) {
     lookup <- mask_dt[
