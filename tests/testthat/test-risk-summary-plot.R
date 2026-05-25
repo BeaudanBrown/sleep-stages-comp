@@ -89,3 +89,33 @@ test_that("make_risk_summary_x_breaks includes zero and supported maximum", {
     c(0, 20, 40, 60)
   )
 })
+
+test_that("pair direction guide keeps the destination stage above the arrow", {
+  guide <- make_risk_plot_direction("N1", "N3")
+
+  expect_equal(guide$children$left_less_label$label, "Less N3")
+  expect_equal(guide$children$right_more_label$label, "More N3")
+  expect_equal(as.numeric(guide$children$left_less_label$y), -0.17)
+  expect_equal(as.numeric(guide$children$right_more_label$y), -0.17)
+  expect_equal(as.numeric(guide$children$left_more_label$y), -0.26)
+  expect_equal(as.numeric(guide$children$right_less_label$y), -0.26)
+})
+
+test_that("pair orientation puts additions to N3 on positive minutes", {
+  dt <- data.table::data.table(
+    timegroup = 2,
+    from = "n3_s2",
+    to = "rem_s2",
+    duration = c(-30, 0, 30),
+    RR = c(0.95, 1, 1.05),
+    RR_lower = c(0.90, 0.95, 1.00),
+    RR_upper = c(1.00, 1.05, 1.10)
+  )
+
+  oriented <- orient_risk_summary_pair(dt, right_stage = "n3_s2")
+
+  expect_equal(unique(oriented$from), "rem_s2")
+  expect_equal(unique(oriented$to), "n3_s2")
+  expect_equal(oriented$duration, c(30, 0, -30))
+  expect_equal(oriented[duration == 30]$RR, 0.95)
+})

@@ -1,4 +1,4 @@
-make_risk_summary_direction_guide <- function(from_label, to_label) {
+make_risk_plot_direction <- function(from_label, to_label) {
   grid::grobTree(
     left_arrow = grid::segmentsGrob(
       x0 = grid::unit(0.40, "npc"),
@@ -29,28 +29,28 @@ make_risk_summary_direction_guide <- function(from_label, to_label) {
     left_more_label = grid::textGrob(
       sprintf("More %s", from_label),
       x = grid::unit(0.30, "npc"),
-      y = grid::unit(-0.16, "npc"),
+      y = grid::unit(-0.26, "npc"),
       gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif"),
       name = "left_more_label"
     ),
     left_less_label = grid::textGrob(
       sprintf("Less %s", to_label),
       x = grid::unit(0.30, "npc"),
-      y = grid::unit(-0.27, "npc"),
+      y = grid::unit(-0.17, "npc"),
       gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif"),
       name = "left_less_label"
     ),
     right_less_label = grid::textGrob(
       sprintf("Less %s", from_label),
       x = grid::unit(0.70, "npc"),
-      y = grid::unit(-0.16, "npc"),
+      y = grid::unit(-0.26, "npc"),
       gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif"),
       name = "right_less_label"
     ),
     right_more_label = grid::textGrob(
       sprintf("More %s", to_label),
       x = grid::unit(0.70, "npc"),
-      y = grid::unit(-0.27, "npc"),
+      y = grid::unit(-0.17, "npc"),
       gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif"),
       name = "right_more_label"
     )
@@ -60,10 +60,6 @@ make_risk_summary_direction_guide <- function(from_label, to_label) {
 make_risk_summary_x_breaks <- function(x_limit) {
   candidates <- pretty(c(0, x_limit), n = 10L)
   candidates <- candidates[candidates > 0 & candidates < x_limit]
-  if (length(candidates) == 0L) {
-    return(c(-x_limit, 0, x_limit))
-  }
-
   distance_from_midpoint <- abs(candidates - (x_limit / 2))
   midpoint_break <- max(
     candidates[distance_from_midpoint == min(distance_from_midpoint)]
@@ -72,7 +68,22 @@ make_risk_summary_x_breaks <- function(x_limit) {
   c(-x_limit, -midpoint_break, 0, midpoint_break, x_limit)
 }
 
-plot_risk_summary_pair <- function(dt, labels = NULL) {
+orient_risk_summary_pair <- function(dt, right_stage) {
+  dt <- copy(as.data.table(dt))
+  pair <- unique(dt[, .(from, to)])
+
+  if (pair$from[[1]] == right_stage) {
+    dt[, `:=`(
+      from = pair$to[[1]],
+      to = pair$from[[1]],
+      duration = -duration
+    )]
+  }
+
+  dt
+}
+
+plot_risk_summary_pair <- function(dt, labels = NULL, right_stage = NULL) {
   required_cols <- c(
     "timegroup",
     "from",
@@ -83,27 +94,30 @@ plot_risk_summary_pair <- function(dt, labels = NULL) {
     "RR_upper"
   )
   dt <- copy(dt)
+
+  file_pair <- unique(dt[, .(from, to)])
+  if (!is.null(right_stage)) {
+    dt <- orient_risk_summary_pair(dt, right_stage = right_stage)
+  }
+
   pair <- unique(dt[, .(from, to)])
   final_timegroup <- max(dt$timegroup, na.rm = TRUE)
   dt <- dt[timegroup == final_timegroup]
   setorder(dt, duration)
   x_limit <- max(abs(dt$duration), na.rm = TRUE)
-  if (!is.finite(x_limit) || x_limit <= 0) {
-    x_limit <- 1L
-  }
   x_limits <- c(-x_limit, x_limit)
   x_breaks <- make_risk_summary_x_breaks(x_limit)
 
-  from_label <- pair$from[[1]]
-  to_label <- pair$to[[1]]
-  if (!is.null(labels)) {
-    if (from_label %in% names(labels)) {
-      from_label <- unname(labels[[from_label]])
+  stage_label <- function(stage) {
+    if (!is.null(labels) && stage %in% names(labels)) {
+      return(unname(labels[[stage]]))
     }
-    if (to_label %in% names(labels)) {
-      to_label <- unname(labels[[to_label]])
-    }
+    stage
   }
+  from_label <- stage_label(pair$from[[1]])
+  to_label <- stage_label(pair$to[[1]])
+  file_from_label <- stage_label(file_pair$from[[1]])
+  file_to_label <- stage_label(file_pair$to[[1]])
 
   plot <- ggplot(
     dt,
@@ -122,7 +136,7 @@ plot_risk_summary_pair <- function(dt, labels = NULL) {
     ) +
     geom_line(linewidth = 0.8, color = "#AB4D54") +
     annotation_custom(
-      make_risk_summary_direction_guide(from_label, to_label),
+      make_risk_plot_direction(from_label, to_label),
       xmin = x_limits[[1]],
       xmax = x_limits[[2]],
       ymin = -Inf,
@@ -165,7 +179,7 @@ plot_risk_summary_pair <- function(dt, labels = NULL) {
     )
 
   ggsave(
-    paste0(from_label, "_", to_label, ".png"),
+    paste0(file_from_label, "_", file_to_label, ".png"),
     plot,
     device = "png",
     width = 10,

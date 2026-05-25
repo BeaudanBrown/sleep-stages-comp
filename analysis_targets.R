@@ -138,7 +138,7 @@ time_to_event_targets <- list(
   tar_target(
     risk_summary_by_pair,
     split(
-      as.data.table(risk_summary[to %in% "n3_s2"]),
+      as.data.table(risk_summary[from %in% "n3_s2" | to %in% "n3_s2"]),
       by = c("from", "to"),
       keep.by = TRUE
     ),
@@ -148,7 +148,8 @@ time_to_event_targets <- list(
     risk_summary_pair_plot,
     plot_risk_summary_pair(
       risk_summary_by_pair,
-      labels = stage_labels
+      labels = stage_labels,
+      right_stage = "n3_s2"
     ),
     pattern = map(risk_summary_by_pair),
     iteration = "list"
