@@ -1,67 +1,31 @@
-analysis_config_targets <- list(
-  tar_target(
-    bootstrap_config,
-    list(
-      B = 100,
-      m = 10
-    )
-  )
-)
+analysis_targets <- list(
+  # bootstrap configs
+  tar_target(bootstrap_config, list(B = 100, m = 1)),
 
-analysis_shared_mi_targets <- list(
+  # long format data
+  tar_target(timegroup_cuts, make_cuts(dt, event_date, cut_width_years = 1)),
   tar_target(
-    imp_dataset_ids,
-    seq_len(length(imp_datasets))
+    dt_long,
+    expand_surv_dt(dt, timegroup_cuts, event_date, event_var)
   ),
+
+  # fit outcome model
+  tar_target(outcome_models, fit_models(dt_long)),
+
+  # predict under no intervention
   tar_target(
-    mi_timegroup_cuts,
-    make_cuts(imp_datasets),
-    pattern = map(imp_datasets),
-    iteration = "list"
+    risk_no_int,
+    predict_risks(dt, outcome_models, timegroup_cuts, event_var, event_date)
   ),
-  tar_target(
-    timegroup_cuts,
-    combine_timegroup_cuts(mi_timegroup_cuts)
-  ),
-  tar_target(
-    mi_dt_surv_long,
-    expand_surv_dt(imp_datasets, mi_timegroup_cuts),
-    pattern = map(imp_datasets, mi_timegroup_cuts)
-  ),
-  tar_target(
-    mi_dt_surv_wide,
-    make_surv_wide(mi_dt_surv_long),
-    pattern = map(mi_dt_surv_long)
-  ),
-  tar_target(
-    mi_lmtp_surv_cols,
-    get_lmtp_surv_cols(mi_dt_surv_wide),
-    pattern = map(mi_dt_surv_wide),
-    iteration = "list"
-  ),
-  tar_target(
-    lmtp_surv_cols,
-    combine_lmtp_surv_cols(mi_lmtp_surv_cols)
-  ),
-  tar_target(
-    mi_lmtp_baseline_covars,
-    default_baseline_covars(imp_datasets),
-    pattern = map(imp_datasets),
-    iteration = "list"
-  ),
-  tar_target(
-    lmtp_baseline_covars,
-    combine_imputation_character_vectors(mi_lmtp_baseline_covars)
-  ),
-  tar_target(
-    comp_hull_input_diagnostics,
-    validate_comp_hull_input(dt)
-  ),
+
+  ## Apply interventions
+
+  # estimate convex hull and create intervened dataset
   tar_target(
     comp_hull_input_file,
     write_comp_hull_input_file(
       dt = dt,
-      imputation_id = "observed"
+      comp_vars = paste0(comp_vars, "_s2")
     ),
     format = "file"
   ),
@@ -69,7 +33,8 @@ analysis_shared_mi_targets <- list(
     comp_hull_frontier_file,
     run_julia_comp_hull_frontiers(
       input_file = comp_hull_input_file,
-      imputation_id = "observed"
+      comparison_settings,
+      comp_vars = paste0(comp_vars, "_s2")
     ),
     format = "file"
   ),
@@ -79,7 +44,11 @@ analysis_shared_mi_targets <- list(
   ),
   tar_target(
     substitutions,
-    build_support_aware_substitution_grid(substitution_support_frontiers)
+    build_support_aware_substitution_grid(
+      substitution_support_frontiers,
+      comparison_settings,
+      comp_vars = paste0(comp_vars, "_s2")
+    )
   ),
   tar_target(
     comp_hull_substitutions_file,
@@ -91,7 +60,7 @@ analysis_shared_mi_targets <- list(
     run_julia_comp_hull_masks(
       input_file = comp_hull_input_file,
       substitutions_file = comp_hull_substitutions_file,
-      imputation_id = "observed"
+      comp_vars = paste0(comp_vars, "_s2")
     ),
     format = "file"
   ),
@@ -100,81 +69,23 @@ analysis_shared_mi_targets <- list(
     read_comp_hull_masks(comp_hull_mask_file)
   ),
   tar_target(
-    comparison_contract,
-    build_shared_comparison_contract(
-      imp_datasets,
-      substitutions = substitutions
-    )
-  )
-)
-
-analysis_lmtp_targets <- list(
-  tar_target(
-    lmtp_learners_outcome,
-    c("SL.mean", "SL.glm", "SL.glm.interaction")
-  ),
-  tar_target(
-    lmtp_learners_trt,
-    c("SL.glm", "SL.glm.interaction")
-  ),
-  tar_target(
-    lmtp_folds,
-    5
-  ),
-  tar_target(
-    mi_lmtp_tmle_substitutions,
-    run_lmtp_tmle_substitutions_for_dataset(
-      dt = mi_dt_surv_wide,
-      outcome_cols = mi_lmtp_surv_cols$outcome,
-      cens_cols = mi_lmtp_surv_cols$cens,
-      compete_cols = mi_lmtp_surv_cols$compete,
-      trt_cols = comparison_contract$trt_cols,
-      baseline_covars = mi_lmtp_baseline_covars,
-      comp_hull = comp_hull_masks,
+    pooled_substituted_risk,
+    compute_substitution_risk_table(
+      dt = dt,
       substitutions = substitutions,
-      learners_outcome = lmtp_learners_outcome,
-      learners_trt = lmtp_learners_trt,
-      folds = lmtp_folds,
-      imputation_id = imp_dataset_ids
-    ),
-    pattern = map(
-      mi_dt_surv_wide,
-      mi_lmtp_surv_cols,
-      mi_lmtp_baseline_covars,
-      imp_dataset_ids
+      comp_hull = comp_hull_masks,
+      fitted_models = outcome_models,
+      timegroup_cuts = timegroup_cuts,
+      baseline_risk = risk_no_int,
+      comp_vars = paste0(comp_vars, "_s2"),
+      ilr_base = ilr_base,
+      event_var = event_var,
+      event_date = event_date
     )
-  ),
-  tar_target(
-    lmtp_tmle_substitutions_by_imputation,
-    data.table::as.data.table(mi_lmtp_tmle_substitutions)
-  ),
-  tar_target(
-    lmtp_tmle_substitutions,
-    average_lmtp_imputation_summaries(lmtp_tmle_substitutions_by_imputation)
-  ),
-  tar_target(
-    plot_lmtp_tmle_substitutions,
-    make_lmtp_substitution_plots(
-      lmtp_tmle_substitutions,
-      ratio_threshold = comparison_contract$ratio_threshold
-    )
-  ),
-  tar_target(
-    lmtp_tmle_substituted_plot_png,
-    write_lmtp_substitution_plots(
-      plot_lmtp_tmle_substitutions,
-      file.path("results", "lmtp_substitution_risk_ratio")
-    ),
-    format = "file"
   )
 )
 
 analysis_bootstrap_targets <- list(
-  tar_target(
-    mi_pooled_fitted_models,
-    fit_models(imp_datasets, mi_timegroup_cuts),
-    pattern = map(imp_datasets, mi_timegroup_cuts)
-  ),
   tar_target(
     mi_pooled_baseline_risk,
     predict_risks(imp_datasets, mi_pooled_fitted_models, mi_timegroup_cuts),
@@ -282,46 +193,4 @@ analysis_bootstrap_targets <- list(
     ),
     format = "file"
   )
-)
-
-analysis_comparison_targets <- list(
-  tar_target(
-    pooled_vs_lmtp_comparison,
-    join_method_substitution_summaries(
-      pooled_summary = pooled_risk_overall,
-      lmtp_summary = lmtp_tmle_substitutions,
-      ratio_threshold = comparison_contract$ratio_threshold
-    )
-  ),
-  tar_target(
-    pooled_vs_lmtp_comparison_summary,
-    summarize_method_comparison(pooled_vs_lmtp_comparison)
-  )
-)
-
-analysis_diagnostic_targets <- list(
-  tar_target(
-    pooled_vs_lmtp_debug_rows,
-    extract_comparison_debug_rows(pooled_vs_lmtp_comparison)
-  ),
-  tar_target(
-    pooled_vs_lmtp_scale_probe,
-    build_pooled_scale_probe(
-      pooled_substituted_risk = pooled_substituted_risk,
-      lmtp_summary = lmtp_tmle_substitutions
-    )
-  ),
-  tar_target(
-    pooled_vs_lmtp_scale_probe_summary,
-    summarize_scale_probe(pooled_vs_lmtp_scale_probe)
-  )
-)
-
-analysis_targets <- c(
-  analysis_config_targets,
-  analysis_shared_mi_targets,
-  analysis_lmtp_targets,
-  analysis_bootstrap_targets,
-  analysis_comparison_targets,
-  analysis_diagnostic_targets
 )

@@ -22,7 +22,10 @@ compute_substitution_risk_table <- function(
   fitted_models,
   timegroup_cuts,
   baseline_risk,
-  imputation_id = NULL
+  comp_vars,
+  ilr_base,
+  event_var,
+  event_date
 ) {
   res_list <- lapply(seq_len(nrow(substitutions)), function(i) {
     row <- substitutions[i]
@@ -34,14 +37,15 @@ compute_substitution_risk_table <- function(
       comp_hull,
       fitted_models,
       timegroup_cuts,
-      baseline_risk
+      baseline_risk,
+      comp_vars = comp_vars,
+      ilr_base = ilr_base,
+      event_var = event_var,
+      event_date = event_date
     )
   })
 
   out <- data.table::rbindlist(res_list)
-  if (!is.null(imputation_id)) {
-    out[, imputation_id := as.character(imputation_id)]
-  }
   out
 }
 

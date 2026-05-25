@@ -1,4 +1,4 @@
-prepare_dataset <- function(dt_raw) {
+prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
   ## Adjust cog dates to be relative to recruitment
   mci_cols <- grep("^impairment_date_", names(dt_raw), value = TRUE)
   cog_cols <- grep("^COG_DATE_", names(dt_raw), value = TRUE)
@@ -66,7 +66,7 @@ prepare_dataset <- function(dt_raw) {
   ]
 
   dt[,
-    dem_or_mci_surv_date := pmin(
+    dem_or_mci_date := pmin(
       impairment_date_1,
       impairment_date_2,
       impairment_date_3,
@@ -80,17 +80,27 @@ prepare_dataset <- function(dt_raw) {
   all_cols <- c(impairment_cols, cog_cols)
 
   dt[
-    is.na(dem_or_mci_surv_date),
-    dem_or_mci_surv_date := do.call(pmax, c(.SD, na.rm = TRUE)),
+    is.na(dem_or_mci_date),
+    dem_or_mci_date := do.call(pmax, c(.SD, na.rm = TRUE)),
     .SDcols = all_cols
   ]
 
-  dt <- dt[!is.na(dem_or_mci_surv_date), ]
+  dt <- dt[!is.na(dem_or_mci_date), ]
 
   # Exclude ppts with dem/mci before PSG 2
-  dt <- dt[is.na(dem_or_mci_surv_date) | dem_or_mci_surv_date > 0, ]
+  dt <- dt[is.na(dem_or_mci_date) | dem_or_mci_date > 0, ]
 
-  ilr_vars <- make_ilrs(dt)
-  dt[, (ilr_names) := ilr_vars]
+  ## Add ILR vars to data
+
+  # s1
+  ilr_vars_s1 <- make_ilrs(dt, comp_vars, ilr_base)
+  ilr_names_s1 <- paste0("R", seq_len(length(comp_vars) - 1), "_s1")
+  dt[, (ilr_names_s1) := ilr_vars_s1]
+
+  # s2
+  ilr_vars_s2 <- make_ilrs(dt, paste0(comp_vars, "_s2"), ilr_base)
+  ilr_names_s2 <- paste0("R", seq_len(length(comp_vars) - 1), "_s2")
+  dt[, (ilr_names_s2) := ilr_vars_s2]
+
   dt
 }

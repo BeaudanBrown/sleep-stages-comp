@@ -29,23 +29,31 @@ tar_option_set(
     "rms",
     "survival"
   ),
-  controller = crew_controller_local(
-    workers = ncpus
-  ),
+  # controller = crew_controller_local(
+  #   workers = ncpus
+  # ),
   format = "qs",
   seed = 20260202
 )
 
 # Run the R scripts in the R/ folder
-tar_source()
+#tar_source()
 
 source("data_targets.R")
 source("analysis_targets.R")
-source("simulation_targets.R")
+source("constant_targets.R")
+
+source("R/make_dataset_from_raw_files.R")
+source("R/composition_utils.R")
+source("R/prepare_dataset.R")
+source("R/survival_utils.R")
+source("R/comp_hull_julia_utils.R")
+source("R/substitution_utils.R")
+source("R/bootstrap_utils.R")
 
 ## pipeline
 list(
+  constant_targets,
   data_targets,
-  analysis_targets,
-  simulation_targets
+  analysis_targets
 )

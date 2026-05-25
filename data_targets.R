@@ -31,7 +31,7 @@ data_targets <- list(
   ),
   tar_target(
     shhs_death_file,
-    file.path(shhs_dir, "SHHS_2/shhs_status_08apr2014_5837.csv"),
+    file.path(shhs_dir, "CVD_Outcomes/shhs_status_08apr2014_5837.csv"),
     format = "file"
   ),
   tar_target(
@@ -70,11 +70,5 @@ data_targets <- list(
       shhs_link_file
     )
   ),
-  tar_target(dt, prepare_dataset(dt_raw)),
-  tar_target(imp_mids, impute_data(dt = dt, m = 10, maxit = 5)),
-  tar_target(
-    imp_datasets,
-    complete_imputed_datasets(imp = imp_mids, dt = dt),
-    iteration = "list"
-  )
+  tar_target(dt, prepare_dataset(dt_raw, comp_vars, ilr_base))
 )

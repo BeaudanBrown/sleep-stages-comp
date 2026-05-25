@@ -1,29 +1,23 @@
-comp_hull_work_dir <- function() {
-  file.path("_targets", "user", "comp_hull")
-}
-
 write_comp_hull_input_file <- function(
   dt,
-  imputation_id,
-  dir = comp_hull_work_dir(),
-  vars = comp_vars
+  comp_vars
 ) {
-  dt <- data.table::as.data.table(dt)
+  dir <- file.path("_targets", "user", "comp_hull")
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
 
-  out <- data.table::copy(dt[, c("PID", vars), with = FALSE])
+  out <- data.table::copy(dt[, c("PID", comp_vars), with = FALSE])
   out[, row_id := seq_len(.N)]
-  data.table::setcolorder(out, c("row_id", "PID", vars))
+  data.table::setcolorder(out, c("row_id", "PID", comp_vars))
 
-  path <- file.path(dir, sprintf("comp_hull_input_imp_%s.csv", imputation_id))
+  path <- file.path(dir, "comp_hull_input.csv")
   data.table::fwrite(out, path)
   path
 }
 
 write_substitutions_file <- function(
-  substitutions,
-  dir = comp_hull_work_dir()
+  substitutions
 ) {
+  dir <- file.path("_targets", "user", "comp_hull")
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   path <- file.path(dir, "substitutions.csv")
   data.table::fwrite(data.table::as.data.table(substitutions), path)
@@ -58,16 +52,16 @@ compute_comp_hull_masks_for_dt <- function(
 
 run_julia_comp_hull_frontiers <- function(
   input_file,
-  imputation_id,
-  ratio_threshold = comparison_ratio_threshold(),
-  max_minutes = comparison_duration_limit(),
-  dir = comp_hull_work_dir(),
-  vars = comp_vars
+  comparison_settings,
+  comp_vars
 ) {
+  dir <- file.path("_targets", "user", "comp_hull")
+  ratio_threshold <- comparison_settings$ratio_threshold
+  max_minutes <- comparison_settings$duration_limit
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   output_file <- file.path(
     dir,
-    sprintf("comp_hull_frontiers_imp_%s.csv", imputation_id)
+    "comp_hull_frontiers.csv"
   )
 
   run_julia_comp_hull_support(
@@ -75,7 +69,7 @@ run_julia_comp_hull_frontiers <- function(
       "--input",
       input_file,
       "--vars",
-      paste(vars, collapse = ","),
+      paste(comp_vars, collapse = ","),
       "--frontiers",
       output_file,
       "--ratio-threshold",
@@ -91,14 +85,13 @@ run_julia_comp_hull_frontiers <- function(
 run_julia_comp_hull_masks <- function(
   input_file,
   substitutions_file,
-  imputation_id,
-  dir = comp_hull_work_dir(),
-  vars = comp_vars
+  comp_vars
 ) {
+  dir <- file.path("_targets", "user", "comp_hull")
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   output_file <- file.path(
     dir,
-    sprintf("comp_hull_masks_imp_%s.csv", imputation_id)
+    sprintf("comp_hull_masks.csv")
   )
 
   run_julia_comp_hull_support(
@@ -106,7 +99,7 @@ run_julia_comp_hull_masks <- function(
       "--input",
       input_file,
       "--vars",
-      paste(vars, collapse = ","),
+      paste(comp_vars, collapse = ","),
       "--substitutions",
       substitutions_file,
       "--masks",
@@ -229,4 +222,52 @@ lookup_substitution_mask <- function(
   }
 
   as.logical(lookup)
+}
+build_support_aware_substitution_grid <- function(
+  support_frontiers,
+  comparison_settings,
+  comp_vars
+) {
+  points_per_direction <- comparison_settings$points_per_direction
+  pair_dt <- make_substitution_grid(
+    durations = 0,
+    comp_vars = comp_vars,
+    directed = FALSE
+  )[,
+    !"duration"
+  ]
+  support_dt <- data.table::as.data.table(support_frontiers)
+
+  pair_dt[,
+    .(
+      duration = list({
+        pos_max <- support_dt[
+          from == .BY$from & to == .BY$to,
+          max_supported_minutes
+        ]
+        neg_max <- support_dt[
+          from == .BY$to & to == .BY$from,
+          max_supported_minutes
+        ]
+
+        pos_points <- round(seq(
+          from = pos_max / points_per_direction,
+          to = pos_max,
+          length.out = points_per_direction
+        ))
+
+        neg_points <- round(seq(
+          from = neg_max / points_per_direction,
+          to = neg_max,
+          length.out = points_per_direction
+        ))
+
+        unique(c(neg_points, 0L, pos_points))
+      })
+    ),
+    by = .(from, to)
+  ][,
+    .(duration = unlist(duration)),
+    by = .(from, to)
+  ]
 }
