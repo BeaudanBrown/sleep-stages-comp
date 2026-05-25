@@ -21,6 +21,31 @@ test_that("compute_shifted_exposures preserves totals and changes targeted parts
   expect_named(shifted[, ..ilr_names], ilr_names)
 })
 
+test_that("compute_shifted_exposures updates modeled SHHS-2 ILR columns", {
+  comp_names <- c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
+  model_ilr_names <- paste0("R", seq_len(length(comp_names) - 1L), "_s2")
+  basis <- get_sbp()
+  dt <- make_test_comp_dt()
+  dt[, (model_ilr_names) := make_ilrs(dt, comp_names, basis)]
+  original_ilrs <- data.table::copy(dt[, ..model_ilr_names])
+  hull <- make_test_comp_hull()
+
+  shifted <- suppressWarnings(compute_shifted_exposures(
+    dt = dt,
+    from = "n2_s2",
+    to = "n3_s2",
+    duration = 15,
+    comp_hull = hull,
+    comp_vars = comp_names,
+    ilr_base = basis
+  ))
+
+  expected <- make_ilrs(shifted, comp_names, basis)
+  data.table::setnames(expected, model_ilr_names)
+  expect_equal(shifted[, ..model_ilr_names], expected)
+  expect_false(isTRUE(all.equal(shifted[, ..model_ilr_names], original_ilrs)))
+})
+
 test_that("compute_shifted_exposures can use precomputed substitution masks", {
   dt <- make_test_comp_dt()
   masks <- data.table::data.table(

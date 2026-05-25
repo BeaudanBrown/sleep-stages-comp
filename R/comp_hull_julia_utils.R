@@ -256,7 +256,8 @@ build_support_aware_substitution_grid <- function(
           length.out = points_per_direction
         ))
 
-        neg_points <- round(seq(
+        # Negative durations apply the reverse reallocation for this pair.
+        neg_points <- -round(seq(
           from = neg_max / points_per_direction,
           to = neg_max,
           length.out = points_per_direction

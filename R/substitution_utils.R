@@ -57,7 +57,7 @@ compute_shifted_exposures <- function(
   shifted_dt[["substituted"]] <- can_substitute
 
   ilr_vars <- make_ilrs(shifted_dt, comp_vars, ilr_base)
-  ilr_names <- paste0("R", seq_len(length(comp_vars) - 1))
+  ilr_names <- paste0("R", seq_len(length(comp_vars) - 1), "_s2")
   shifted_dt[, (ilr_names) := ilr_vars]
 
   shifted_dt
