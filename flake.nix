@@ -39,6 +39,7 @@
             with pkgs;
             [
               R
+              radian
               (julia.withPackages [
                 "CSV"
                 "Convex"
