@@ -1,25 +1,49 @@
-analysis_targets <- list(
-  # bootstrap configs
-  tar_target(bootstrap_config, list(B = 100, m = 1)),
+time_to_event_targets <- list(
+  # generate bootstrap samples
+  tar_rep(
+    dt_boot,
+    command = {
+      rows <- sample(1:nrow(dt), nrow(dt), replace = TRUE)
+      data <- dt[rows, ]
+      data[, PID_original := PID]
+      data[, PID := seq_len(.N)]
+      data[]
+    },
+    batches = 100
+  ),
 
   # long format data
-  tar_target(timegroup_cuts, make_cuts(dt, event_date, cut_width_years = 1)),
+  tar_target(
+    timegroup_cuts,
+    make_cuts(dt, event_date, cut_width_years = 1)
+  ),
   tar_target(
     dt_long,
-    expand_surv_dt(dt, timegroup_cuts, event_date, event_var)
+    expand_surv_dt(dt_boot, timegroup_cuts, event_date, event_var),
+    pattern = map(dt_boot)
   ),
 
   # fit outcome model
-  tar_target(outcome_models, fit_models(dt_long)),
+  tar_target(
+    outcome_models,
+    fit_models(dt_long, method = "mgcv"),
+    pattern = map(dt_long)
+  ),
 
   # predict under no intervention
   tar_target(
     risk_no_int,
-    predict_risks(dt, outcome_models, timegroup_cuts, event_var, event_date)
+    predict_risks(
+      dt_boot,
+      outcome_models,
+      timegroup_cuts,
+      event_var,
+      event_date
+    ),
+    pattern = map(dt_boot, outcome_models)
   ),
 
   ## Apply interventions
-
   # estimate convex hull and create intervened dataset
   tar_target(
     comp_hull_input_file,
@@ -71,7 +95,7 @@ analysis_targets <- list(
   tar_target(
     pooled_substituted_risk,
     compute_substitution_risk_table(
-      dt = dt,
+      dt = dt_boot,
       substitutions = substitutions,
       comp_hull = comp_hull_masks,
       fitted_models = outcome_models,
@@ -81,7 +105,53 @@ analysis_targets <- list(
       ilr_base = ilr_base,
       event_var = event_var,
       event_date = event_date
-    )
+    ),
+    pattern = map(dt_boot, outcome_models, risk_no_int)
+  ),
+  tar_target(
+    risk_summary,
+    {
+      pooled_substituted_risk[,
+        .(
+          Y0 = mean(mean_risk_baseline),
+          Y0_lower = quantile(mean_risk_baseline, 0.025),
+          Y0_upper = quantile(mean_risk_baseline, 0.975),
+          Y1 = mean(mean_risk_substituted),
+          Y1_lower = quantile(mean_risk_substituted, 0.025),
+          Y1_upper = quantile(mean_risk_substituted, 0.975),
+          RR = mean(mean_risk_substituted) / mean(mean_risk_baseline),
+          RR_lower = quantile(
+            mean_risk_substituted / mean_risk_baseline,
+            0.025
+          ),
+          RR_upper = quantile(
+            mean_risk_substituted / mean_risk_baseline,
+            0.975
+          ),
+          n_intervened = mean(n_intervened),
+          n_total = mean(n_total)
+        ),
+        by = .(timegroup, from, to, duration)
+      ]
+    }
+  ),
+  tar_target(
+    risk_summary_by_pair,
+    split(
+      as.data.table(risk_summary[to %in% "n3_s2"]),
+      by = c("from", "to"),
+      keep.by = TRUE
+    ),
+    iteration = "list"
+  ),
+  tar_target(
+    risk_summary_pair_plot,
+    plot_risk_summary_pair(
+      risk_summary_by_pair,
+      labels = stage_labels
+    ),
+    pattern = map(risk_summary_by_pair),
+    iteration = "list"
   )
 )
 

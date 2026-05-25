@@ -33,8 +33,8 @@ expand_surv_dt <- function(dt, timegroup_cuts, event_date, event_var) {
 
   surv_dt[,
     death := fcase(
-      death_status == 1 & end >= death_date ,
-                                          1 ,
+      death_status == 1 & end >= death_date,
+      1,
       default = 0
     )
   ]
@@ -98,8 +98,8 @@ expand_for_prediction <- function(dt, timegroup_cuts, event_var, event_date) {
   surv_dt
 }
 
-fit_models <- function(dt) {
-  model_formula <- get_primary_formula()
+fit_models <- function(dt, method = c("glm", "mgcv")) {
+  model_formula <- get_primary_formula(method = method)
 
   dem_model_formula <- update(
     model_formula,
@@ -110,36 +110,71 @@ fit_models <- function(dt) {
     death ~ .
   )
 
-  model_dem <- glm(
-    dem_model_formula,
-    data = dt[death == 0, ],
-    family = binomial()
-  )
+  if (method == "glm") {
+    model_dem <- glm(
+      dem_model_formula,
+      data = dt[death == 0, ],
+      family = binomial()
+    )
 
-  model_death <- glm(
-    death_model_formula,
-    data = dt,
-    family = binomial()
-  )
+    model_death <- glm(
+      death_model_formula,
+      data = dt,
+      family = binomial()
+    )
 
-  list(
-    dem = strip_glm(model_dem),
-    death = strip_glm(model_death)
-  )
+    list(
+      dem = strip_glm(model_dem),
+      death = strip_glm(model_death)
+    )
+  } else if (method == "mgcv") {
+    model_dem <- gam(
+      dem_model_formula,
+      data = dt[death == 0, ],
+      family = binomial(),
+      method = "REML"
+    )
+
+    model_death <- gam(
+      death_model_formula,
+      data = dt,
+      family = binomial(),
+      method = "REML"
+    )
+
+    list(
+      dem = model_dem,
+      death = model_death
+    )
+  }
 }
 
-get_primary_formula <- function() {
-  Y ~
-    R1_s2 +
-    R2_s2 +
-    R3_s2 +
-    R4_s2 +
-    R1_s1 +
-    R2_s1 +
-    R3_s1 +
-    R4_s1 +
-    age_s1 +
-    gender
+get_primary_formula <- function(method = c("glm", "mgcv")) {
+  if (method == "glm") {
+    Y ~
+      R1_s2 +
+      R2_s2 +
+      R3_s2 +
+      R4_s2 +
+      R1_s1 +
+      R2_s1 +
+      R3_s1 +
+      R4_s1 +
+      age_s1 +
+      gender
+  } else if (method == "mgcv") {
+    Y ~
+      s(R1_s2) +
+      s(R2_s2) +
+      s(R3_s2) +
+      s(R4_s2) +
+      s(R1_s1) +
+      s(R2_s1) +
+      s(R3_s1) +
+      s(R4_s1) +
+      s(age_s1) +
+      gender
+  }
 }
 
 strip_lm <- function(cm) {

@@ -6,7 +6,7 @@ dotenv::load_dot_env()
 cache_dir <- Sys.getenv("CACHE_DIR")
 framingham_dir <- Sys.getenv("FRAMINGHAM_DIR")
 shhs_dir <- Sys.getenv("SHHS_DIR")
-ncpus <- future::availableCores() - 1
+ncpus <- future::availableCores() - 4
 
 # Ensure single threaded within targets
 Sys.setenv(R_DATATABLE_NUM_THREADS = 1)
@@ -27,11 +27,12 @@ tar_option_set(
     "mice",
     "ggplot2",
     "rms",
-    "survival"
+    "survival",
+    "mgcv"
   ),
-  # controller = crew_controller_local(
-  #   workers = ncpus
-  # ),
+  controller = crew_controller_local(
+    workers = ncpus
+  ),
   format = "qs",
   seed = 20260202
 )
@@ -50,10 +51,11 @@ source("R/survival_utils.R")
 source("R/comp_hull_julia_utils.R")
 source("R/substitution_utils.R")
 source("R/bootstrap_utils.R")
+source("R/risk_summary_plot.R")
 
 ## pipeline
 list(
   constant_targets,
   data_targets,
-  analysis_targets
+  time_to_event_targets
 )

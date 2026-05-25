@@ -87,3 +87,4 @@ result-man
 R-bak/
 sim.csv
 scratch.R
+*.png
