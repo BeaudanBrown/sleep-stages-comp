@@ -3,7 +3,7 @@ time_to_event_targets <- list(
   tar_rep(
     dt_boot,
     command = {
-      rows <- sample(seq_len(nrow(dt)), nrow(dt), replace = TRUE)
+      rows <- sample(1:nrow(dt), nrow(dt), replace = TRUE)
       data <- dt[rows, ]
       data[, PID_original := PID]
       data[, PID := seq_len(.N)]
