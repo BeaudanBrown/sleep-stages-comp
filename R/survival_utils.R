@@ -156,24 +156,38 @@ get_primary_formula <- function(method = c("glm", "mgcv")) {
       R2_s2 +
       R3_s2 +
       R4_s2 +
+      slp_time_s2 +
       R1_s1 +
       R2_s1 +
       R3_s1 +
       R4_s1 +
+      slp_time +
+      s1_incomplete +
       age_s1 +
-      gender
+      gender +
+      bmi_s1 +
+      oahi +
+      sleeping_pills +
+      hypertension
   } else if (method == "mgcv") {
     Y ~
       s(R1_s2) +
       s(R2_s2) +
       s(R3_s2) +
       s(R4_s2) +
+      s(slp_time_s2) +
       s(R1_s1) +
       s(R2_s1) +
       s(R3_s1) +
       s(R4_s1) +
+      s(slp_time) +
+      s1_incomplete +
       s(age_s1) +
-      gender
+      gender +
+      s(bmi_s1) +
+      s(oahi) +
+      sleeping_pills +
+      hypertension
   }
 }
 
