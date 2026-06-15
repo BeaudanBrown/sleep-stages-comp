@@ -102,5 +102,135 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
   ilr_names_s2 <- paste0("R", seq_len(length(comp_vars) - 1), "_s2")
   dt[, (ilr_names_s2) := ilr_vars_s2]
 
+  mri_value_prefixes <- c(
+    "FLAIR_wmh",
+    "DSE_wmh",
+    "Cerebrum_tcv",
+    "Cerebrum_tcb",
+    "Cerebrum_gray",
+    "Cerebrum_white",
+    "Cerebrum_tcc",
+    "Left_lateralvent",
+    "Right_lateralvent",
+    "Lateralvent",
+    "Thirdvent",
+    "Left_hippo",
+    "Right_hippo",
+    "Hippo",
+    "Total_csf",
+    "Total_gray",
+    "Total_white",
+    "Total_brain"
+  )
+
+  mri_selected <- gather_domain_visits(dt, mri_value_prefixes, "mri_date", "mri")
+  dt <- merge(dt, mri_selected, by = "PID", all.x = TRUE)
+
+  mri_value_cols <- grep(
+    paste0("^(", paste(mri_value_prefixes, collapse = "|"), ")_[0-9]+$"),
+    names(dt),
+    value = TRUE
+  )
+  mri_date_cols <- grep("^mri_date_[0-9]+$", names(dt), value = TRUE)
+  dt[, c(mri_value_cols, mri_date_cols) := NULL]
+
+  cog_value_prefixes <- c(
+    "TRAILSA",
+    "TRAILSB",
+    "LMI",
+    "LMD",
+    "LMR",
+    "VRI",
+    "VRD",
+    "VRR",
+    "PASD",
+    "HVOT",
+    "DSF",
+    "DSB",
+    "BNT36",
+    "BNT36_SEMANTIC",
+    "BNT36_PHONEMIC",
+    "SIM"
+  )
+
+  cog_selected <- gather_domain_visits(dt, cog_value_prefixes, "COG_DATE", "cog")
+  dt <- merge(dt, cog_selected, by = "PID", all.x = TRUE)
+
+  cog_value_cols <- grep(
+    paste0("^(", paste(cog_value_prefixes, collapse = "|"), ")_[0-9]+$"),
+    names(dt),
+    value = TRUE
+  )
+  cog_date_cols <- grep("^COG_DATE_[0-9]+$", names(dt), value = TRUE)
+  dt[, c(cog_value_cols, cog_date_cols) := NULL]
+
   dt
+}
+
+# Select one visit per participant/window from domain dates, then extract all
+# domain measures from that selected visit.
+gather_domain_visits <- function(
+  dt,
+  value_prefixes,
+  date_prefix,
+  domain_prefix
+) {
+  window_start <- 3
+  window_end <- 7
+  window_centre <- mean(c(window_start, window_end))
+
+  date_cols <- grep(paste0("^", date_prefix, "_[0-9]+$"), names(dt), value = TRUE)
+  visits <- as.integer(sub(paste0("^", date_prefix, "_"), "", date_cols))
+
+  date_dt <- melt(
+    dt,
+    id.vars = c("PID", "days_psg1_to_psg2"),
+    measure.vars = date_cols,
+    variable.name = "visit",
+    value.name = "date"
+  )
+  date_dt[, visit := visits[visit]]
+  date_dt <- date_dt[!is.na(date)]
+
+  date_dt[, shhs1_date := -days_psg1_to_psg2]
+  date_dt[, pre_distance := abs(date - shhs1_date)]
+
+  pre_visits <- date_dt[date < 0]
+  setorder(pre_visits, PID, pre_distance, date)
+  pre_visits <- pre_visits[, .SD[1], by = PID]
+  pre_visits <- pre_visits[, .(PID, s1_visit = visit, s1_date = date)]
+
+  post_visits <- date_dt[date >= window_start * 365 & date <= window_end * 365]
+  post_visits[, post_distance := abs(date - window_centre * 365)]
+  setorder(post_visits, PID, post_distance, date)
+  post_visits <- post_visits[, .SD[1], by = PID]
+  post_visits <- post_visits[, .(PID, s2_visit = visit, s2_date = date)]
+
+  out <- unique(dt[, .(PID)])
+  out <- merge(out, pre_visits, by = "PID", all.x = TRUE)
+  out <- merge(out, post_visits, by = "PID", all.x = TRUE)
+  setnames(
+    out,
+    c("s1_date", "s2_date"),
+    c(paste0(domain_prefix, "_s1_date"), paste0(domain_prefix, "_s2_date"))
+  )
+
+  row_idx <- match(out$PID, dt$PID)
+
+  for (prefix in value_prefixes) {
+    value_pattern <- paste0("^", prefix, "_[0-9]+$")
+    value_cols <- grep(value_pattern, names(dt), value = TRUE)
+    value_visits <- as.integer(sub(paste0("^", prefix, "_"), "", value_cols))
+
+    values <- as.matrix(dt[, ..value_cols])
+    s1_col_idx <- match(out$s1_visit, value_visits)
+    s2_col_idx <- match(out$s2_visit, value_visits)
+
+    out[, (paste0(prefix, "_s1")) := values[cbind(row_idx, s1_col_idx)]]
+    out[, (paste0(prefix, "_s2")) := values[cbind(row_idx, s2_col_idx)]]
+  }
+
+  out[, c("s1_visit", "s2_visit") := NULL]
+
+  out
 }

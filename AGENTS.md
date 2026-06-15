@@ -170,6 +170,8 @@ When you find yourself repeating the same diagnostic commands:
 - Functions should be pure where possible (no side effects)
 - Large model objects should be stripped before storage (see `strip_glm()`, `strip_lm()`)
 - Functions that operate on data should take `dt` as first argument
+- Avoid superfluous defensive checks for known internal data shapes. If a function is only used inside this controlled analysis pipeline, do not add generic validation/error-handling boilerplate unless the user explicitly asks for it or the check protects against a realistic pipeline failure.
+- In analysis code, assume the relevant project packages are already loaded by the pipeline setup. Do not add repeated namespace qualifiers like `data.table::` unless there is a specific ambiguity or the user asks for fully qualified calls.
 
 ### Targets Pipeline
 - File inputs use `format = "file"` for dependency tracking

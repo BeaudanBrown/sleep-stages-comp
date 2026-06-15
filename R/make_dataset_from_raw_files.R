@@ -202,6 +202,7 @@ load_framingham_brain2 <- function(framingham_brain2_file) {
 
   brain2 <- brain2[, ..vars]
 
+  setorder(brain2, PID, IDTYPE, mri_date)
   brain2[, mri_assessment := seq_len(.N), by = c("PID", "IDTYPE")]
 
   brain2 <- dcast(
@@ -263,6 +264,7 @@ load_framingham_cog <- function(framingham_cog_file) {
   )
   cog <- cog[, ..vars]
   cog <- setnames(cog, "NP_DATE", "COG_DATE")
+  setorder(cog, PID, IDTYPE, COG_DATE)
   cog[, cog_assessment := seq_len(.N), by = c("PID", "IDTYPE")]
   cog <- dcast(
     cog,
