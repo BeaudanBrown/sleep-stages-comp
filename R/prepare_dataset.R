@@ -106,7 +106,12 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
     "Hippo"
   )
 
-  mri_selected <- gather_domain_visits(dt, mri_value_prefixes, "mri_date", "mri")
+  mri_selected <- gather_domain_visits(
+    dt,
+    mri_value_prefixes,
+    "mri_date",
+    "mri"
+  )
   dt <- merge(dt, mri_selected, by = "PID", all.x = TRUE)
 
   mri_value_cols <- grep(
@@ -126,7 +131,12 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
     "SIM"
   )
 
-  cog_selected <- gather_domain_visits(dt, cog_value_prefixes, "COG_DATE", "cog")
+  cog_selected <- gather_domain_visits(
+    dt,
+    cog_value_prefixes,
+    "COG_DATE",
+    "cog"
+  )
   dt <- merge(dt, cog_selected, by = "PID", all.x = TRUE)
 
   cog_value_cols <- grep(
@@ -157,7 +167,13 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
     )
   ]
 
-  dt
+  # Exclude observations that die within follow-up window and did not do cog or mri
+
+  dt[
+    !(death_status == 1 &
+      (is.na(cog_s2_date) | is.na(mri_s2_date)) &
+      death_date < 365 * 7)
+  ]
 }
 
 # Select one visit per participant/window from domain dates, then extract all
@@ -172,7 +188,11 @@ gather_domain_visits <- function(
   window_end <- 7
   window_centre <- mean(c(window_start, window_end))
 
-  date_cols <- grep(paste0("^", date_prefix, "_[0-9]+$"), names(dt), value = TRUE)
+  date_cols <- grep(
+    paste0("^", date_prefix, "_[0-9]+$"),
+    names(dt),
+    value = TRUE
+  )
   visits <- as.integer(sub(paste0("^", date_prefix, "_"), "", date_cols))
 
   date_dt <- melt(
@@ -224,6 +244,4 @@ gather_domain_visits <- function(
   }
 
   out[, c("s1_visit", "s2_visit") := NULL]
-
-  out
 }

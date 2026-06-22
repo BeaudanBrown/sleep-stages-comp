@@ -6,7 +6,7 @@ dotenv::load_dot_env()
 cache_dir <- Sys.getenv("CACHE_DIR")
 framingham_dir <- Sys.getenv("FRAMINGHAM_DIR")
 shhs_dir <- Sys.getenv("SHHS_DIR")
-ncpus <- future::availableCores() - 4
+ncpus <- future::availableCores() - 1
 
 # Ensure single threaded within targets
 Sys.setenv(R_DATATABLE_NUM_THREADS = 1)
@@ -52,10 +52,13 @@ source("R/comp_hull_julia_utils.R")
 source("R/substitution_utils.R")
 source("R/bootstrap_utils.R")
 source("R/risk_summary_plot.R")
+source("R/imputation.R")
+source("R/cognitive_summary_score.R")
 
 ## pipeline
 list(
   constant_targets,
   data_targets,
-  time_to_event_targets
+  time_to_event_targets,
+  continuous_outcome_targets
 )

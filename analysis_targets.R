@@ -156,112 +156,15 @@ time_to_event_targets <- list(
   )
 )
 
-analysis_bootstrap_targets <- list(
+continuous_outcome_targets <- list(
   tar_target(
-    mi_pooled_baseline_risk,
-    predict_risks(imp_datasets, mi_pooled_fitted_models, mi_timegroup_cuts),
-    pattern = map(imp_datasets, mi_pooled_fitted_models, mi_timegroup_cuts)
+    dt_imp,
+    impute_data(dt_boot, method = "cart"),
+    pattern = map(dt_boot)
   ),
   tar_target(
-    mi_pooled_substituted_risk,
-    compute_substitution_risk_table(
-      dt = imp_datasets,
-      substitutions = substitutions,
-      comp_hull = comp_hull_masks,
-      fitted_models = mi_pooled_fitted_models,
-      timegroup_cuts = mi_timegroup_cuts,
-      baseline_risk = mi_pooled_baseline_risk,
-      imputation_id = imp_dataset_ids
-    ),
-    pattern = map(
-      imp_datasets,
-      mi_pooled_fitted_models,
-      mi_timegroup_cuts,
-      mi_pooled_baseline_risk,
-      imp_dataset_ids
-    )
-  ),
-  tar_target(
-    pooled_substituted_risk_by_imputation,
-    data.table::as.data.table(mi_pooled_substituted_risk)
-  ),
-  tar_target(
-    pooled_substituted_risk,
-    average_imputation_substitution_risk(pooled_substituted_risk_by_imputation)
-  ),
-  tar_target(
-    pooled_risk_overall,
-    summarize_point_estimate_substitutions(pooled_substituted_risk)
-  ),
-  tar_target(
-    bootstrap_seeds,
-    {
-      sample.int(.Machine$integer.max, bootstrap_config$B)
-    }
-  ),
-  tar_target(
-    boot_resampled_dt,
-    bootstrap_resample(dt, bootstrap_seeds),
-    pattern = map(bootstrap_seeds)
-  ),
-  tar_target(
-    boot_imp_mids,
-    impute_data(boot_resampled_dt, m = bootstrap_config$m),
-    pattern = map(boot_resampled_dt)
-  ),
-  tar_target(
-    boot_imp_datasets,
-    complete_imputed_datasets(imp = boot_imp_mids, dt = boot_resampled_dt),
-    pattern = map(boot_imp_mids, boot_resampled_dt)
-  ),
-  tar_target(
-    boot_substituted_risk_by_imputation,
-    compute_bootstrap_substitution_risk_by_imputation(
-      boot_imp_datasets = boot_imp_datasets,
-      substitutions = substitutions,
-      comp_hull = comp_hull_masks
-    ),
-    pattern = map(boot_imp_datasets)
-  ),
-  tar_target(
-    boot_substituted_risk,
-    average_bootstrap_substitution_replicate(
-      boot_substituted_risk_by_imputation = boot_substituted_risk_by_imputation,
-      seed = bootstrap_seeds
-    ),
-    pattern = map(boot_substituted_risk_by_imputation, bootstrap_seeds)
-  ),
-  tar_target(
-    boot_risk_summary,
-    summarize_substituted_risk_final_time(
-      boot_substituted_risk,
-      by_cols = "bootstrap_seed"
-    )
-  ),
-  tar_target(
-    boot_risk_intervals,
-    summarize_bootstrap_substitution_intervals(boot_substituted_risk)
-  ),
-  tar_target(
-    boot_risk_overall,
-    combine_point_estimates_with_bootstrap_cis(
-      point_estimates = pooled_risk_overall,
-      bootstrap_summary = boot_risk_intervals
-    )
-  ),
-  tar_target(
-    plot_boot_substitutions,
-    make_bootstrap_substitution_plots(
-      boot_risk_overall,
-      ratio_threshold = comparison_contract$ratio_threshold
-    )
-  ),
-  tar_target(
-    boot_substituted_plot_png,
-    write_bootstrap_substitution_plots(
-      plot_boot_substitutions,
-      file.path("results", "bootstrap_substitution_risk_ratio")
-    ),
-    format = "file"
+    dt_imp_cog_score,
+    lapply(dt_imp, \(imp) get_cog_score(as.data.table(imp))),
+    pattern = map(dt_imp)
   )
 )
