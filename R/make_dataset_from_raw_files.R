@@ -5,6 +5,8 @@ create_dataset <- function(
   framingham_brain2_file,
   framingham_cog_file,
   framingham_death_file,
+  framingham_surv_cvd_file,
+  framingham_risk_file,
   shhs_covar_file,
   shhs_death_file,
   shhs_psg1_file,
@@ -36,11 +38,16 @@ create_dataset <- function(
 
   framingham_death <- load_framingham_death(framingham_death_file)
 
+  framingham_surv_cvd <- load_framingham_surv_cvd(framingham_surv_cvd_file)
+  framingham_risk <- load_framingham_risk(framingham_risk_file)
+
   ## Merge FOS data
   # Merge the brain and dem datasets
   fos <- merge(brain, dem, by = c("IDTYPE", "PID"), all = TRUE)
   fos <- merge(cog, fos, by = c("IDTYPE", "PID"), all = TRUE)
   fos <- merge(framingham_death, fos, by = c("IDTYPE", "PID"), all = TRUE)
+  fos <- merge(framingham_surv_cvd, fos, by = c("IDTYPE", "PID"), all = TRUE)
+  fos <- merge(framingham_risk, fos, by = c("IDTYPE", "PID"), all = TRUE)
 
   ## SHHS variables
 
@@ -158,7 +165,6 @@ load_framingham_brain1 <- function(framingham_brain1_file) {
   vars <- Cs(
     PID,
     IDTYPE,
-    FLAIR_wmh,
     DSE_wmh
   )
   brain1 <- brain1[, ..vars]
@@ -169,7 +175,15 @@ load_framingham_brain1 <- function(framingham_brain1_file) {
   brain1 <- dcast(
     brain1,
     IDTYPE + PID ~ mri_assessment,
-    value.var = setdiff(names(brain1), c("IDTYPE", "PID", "mri_assessment"))
+    value.var = list(setdiff(names(brain1), c("IDTYPE", "PID", "mri_assessment")))
+  )
+
+  # Need to rename special case because there is only a single measure
+  assessment_cols <- setdiff(names(brain1), c("IDTYPE", "PID"))
+  setnames(
+    brain1,
+    assessment_cols,
+    paste("DSE_wmh", assessment_cols, sep = "_")
   )
   brain1
 }
@@ -182,21 +196,7 @@ load_framingham_brain2 <- function(framingham_brain2_file) {
     IDTYPE,
     Cerebrum_tcv,
     Cerebrum_tcb,
-    Cerebrum_gray,
-    Cerebrum_white,
-    Cerebrum_tcc,
-    Left_lateralvent,
-    Right_lateralvent,
-    Lateralvent,
-    Thirdvent,
-    Left_hippo,
-    Right_hippo,
     Hippo,
-    Total_csf,
-    Total_gray,
-    Total_white,
-    Total_brain,
-    Status,
     mri_date
   )
 
@@ -238,27 +238,55 @@ load_framingham_death <- function(framingham_death_file) {
   death
 }
 
+load_framingham_risk <- function(framingham_risk_file) {
+  risk <- fread(framingham_risk_file)
+  vars <- Hmisc::Cs(
+    PID,
+    IDTYPE,
+    smokes
+  )
+  risk <- risk[, ..vars]
+  risk
+}
+
+load_framingham_surv_cvd <- function(framingham_surv_cvd_file) {
+  surv_cvd <- fread(framingham_surv_cvd_file)
+  surv_cvd <- setnames(
+    surv_cvd,
+    c(
+      "cvd",
+      "cvddate",
+      "idtype"
+    ),
+    c(
+      "fram_cvd",
+      "fram_cvd_date",
+      "IDTYPE"
+    )
+  )
+
+  vars <- Hmisc::Cs(
+    PID,
+    IDTYPE,
+    fram_cvd,
+    fram_cvd_date
+  )
+
+  surv_cvd <- surv_cvd[, ..vars]
+  surv_cvd
+}
+
 load_framingham_cog <- function(framingham_cog_file) {
   cog <- fread(framingham_cog_file)
 
   vars <- Hmisc::Cs(
     PID,
     IDTYPE,
-    TRAILSA,
     TRAILSB,
     LMI,
     LMD,
-    LMR,
     VRI,
     VRD,
-    VRR,
-    PASD,
-    HVOT,
-    DSF,
-    DSB,
-    BNT36,
-    BNT36_SEMANTIC,
-    BNT36_PHONEMIC,
     SIM,
     NP_DATE
   )

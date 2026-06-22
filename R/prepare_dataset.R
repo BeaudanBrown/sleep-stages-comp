@@ -19,6 +19,7 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
     mri_cols,
     cog_cols,
     "fram_death_date",
+    "fram_cvd_date",
     "DEM_SURVDATE"
   )
   shhs_cols <- c("shhs_death_date", "shhs_cens_date")
@@ -103,24 +104,10 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
   dt[, (ilr_names_s2) := ilr_vars_s2]
 
   mri_value_prefixes <- c(
-    "FLAIR_wmh",
     "DSE_wmh",
     "Cerebrum_tcv",
     "Cerebrum_tcb",
-    "Cerebrum_gray",
-    "Cerebrum_white",
-    "Cerebrum_tcc",
-    "Left_lateralvent",
-    "Right_lateralvent",
-    "Lateralvent",
-    "Thirdvent",
-    "Left_hippo",
-    "Right_hippo",
-    "Hippo",
-    "Total_csf",
-    "Total_gray",
-    "Total_white",
-    "Total_brain"
+    "Hippo"
   )
 
   mri_selected <- gather_domain_visits(dt, mri_value_prefixes, "mri_date", "mri")
@@ -135,21 +122,11 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
   dt[, c(mri_value_cols, mri_date_cols) := NULL]
 
   cog_value_prefixes <- c(
-    "TRAILSA",
     "TRAILSB",
     "LMI",
     "LMD",
-    "LMR",
     "VRI",
     "VRD",
-    "VRR",
-    "PASD",
-    "HVOT",
-    "DSF",
-    "DSB",
-    "BNT36",
-    "BNT36_SEMANTIC",
-    "BNT36_PHONEMIC",
     "SIM"
   )
 
@@ -163,6 +140,26 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
   )
   cog_date_cols <- grep("^COG_DATE_[0-9]+$", names(dt), value = TRUE)
   dt[, c(cog_value_cols, cog_date_cols) := NULL]
+
+  dt[,
+    cvd_pre_cog := fcase(
+      fram_cvd == 1 & (fram_cvd_date - cog_s2_date) < 0,
+      1,
+      fram_cvd == 0 & (fram_cvd_date - cog_s2_date) < 0,
+      NA,
+      default = 0
+    )
+  ]
+
+  dt[,
+    cvd_pre_mri := fcase(
+      fram_cvd == 1 & (fram_cvd_date - mri_s2_date) < 0,
+      1,
+      fram_cvd == 0 & (fram_cvd_date - mri_s2_date) < 0,
+      NA,
+      default = 0
+    )
+  ]
 
   dt
 }

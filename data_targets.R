@@ -55,6 +55,16 @@ data_targets <- list(
     format = "file"
   ),
   tar_target(
+    framingham_surv_cvd_file,
+    file.path(framingham_dir, "vr_survcvd_2019_a_1334d.csv"),
+    format = "file"
+  ),
+  tar_target(
+    framingham_risk_file,
+    file.path(framingham_dir, "vr_riskscorepop_1.csv"),
+    format = "file"
+  ),
+  tar_target(
     dt_raw,
     create_dataset(
       framingham_dem_file,
@@ -63,6 +73,8 @@ data_targets <- list(
       framingham_brain2_file,
       framingham_cog_file,
       framingham_death_file,
+      framingham_surv_cvd_file,
+      framingham_risk_file,
       shhs_covar_file,
       shhs_death_file,
       shhs_psg1_file,
