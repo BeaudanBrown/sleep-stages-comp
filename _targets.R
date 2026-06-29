@@ -51,7 +51,7 @@ source("R/survival_utils.R")
 source("R/comp_hull_julia_utils.R")
 source("R/substitution_utils.R")
 source("R/bootstrap_utils.R")
-source("R/risk_summary_plot.R")
+source("R/viz.R")
 source("R/imputation.R")
 source("R/cognitive_summary_score.R")
 source("R/continuous_utils.R")
@@ -61,6 +61,5 @@ source("R/generic_utils.R")
 list(
   constant_targets,
   data_targets,
-  time_to_event_targets,
-  continuous_outcome_targets
+  analysis_targets
 )
