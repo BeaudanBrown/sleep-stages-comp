@@ -143,7 +143,7 @@ compute_completed_dataset_substitution_risk <- function(
   imputation_id = NULL
 ) {
   timegroup_cuts <- make_cuts(dt)
-  fitted_models <- fit_models(dt, timegroup_cuts)
+  fitted_models <- fit_models_surv(dt, timegroup_cuts)
   baseline_risk <- predict_risks(dt, fitted_models, timegroup_cuts)
 
   compute_substitution_risk_table(

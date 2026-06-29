@@ -98,8 +98,8 @@ expand_for_prediction <- function(dt, timegroup_cuts, event_var, event_date) {
   surv_dt
 }
 
-fit_models <- function(dt, method = c("glm", "mgcv")) {
-  model_formula <- get_primary_formula(method = method)
+fit_models_surv <- function(dt) {
+  model_formula <- get_primary_formula_surv(dt)
 
   dem_model_formula <- update(
     model_formula,
@@ -149,80 +149,60 @@ fit_models <- function(dt, method = c("glm", "mgcv")) {
   }
 }
 
-get_primary_formula <- function(method = c("glm", "mgcv")) {
-  if (method == "glm") {
-    Y ~
-      R1_s2 +
-      R2_s2 +
-      R3_s2 +
-      R4_s2 +
-      slp_time_s2 +
-      R1_s1 +
-      R2_s1 +
-      R3_s1 +
-      R4_s1 +
-      slp_time +
-      s1_incomplete +
-      age_s1 +
-      gender +
-      bmi_s1 +
-      oahi +
-      sleeping_pills +
-      hypertension
-  } else if (method == "mgcv") {
-    Y ~
-      s(R1_s2) +
-      s(R2_s2) +
-      s(R3_s2) +
-      s(R4_s2) +
-      s(slp_time_s2) +
-      s(R1_s1) +
-      s(R2_s1) +
-      s(R3_s1) +
-      s(R4_s1) +
-      s(slp_time) +
-      s1_incomplete +
-      s(age_s1) +
-      gender +
-      s(bmi_s1) +
-      s(oahi) +
-      sleeping_pills +
-      hypertension
+get_primary_formula_surv <- function(dt) {
+  model_vars <- c(
+    "timegroup",
+    "R1_s2",
+    "R2_s2",
+    "R3_s2",
+    "R4_s2",
+    "slp_time_s2",
+    "R1_s1",
+    "R2_s1",
+    "R3_s1",
+    "R4_s1",
+    "slp_time",
+    "s1_incomplete",
+    "age_s1",
+    "gender",
+    "bmi_s1",
+    "oahi",
+    "sleeping_pills",
+    "hypertension"
+  )
+  binary_vars <- c(
+    "s1_incomplete",
+    "gender",
+    "sleeping_pills",
+    "hypertension"
+  )
+  spline_vars <- setdiff(model_vars, binary_vars)
+
+  for (var in spline_vars) {
+    assign(
+      paste0("knots_", var),
+      quantile(dt[[var]], c(0.1, 0.5, 0.9), na.rm = TRUE),
+      envir = environment()
+    )
   }
-}
 
-strip_lm <- function(cm) {
-  cm$y <- c()
-  cm$model <- c()
-  cm$residuals <- c()
-  cm$fitted.values <- c()
-  cm$effects <- c()
-  cm$qr$qr <- c()
-  cm$linear.predictors <- c()
-  cm$weights <- c()
-  cm$prior.weights <- c()
-  cm$data <- c()
+  spline_terms <- setNames(
+    paste0(
+      "rcs(",
+      spline_vars,
+      ", knots_",
+      spline_vars,
+      ")"
+    ),
+    spline_vars
+  )
+  model_terms <- vapply(
+    model_vars,
+    \(var) {
+      if (var %in% binary_vars) var else spline_terms[[var]]
+    },
+    character(1)
+  )
 
-  cm
-}
-
-strip_glm <- function(cm) {
-  cm$y <- c()
-  cm$model <- c()
-  cm$residuals <- c()
-  cm$fitted.values <- c()
-  cm$effects <- c()
-  cm$qr$qr <- c()
-  cm$linear.predictors <- c()
-  cm$weights <- c()
-  cm$prior.weights <- c()
-  cm$data <- c()
-
-  cm$family$variance <- c()
-  cm$family$dev.resids <- c()
-  cm$family$aic <- c()
-  cm$family$validmu <- c()
-  cm$family$simulate <- c()
-
-  cm
+  reformulate(model_terms, response = "Y", env = environment())
 }

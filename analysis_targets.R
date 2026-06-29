@@ -26,7 +26,7 @@ time_to_event_targets <- list(
   # fit outcome model
   tar_target(
     outcome_models,
-    fit_models(dt_long, method = "mgcv"),
+    fit_models_surv(dt_long),
     pattern = map(dt_long)
   ),
 
@@ -157,14 +157,56 @@ time_to_event_targets <- list(
 )
 
 continuous_outcome_targets <- list(
+  tar_target(outcome_vars, c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2")),
   tar_target(
     dt_imp,
     impute_data(dt_boot, method = "cart"),
     pattern = map(dt_boot)
   ),
+  # calculate cognitive summary score (see INSERT REF)
   tar_target(
     dt_imp_cog_score,
     lapply(dt_imp, \(imp) get_cog_score(as.data.table(imp))),
     pattern = map(dt_imp)
+  ),
+  # fit outcome model
+  tar_target(
+    outcome_models_cont,
+    lapply(dt_imp_cog_score, fit_models_cont, outcome = outcome_vars),
+    pattern = cross(dt_imp_cog_score, outcome_vars)
+  ),
+  # expected outcome under no intervention
+  tar_target(
+    mean_no_int,
+    rbindlist(
+      Map(gcomp, outcome_models_cont, dt_imp_cog_score),
+      idcol = "imputation_id"
+    ),
+    pattern = map(
+      outcome_models_cont,
+      cross(dt_imp_cog_score, outcome_vars)
+    )
+  ),
+  tar_target(
+    estimates,
+    rbindlist(
+      lapply(seq_along(dt_imp_cog_score), \(i) {
+        compute_substitution_table(
+          dt = dt_imp_cog_score[[i]],
+          substitutions = substitutions,
+          comp_hull = comp_hull_masks,
+          fitted_models = outcome_models_cont[[i]],
+          ref_dt = mean_no_int[imputation_id == i],
+          comp_vars = paste0(comp_vars, "_s2"),
+          ilr_base = ilr_base
+        )
+      }),
+      idcol = "imputation_id"
+    ),
+    pattern = map(
+      outcome_models_cont,
+      mean_no_int,
+      cross(dt_imp_cog_score, outcome_vars)
+    )
   )
 )

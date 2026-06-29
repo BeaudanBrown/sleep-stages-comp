@@ -54,6 +54,8 @@ source("R/bootstrap_utils.R")
 source("R/risk_summary_plot.R")
 source("R/imputation.R")
 source("R/cognitive_summary_score.R")
+source("R/continuous_utils.R")
+source("R/generic_utils.R")
 
 ## pipeline
 list(
