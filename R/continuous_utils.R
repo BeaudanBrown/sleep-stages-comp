@@ -62,13 +62,13 @@ compute_substituted_mean <- function(
     n_total = coverage$n_total
   )]
 
-  rbindlist(
-    list(
-      ref_dt,
-      int_dt
-    ),
-    fill = TRUE
-  )
+  reference_index <- match(int_dt$outcome, ref_dt$outcome)
+  int_dt[, `:=`(
+    mean_difference = pred - ref_dt$pred[reference_index],
+    imputation_id = ref_dt$imputation_id[reference_index]
+  )]
+
+  int_dt
 }
 
 gcomp <- function(model, newdata) {

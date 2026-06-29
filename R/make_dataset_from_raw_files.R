@@ -6,7 +6,6 @@ create_dataset <- function(
   framingham_cog_file,
   framingham_death_file,
   framingham_surv_cvd_file,
-  framingham_risk_file,
   shhs_covar_file,
   shhs_death_file,
   shhs_psg1_file,
@@ -39,7 +38,6 @@ create_dataset <- function(
   framingham_death <- load_framingham_death(framingham_death_file)
 
   framingham_surv_cvd <- load_framingham_surv_cvd(framingham_surv_cvd_file)
-  framingham_risk <- load_framingham_risk(framingham_risk_file)
 
   ## Merge FOS data
   # Merge the brain and dem datasets
@@ -47,7 +45,6 @@ create_dataset <- function(
   fos <- merge(cog, fos, by = c("IDTYPE", "PID"), all = TRUE)
   fos <- merge(framingham_death, fos, by = c("IDTYPE", "PID"), all = TRUE)
   fos <- merge(framingham_surv_cvd, fos, by = c("IDTYPE", "PID"), all = TRUE)
-  fos <- merge(framingham_risk, fos, by = c("IDTYPE", "PID"), all = TRUE)
 
   ## SHHS variables
 
@@ -236,17 +233,6 @@ load_framingham_death <- function(framingham_death_file) {
 
   death <- death[, ..vars]
   death
-}
-
-load_framingham_risk <- function(framingham_risk_file) {
-  risk <- fread(framingham_risk_file)
-  vars <- Hmisc::Cs(
-    PID,
-    IDTYPE,
-    smokes
-  )
-  risk <- risk[, ..vars]
-  risk
 }
 
 load_framingham_surv_cvd <- function(framingham_surv_cvd_file) {

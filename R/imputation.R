@@ -47,7 +47,8 @@ impute_data <- function(data, method, m = 2, iter = 10) {
     method = method,
     m = m,
     iter = iter,
-    predictorMatrix = predmat
+    predictorMatrix = predmat,
+    remove.collinear = FALSE
   )
 
   imp <- complete(imp, action = "all")

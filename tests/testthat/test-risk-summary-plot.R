@@ -119,3 +119,32 @@ test_that("pair orientation puts additions to N3 on positive minutes", {
   expect_equal(oriented$duration, c(30, 0, -30))
   expect_equal(oriented[duration == 30]$RR, 0.95)
 })
+
+test_that("continuous pair plot uses a zero null and mean-difference intervals", {
+  dt <- data.table::data.table(
+    from = "n3_s2",
+    to = "rem_s2",
+    duration = c(-30, 0, 30),
+    outcome = "Hippo_s2",
+    parameter = "mean_difference",
+    estimate = c(-0.2, 0, 0.3),
+    lower = c(-0.3, 0, 0.2),
+    upper = c(-0.1, 0, 0.4)
+  )
+  output_file <- tempfile(fileext = ".png")
+
+  plot <- plot_continuous_summary_pair(
+    dt,
+    labels = c(n3_s2 = "N3", rem_s2 = "REM"),
+    right_stage = "n3_s2",
+    output_file = output_file
+  )
+  built <- ggplot2::ggplot_build(plot)
+
+  expect_true(file.exists(output_file))
+  expect_equal(built$data[[1]]$yintercept, 0)
+  expect_equal(built$data[[3]]$x, c(-30, 0, 30))
+  expect_equal(built$data[[3]]$y, c(0.3, 0, -0.2))
+  expect_equal(plot$labels$title, "Hippo_s2")
+  expect_equal(plot$labels$y, "Mean difference")
+})
