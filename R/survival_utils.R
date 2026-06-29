@@ -98,7 +98,7 @@ expand_for_prediction <- function(dt, timegroup_cuts, event_var, event_date) {
   surv_dt
 }
 
-fit_models_surv <- function(dt) {
+fit_models_surv <- function(dt, method = "glm") {
   model_formula <- get_primary_formula_surv(dt)
 
   dem_model_formula <- update(
