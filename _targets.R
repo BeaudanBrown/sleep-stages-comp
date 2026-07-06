@@ -6,7 +6,7 @@ dotenv::load_dot_env()
 cache_dir <- Sys.getenv("CACHE_DIR")
 framingham_dir <- Sys.getenv("FRAMINGHAM_DIR")
 shhs_dir <- Sys.getenv("SHHS_DIR")
-ncpus <- future::availableCores() - 1
+ncpus <- Sys.getenv("NCPUS")
 
 # Ensure single threaded within targets
 Sys.setenv(R_DATATABLE_NUM_THREADS = 1)
@@ -47,7 +47,6 @@ source("constant_targets.R")
 source("R/make_dataset_from_raw_files.R")
 source("R/composition_utils.R")
 source("R/prepare_dataset.R")
-source("R/survival_utils.R")
 source("R/comp_hull_julia_utils.R")
 source("R/substitution_utils.R")
 source("R/bootstrap_utils.R")

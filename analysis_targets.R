@@ -1,5 +1,20 @@
 analysis_targets <- list(
   tar_target(outcome_vars, c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2")),
+
+  # generate bootstrap samples
+  tar_rep(
+    dt_boot,
+    command = {
+      rows <- sample(1:nrow(dt), nrow(dt), replace = TRUE)
+      data <- dt[rows, ]
+      data[, PID_original := PID]
+      data[, PID := seq_len(.N)]
+      data[]
+    },
+    batches = 1000
+  ),
+
+  # impute missing data
   tar_target(
     dt_imp,
     impute_data(dt_boot, method = "cart"),
