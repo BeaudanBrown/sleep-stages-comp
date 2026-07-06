@@ -6,7 +6,7 @@ dotenv::load_dot_env()
 cache_dir <- Sys.getenv("CACHE_DIR")
 framingham_dir <- Sys.getenv("FRAMINGHAM_DIR")
 shhs_dir <- Sys.getenv("SHHS_DIR")
-ncpus <- Sys.getenv("NCPUS")
+ncpus <- as.numeric(Sys.getenv("NCPUS"))
 
 # Ensure single threaded within targets
 Sys.setenv(R_DATATABLE_NUM_THREADS = 1)
@@ -43,6 +43,7 @@ tar_option_set(
 source("data_targets.R")
 source("analysis_targets.R")
 source("constant_targets.R")
+source("hull_targets.R")
 
 source("R/make_dataset_from_raw_files.R")
 source("R/composition_utils.R")
@@ -50,7 +51,6 @@ source("R/prepare_dataset.R")
 source("R/comp_hull_julia_utils.R")
 source("R/substitution_utils.R")
 source("R/bootstrap_utils.R")
-source("R/viz.R")
 source("R/imputation.R")
 source("R/cognitive_summary_score.R")
 source("R/continuous_utils.R")
@@ -60,5 +60,6 @@ source("R/generic_utils.R")
 list(
   constant_targets,
   data_targets,
+  hull_targets,
   analysis_targets
 )
