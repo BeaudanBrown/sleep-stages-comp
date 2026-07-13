@@ -1,3 +1,61 @@
+orient_risk_summary_pair <- function(dt, right_stage) {
+  dt <- copy(as.data.table(dt))
+  pair <- unique(dt[, .(from, to)])
+
+  if (pair$from[[1]] == right_stage) {
+    dt[, `:=`(
+      from = pair$to[[1]],
+      to = pair$from[[1]],
+      duration = -duration
+    )]
+  }
+
+  dt
+}
+
+make_risk_summary_x_breaks <- function(x_limit) {
+  x_limit <- max(abs(x_limit))
+  breaks <- pretty(c(-x_limit, x_limit), n = 6L)
+  unique(c(-x_limit, breaks[breaks > -x_limit & breaks < x_limit], x_limit))
+}
+
+make_risk_plot_direction <- function(from_label, to_label) {
+  grid::grobTree(
+    grid::segmentsGrob(
+      x0 = grid::unit(c(0.40, 0.60), "npc"),
+      x1 = grid::unit(c(0.20, 0.80), "npc"),
+      y0 = grid::unit(-0.215, "npc"),
+      y1 = grid::unit(-0.215, "npc"),
+      arrow = grid::arrow(length = grid::unit(0.1, "inches"), type = "open"),
+      gp = grid::gpar(col = "grey25", lwd = 1)
+    ),
+    left_more_label = grid::textGrob(
+      sprintf("More %s", from_label),
+      x = 0.30,
+      y = -0.26,
+      gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif")
+    ),
+    left_less_label = grid::textGrob(
+      sprintf("Less %s", to_label),
+      x = 0.30,
+      y = -0.17,
+      gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif")
+    ),
+    right_less_label = grid::textGrob(
+      sprintf("Less %s", from_label),
+      x = 0.70,
+      y = -0.26,
+      gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif")
+    ),
+    right_more_label = grid::textGrob(
+      sprintf("More %s", to_label),
+      x = 0.70,
+      y = -0.17,
+      gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif")
+    )
+  )
+}
+
 plot_continuous_summary_pair <- function(
   dt,
   labels = NULL,
