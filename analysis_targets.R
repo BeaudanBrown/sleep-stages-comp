@@ -106,10 +106,10 @@ analysis_targets <- list(
 
   # Candidate policies are learned from training exposures only.
   tar_target(
-    comp_grid_integer,
+    comp_grid,
     unique(
       dt_train[,
-        lapply(.SD, round),
+        lapply(.SD, \(comp) comp / slp_time_s2),
         .SDcols = paste0(comp_vars, "_s2")
       ]
     )
@@ -136,7 +136,7 @@ analysis_targets <- list(
     mean_cog_pred,
     evaluate_composition_grid(
       dt = dt_train_cog,
-      composition_grid = comp_grid_integer,
+      composition_grid = comp_grid,
       fitted_model = cog_model_train,
       comp_vars = paste0(comp_vars, "_s2"),
       ilr_base = ilr_base
