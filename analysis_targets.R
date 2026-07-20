@@ -52,7 +52,7 @@ analysis_targets <- list(
           compute_substitution_table(
             dt = dt_imp_cog_score[[i]],
             substitutions = substitutions,
-            comp_hull = comp_hull_masks,
+            comp_hull = substitution_masks_always,
             fitted_models = outcome_models_cont[[i]],
             ref_dt = mean_no_int[imputation_id == i],
             comp_vars = paste0(comp_vars, "_s2"),

@@ -17,20 +17,27 @@ compute_substitution_mask <- function(dt, from, to, duration, comp_hull) {
     return(rep(TRUE, nrow(dt)))
   }
 
-  if (!is_substitution_mask_table(comp_hull)) {
-    stop(
-      "Substitution support must be supplied as a Julia-generated mask table.",
-      call. = FALSE
-    )
+  masks <- data.table::copy(data.table::as.data.table(comp_hull))
+  if ("PID" %in% names(masks)) {
+    masks[, PID := as.character(PID)]
   }
 
-  lookup_substitution_mask(
-    dt = dt,
-    substitution_masks = comp_hull,
-    from = from,
-    to = to,
-    duration = duration
-  )
+  from_value <- from
+  to_value <- to
+  duration_value <- as.integer(duration)
+
+  mask_dt <- masks[
+    masks[["from"]] == from_value &
+      masks[["to"]] == to_value &
+      masks[["duration"]] == duration_value
+  ]
+
+  as.logical(mask_dt[
+    data.table::data.table(PID = as.character(dt$PID_original)),
+    on = "PID",
+    substituted,
+    allow.cartesian = TRUE
+  ])
 }
 
 compute_shifted_exposures <- function(
@@ -43,6 +50,12 @@ compute_shifted_exposures <- function(
   ilr_base
 ) {
   dt <- as.data.table(dt)
+  if (duration == 0) {
+    shifted_dt <- copy(dt)
+    shifted_dt[["substituted"]] <- TRUE
+    return(shifted_dt)
+  }
+
   can_substitute <- compute_substitution_mask(
     dt = dt,
     from = from,

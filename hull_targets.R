@@ -23,12 +23,30 @@ hull_targets <- list(
   ),
   tar_target(
     substitutions,
-    build_support_aware_substitution_grid(
-      substitution_support_frontiers,
-      comparison_settings,
-      comp_vars = paste0(comp_vars, "_s2")
+    make_substitution_grid(
+      durations = seq(-30L, 30L, by = 15L),
+      comp_vars = paste0(comp_vars, "_s2"),
+      directed = FALSE
     )
   ),
+  tar_target(
+    substitution_masks_always,
+    {
+      pid_values <- unique(as.character(dt$PID))
+      substitutions[,
+        .(PID = pid_values, substituted = TRUE),
+        by = .(from, to, duration)
+      ]
+    }
+  ),
+  # tar_target(
+  #   substitutions,
+  #   build_support_aware_substitution_grid(
+  #     substitution_support_frontiers,
+  #     comparison_settings,
+  #     comp_vars = paste0(comp_vars, "_s2")
+  #   )
+  # ),
   tar_target(
     comp_hull_substitutions_file,
     write_substitutions_file(substitutions),
