@@ -1,6 +1,11 @@
 hull_targets <- list(
   # estimate convex hull and create intervened dataset
   tar_target(
+    comp_hull_support_script,
+    "scripts/comp_hull_support.jl",
+    format = "file"
+  ),
+  tar_target(
     comp_hull_input_file,
     write_comp_hull_input_file(
       dt = dt,
@@ -13,7 +18,8 @@ hull_targets <- list(
     run_julia_comp_hull_frontiers(
       input_file = comp_hull_input_file,
       comparison_settings,
-      comp_vars = paste0(comp_vars, "_s2")
+      comp_vars = paste0(comp_vars, "_s2"),
+      script = comp_hull_support_script
     ),
     format = "file"
   ),
@@ -39,7 +45,8 @@ hull_targets <- list(
     run_julia_comp_hull_masks(
       input_file = comp_hull_input_file,
       substitutions_file = comp_hull_substitutions_file,
-      comp_vars = paste0(comp_vars, "_s2")
+      comp_vars = paste0(comp_vars, "_s2"),
+      script = comp_hull_support_script
     ),
     format = "file"
   ),

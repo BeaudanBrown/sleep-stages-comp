@@ -46,6 +46,7 @@ compute_substituted_mean <- function(
     comp_vars,
     ilr_base
   )
+  sub_dt <- update_continuous_sleep_duration(sub_dt, from, to)
 
   int_dt <- gcomp(
     fitted_models,
@@ -70,6 +71,16 @@ compute_substituted_mean <- function(
   )]
 
   int_dt
+}
+
+update_continuous_sleep_duration <- function(dt, from, to) {
+  out <- copy(dt)
+  from_is_sleep <- as.integer(from != "waso_s2")
+  to_is_sleep <- as.integer(to != "waso_s2")
+  tst_delta <- out[["applied_duration"]] * (to_is_sleep - from_is_sleep)
+
+  out[["slp_time_s2"]] <- out[["slp_time_s2"]] + tst_delta
+  out
 }
 
 gcomp <- function(model, newdata) {

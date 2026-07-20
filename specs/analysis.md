@@ -91,8 +91,13 @@ An isotemporal substitution answers: "What would happen if we increased time in 
     - Check whether the shifted composition remains inside the observed convex hull.
     - If the full shift crosses the hull boundary, apply the largest same-direction continuous shift that remains inside the hull.
    
-   e. **Predict counterfactual outcomes:**
+    e. **Predict counterfactual outcomes:**
    - Use ILRs recomputed from the fully shifted or boundary-clipped composition
+   - In the continuous g-computation path, keep sleep-period time fixed when a
+     policy reallocates time between WASO and a sleeping stage. Update
+     `slp_time_s2` by the realized row-specific duration before prediction:
+     sleep-to-WASO shifts reduce TST, WASO-to-sleep shifts increase TST, and
+     sleep-stage-to-sleep-stage shifts leave TST unchanged.
    
     f. **Calculate contrast:**
     - Risk difference: mean(risk_substituted) - mean(risk_baseline)

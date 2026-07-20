@@ -53,7 +53,8 @@ compute_comp_hull_masks_for_dt <- function(
 run_julia_comp_hull_frontiers <- function(
   input_file,
   comparison_settings,
-  comp_vars
+  comp_vars,
+  script = file.path("scripts", "comp_hull_support.jl")
 ) {
   dir <- file.path("_targets", "user", "comp_hull")
   ratio_threshold <- comparison_settings$ratio_threshold
@@ -76,7 +77,8 @@ run_julia_comp_hull_frontiers <- function(
       as.character(ratio_threshold),
       "--max-minutes",
       as.character(max_minutes)
-    )
+    ),
+    script = script
   )
 
   output_file
@@ -85,7 +87,8 @@ run_julia_comp_hull_frontiers <- function(
 run_julia_comp_hull_masks <- function(
   input_file,
   substitutions_file,
-  comp_vars
+  comp_vars,
+  script = file.path("scripts", "comp_hull_support.jl")
 ) {
   dir <- file.path("_targets", "user", "comp_hull")
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
@@ -104,15 +107,19 @@ run_julia_comp_hull_masks <- function(
       substitutions_file,
       "--masks",
       output_file
-    )
+    ),
+    script = script
   )
 
   output_file
 }
 
-run_julia_comp_hull_support <- function(args) {
+run_julia_comp_hull_support <- function(
+  args,
+  script = file.path("scripts", "comp_hull_support.jl")
+) {
   script <- normalizePath(
-    file.path("scripts", "comp_hull_support.jl"),
+    script,
     winslash = "/",
     mustWork = TRUE
   )
