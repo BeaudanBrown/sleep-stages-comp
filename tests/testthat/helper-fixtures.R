@@ -33,7 +33,8 @@ make_test_comp_hull <- function() {
 make_test_substitution_masks <- function(
   dt,
   substitutions,
-  substituted = TRUE
+  substituted = TRUE,
+  applied_duration = NULL
 ) {
   dt <- data.table::as.data.table(dt)
   substitutions <- data.table::as.data.table(substitutions)
@@ -45,6 +46,13 @@ make_test_substitution_masks <- function(
     } else {
       as.logical(substituted)
     }
+    realized <- if (is.null(applied_duration)) {
+      mask * row$duration
+    } else if (length(applied_duration) == 1L) {
+      rep(as.numeric(applied_duration), nrow(dt))
+    } else {
+      as.numeric(applied_duration)
+    }
 
     data.table::data.table(
       from = row$from,
@@ -52,7 +60,8 @@ make_test_substitution_masks <- function(
       duration = as.integer(row$duration),
       row_id = seq_len(nrow(dt)),
       PID = as.character(dt$PID),
-      substituted = mask
+      substituted = mask,
+      applied_duration = realized
     )
   }))
 }

@@ -29,10 +29,18 @@ bootstrap_intervals <- function(data, parameter) {
 }
 
 summary_bootstrap_intervals <- function(estimates) {
-  parameters <- c("pred", "mean_difference")
+  parameters <- c("pred", "mean_difference", "mean_applied_duration")
   group_cols <- c("from", "to", "duration", "outcome")
 
   rbindlist(lapply(parameters, \(parameter) {
+    estimates[, bootstrap_intervals(.SD, parameter), by = group_cols]
+  }))
+}
+
+summary_composition_bootstrap_intervals <- function(estimates, comp_vars) {
+  group_cols <- c("policy", "outcome", comp_vars)
+
+  rbindlist(lapply(c("pred", "mean_difference"), \(parameter) {
     estimates[, bootstrap_intervals(.SD, parameter), by = group_cols]
   }))
 }

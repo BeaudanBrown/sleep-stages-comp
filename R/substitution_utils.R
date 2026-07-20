@@ -12,9 +12,12 @@ make_substitution_grid <- function(durations, comp_vars, directed = TRUE) {
   pair_dt[, .(duration = durations), by = .(from, to)]
 }
 
-compute_substitution_mask <- function(dt, from, to, duration, comp_hull) {
+compute_substitution_policy <- function(dt, from, to, duration, comp_hull) {
   if (duration == 0) {
-    return(rep(TRUE, nrow(dt)))
+    return(data.table::data.table(
+      substituted = rep(TRUE, nrow(dt)),
+      applied_duration = rep(0, nrow(dt))
+    ))
   }
 
   if (!is_substitution_mask_table(comp_hull)) {
@@ -24,13 +27,23 @@ compute_substitution_mask <- function(dt, from, to, duration, comp_hull) {
     )
   }
 
-  lookup_substitution_mask(
+  lookup_substitution_policy(
     dt = dt,
     substitution_masks = comp_hull,
     from = from,
     to = to,
     duration = duration
   )
+}
+
+compute_substitution_mask <- function(dt, from, to, duration, comp_hull) {
+  compute_substitution_policy(
+    dt,
+    from,
+    to,
+    duration,
+    comp_hull
+  )[["substituted"]]
 }
 
 compute_shifted_exposures <- function(
@@ -43,7 +56,7 @@ compute_shifted_exposures <- function(
   ilr_base
 ) {
   dt <- as.data.table(dt)
-  can_substitute <- compute_substitution_mask(
+  policy <- compute_substitution_policy(
     dt = dt,
     from = from,
     to = to,
@@ -52,9 +65,10 @@ compute_shifted_exposures <- function(
   )
 
   shifted_dt <- copy(dt)
-  shifted_dt[[from]] <- shifted_dt[[from]] - (can_substitute * duration)
-  shifted_dt[[to]] <- shifted_dt[[to]] + (can_substitute * duration)
-  shifted_dt[["substituted"]] <- can_substitute
+  shifted_dt[[from]] <- shifted_dt[[from]] - policy$applied_duration
+  shifted_dt[[to]] <- shifted_dt[[to]] + policy$applied_duration
+  shifted_dt[["substituted"]] <- policy$substituted
+  shifted_dt[["applied_duration"]] <- policy$applied_duration
 
   ilr_vars <- make_ilrs(shifted_dt, comp_vars, ilr_base)
   ilr_names <- paste0("R", seq_len(length(comp_vars) - 1), "_s2")
@@ -71,12 +85,14 @@ extract_shifted_treatment <- function(shifted_dt, trt_cols) {
 }
 
 summarize_substitution_coverage <- function(shifted_dt) {
-  substituted <- as.data.table(shifted_dt)[["substituted"]]
+  shifted_dt <- as.data.table(shifted_dt)
+  substituted <- shifted_dt[["substituted"]]
 
   list(
     n_intervened = sum(substituted),
     n_total = length(substituted),
-    ratio_substituted = mean(substituted)
+    ratio_substituted = mean(substituted),
+    mean_applied_duration = mean(shifted_dt[["applied_duration"]])
   )
 }
 

@@ -59,7 +59,8 @@ compute_substituted_mean <- function(
     to = to,
     duration = duration,
     n_intervened = coverage$n_intervened,
-    n_total = coverage$n_total
+    n_total = coverage$n_total,
+    mean_applied_duration = coverage$mean_applied_duration
   )]
 
   reference_index <- match(int_dt$outcome, ref_dt$outcome)
@@ -75,6 +76,78 @@ gcomp <- function(model, newdata) {
   pred <- mean(predict(model$model, newdata = newdata))
   outcome <- model$outcome
   data.table(outcome = outcome, pred = pred)
+}
+
+apply_fixed_composition <- function(
+  dt,
+  composition,
+  comp_vars,
+  ilr_base
+) {
+  out <- copy(dt)
+  for (var in comp_vars) {
+    set(out, j = var, value = composition[[var]][1L])
+  }
+
+  sleep_stage_vars <- setdiff(comp_vars, "waso_s2")
+  out[, slp_time_s2 := rowSums(.SD), .SDcols = sleep_stage_vars]
+
+  ilr_names <- paste0("R", seq_len(length(comp_vars) - 1L), "_s2")
+  out[, (ilr_names) := make_ilrs(out, comp_vars, ilr_base)]
+  out
+}
+
+evaluate_composition_grid <- function(
+  dt,
+  composition_grid,
+  fitted_model,
+  comp_vars,
+  ilr_base
+) {
+  rbindlist(lapply(seq_len(nrow(composition_grid)), function(i) {
+    composition <- composition_grid[i]
+    intervention_dt <- apply_fixed_composition(
+      dt,
+      composition,
+      comp_vars,
+      ilr_base
+    )
+
+    cbind(
+      composition,
+      mean_cog_pred = gcomp(fitted_model, intervention_dt)$pred
+    )
+  }))
+}
+
+compute_composition_table <- function(
+  dt,
+  compositions,
+  fitted_model,
+  ref_dt,
+  comp_vars,
+  ilr_base
+) {
+  composition_vars <- comp_vars
+  rbindlist(lapply(seq_len(nrow(compositions)), function(i) {
+    composition <- compositions[i]
+    intervention_dt <- apply_fixed_composition(
+      dt,
+      composition,
+      comp_vars,
+      ilr_base
+    )
+    estimate <- gcomp(fitted_model, intervention_dt)
+    reference_index <- match(estimate$outcome, ref_dt$outcome)
+
+    estimate[, `:=`(
+      policy = composition$policy,
+      mean_difference = pred - ref_dt$pred[reference_index],
+      imputation_id = ref_dt$imputation_id[reference_index]
+    )]
+    estimate[, (composition_vars) := composition[, .SD, .SDcols = composition_vars]]
+    estimate
+  }))
 }
 
 fit_models_cont <- function(dt, outcome) {

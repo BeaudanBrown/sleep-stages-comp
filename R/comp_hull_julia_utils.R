@@ -145,6 +145,7 @@ read_comp_hull_masks <- function(mask_file) {
   out <- data.table::fread(mask_file)
   out[, duration := as.integer(duration)]
   out[, substituted := as.logical(substituted)]
+  out[, applied_duration := as.numeric(applied_duration)]
   if ("PID" %in% names(out)) {
     out[, PID := as.character(PID)]
   }
@@ -153,10 +154,19 @@ read_comp_hull_masks <- function(mask_file) {
 
 is_substitution_mask_table <- function(x) {
   data.table::is.data.table(x) &&
-    all(c("from", "to", "duration", "substituted") %in% names(x))
+    all(
+      c(
+        "from",
+        "to",
+        "duration",
+        "substituted",
+        "applied_duration"
+      ) %in%
+        names(x)
+    )
 }
 
-lookup_substitution_mask <- function(
+lookup_substitution_policy <- function(
   dt,
   substitution_masks,
   from,
@@ -194,34 +204,50 @@ lookup_substitution_mask <- function(
     lookup <- mask_dt[
       data.table::data.table(PID = as.character(dt$PID_original)),
       on = "PID",
-      substituted,
+      .(substituted, applied_duration),
       allow.cartesian = TRUE
     ]
   } else if ("PID" %in% names(dt) && "PID" %in% names(mask_dt)) {
     lookup <- mask_dt[
       data.table::data.table(PID = as.character(dt$PID)),
       on = "PID",
-      substituted,
+      .(substituted, applied_duration),
       allow.cartesian = TRUE
     ]
   } else if ("row_id" %in% names(mask_dt)) {
     lookup <- mask_dt[
       data.table::data.table(row_id = seq_len(nrow(dt))),
       on = "row_id",
-      substituted
+      .(substituted, applied_duration)
     ]
   } else {
     stop("Substitution masks need PID or row_id for lookup.", call. = FALSE)
   }
 
-  if (length(lookup) != nrow(dt) || anyNA(lookup)) {
+  if (nrow(lookup) != nrow(dt) || anyNA(lookup)) {
     stop(
       sprintf("Substitution mask does not align with %s input rows.", nrow(dt)),
       call. = FALSE
     )
   }
 
-  as.logical(lookup)
+  lookup
+}
+
+lookup_substitution_mask <- function(
+  dt,
+  substitution_masks,
+  from,
+  to,
+  duration
+) {
+  lookup_substitution_policy(
+    dt = dt,
+    substitution_masks = substitution_masks,
+    from = from,
+    to = to,
+    duration = duration
+  )[["substituted"]]
 }
 build_support_aware_substitution_grid <- function(
   support_frontiers,

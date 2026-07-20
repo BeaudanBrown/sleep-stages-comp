@@ -87,6 +87,9 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
   # Exclude ppts with dem/mci before PSG 2
   dt <- dt[is.na(dem_or_mci_date) | dem_or_mci_date > 0, ]
 
+  # Exclude participants with <4 hours sleep at PSG2
+  dt <- dt[n1_s2 + n2_s2 + n3_s2 + rem_s2 >= 4]
+
   ## Add ILR vars to data
 
   # s1

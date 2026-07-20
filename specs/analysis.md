@@ -87,24 +87,23 @@ An isotemporal substitution answers: "What would happen if we increased time in 
    ilr_sub <- make_ilrs(dt_sub)
    ```
    
-    d. **Check density (plausibility constraint):**
-    - Calculate Mahalanobis distance from MVN center.
-    - If distance exceeds the 95% chi-squared threshold (df = 4), the shifted composition is implausible.
-    - For implausible cases, **keep original composition** (no intervention for that participant).
+    d. **Check support (plausibility constraint):**
+    - Check whether the shifted composition remains inside the observed convex hull.
+    - If the full shift crosses the hull boundary, apply the largest same-direction continuous shift that remains inside the hull.
    
    e. **Predict counterfactual outcomes:**
-   - Use shifted ILRs (or original if implausible) to predict
+   - Use ILRs recomputed from the fully shifted or boundary-clipped composition
    
     f. **Calculate contrast:**
     - Risk difference: mean(risk_substituted) - mean(risk_baseline)
     - Risk ratio: mean(risk_substituted) / mean(risk_baseline)
 
 ### Estimand / interpretation
-Because we revert to the original composition when a shift is infeasible or implausible, the estimand corresponds to the policy:
+The estimand corresponds to the policy:
 
-> “Apply the requested shift if feasible and plausible; otherwise leave the composition unchanged.”
+> “Apply the requested shift when it remains inside the observed convex hull; otherwise shift in the same direction to the hull boundary.”
 
-We will report `n_intervened` (number of participants whose composition was actually shifted) for transparency.
+We report `n_intervened` and `ratio_substituted` as the number and proportion receiving the full requested shift. We also report `mean_applied_duration`, including boundary-clipped shifts, for transparency.
 
 ### LMTP implementation target
 
@@ -289,8 +288,9 @@ data.table(
   mean_risk_ratio = 0.XX,
   lower_ci = 0.XX,
   upper_ci = 0.XX,
-  n_intervened = XXX,  # Number of participants with plausible shift
-  n_total = XXX
+  n_intervened = XXX,  # Number receiving the full requested shift
+  n_total = XXX,
+  mean_applied_duration = XX.X
 )
 ```
 

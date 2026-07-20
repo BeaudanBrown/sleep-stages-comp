@@ -10,17 +10,12 @@ project_root <- normalizePath(
   mustWork = TRUE
 )
 
-source(file.path(project_root, "R", "constants.R"))
-
 r_files <- list.files(
   file.path(project_root, "R"),
   pattern = "\\.R$",
   full.names = TRUE
 )
-r_files <- setdiff(
-  r_files,
-  file.path(project_root, "R", "constants.R")
-)
+r_files <- setdiff(r_files, file.path(project_root, "R", "scratch.R"))
 for (path in r_files) {
   source(path)
 }

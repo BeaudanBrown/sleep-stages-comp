@@ -35,6 +35,7 @@ test_that("continuous substitution estimates emit one tagged row per substitutio
   expect_type(estimates$imputation_id, "character")
   expect_equal(unique(estimates$imputation_id), "2")
   expect_false("pred_reference" %in% names(estimates))
+  expect_equal(estimates$mean_applied_duration, substitutions$duration)
   expect_equal(
     estimates$mean_difference,
     estimates$pred - reference$pred

@@ -54,7 +54,8 @@ test_that("compute_shifted_exposures can use precomputed substitution masks", {
     duration = 15L,
     row_id = seq_len(nrow(dt)),
     PID = as.character(dt$PID),
-    substituted = c(TRUE, FALSE, TRUE, FALSE)
+    substituted = c(TRUE, FALSE, TRUE, FALSE),
+    applied_duration = c(15, 0, 15, 0)
   )
 
   shifted <- suppressWarnings(compute_shifted_exposures(
@@ -70,6 +71,28 @@ test_that("compute_shifted_exposures can use precomputed substitution masks", {
   expect_equal(shifted$n3_s2, dt$n3_s2 + c(15, 0, 15, 0))
 })
 
+test_that("read_comp_hull_masks preserves fractional applied durations", {
+  path <- tempfile(fileext = ".csv")
+  data.table::fwrite(
+    data.table::data.table(
+      from = "n2_s2",
+      to = "n3_s2",
+      duration = 15L,
+      row_id = 1L,
+      PID = "1",
+      substituted = FALSE,
+      applied_duration = 7.5
+    ),
+    path
+  )
+
+  masks <- read_comp_hull_masks(path)
+
+  expect_type(masks$applied_duration, "double")
+  expect_equal(masks$applied_duration, 7.5)
+  expect_false(masks$substituted)
+})
+
 test_that("compute_shifted_exposures accepts integer PID mask keys", {
   dt <- make_test_comp_dt()
   masks <- data.table::data.table(
@@ -78,7 +101,8 @@ test_that("compute_shifted_exposures accepts integer PID mask keys", {
     duration = 15L,
     row_id = seq_len(nrow(dt)),
     PID = dt$PID,
-    substituted = c(TRUE, FALSE, TRUE, FALSE)
+    substituted = c(TRUE, FALSE, TRUE, FALSE),
+    applied_duration = c(15, 0, 15, 0)
   )
 
   shifted <- suppressWarnings(compute_shifted_exposures(
@@ -104,7 +128,8 @@ test_that("compute_shifted_exposures uses original PID keys for bootstrap rows",
     to = "n3_s2",
     duration = 15L,
     PID = as.character(dt$PID),
-    substituted = c(TRUE, FALSE, FALSE, TRUE)
+    substituted = c(TRUE, FALSE, FALSE, TRUE),
+    applied_duration = c(15, 0, 0, 15)
   )
 
   shifted <- suppressWarnings(compute_shifted_exposures(
@@ -126,7 +151,8 @@ test_that("compute_shifted_exposures errors when mask table lacks a policy", {
     duration = 15L,
     row_id = seq_len(nrow(dt)),
     PID = as.character(dt$PID),
-    substituted = TRUE
+    substituted = TRUE,
+    applied_duration = 15
   )
 
   expect_error(
@@ -135,12 +161,13 @@ test_that("compute_shifted_exposures errors when mask table lacks a policy", {
   )
 })
 
-test_that("compute_shifted_exposures leaves infeasible rows unchanged", {
+test_that("compute_shifted_exposures clips unsupported rows to the boundary", {
   dt <- make_test_comp_dt()
   hull <- make_test_substitution_masks(
     dt,
     data.table::data.table(from = "n2_s2", to = "n3_s2", duration = 15L),
-    substituted = c(FALSE, TRUE, TRUE, TRUE)
+    substituted = c(FALSE, TRUE, TRUE, TRUE),
+    applied_duration = c(7.5, 15, 15, 15)
   )
   dt[1, n2_s2 := 125]
 
@@ -153,7 +180,10 @@ test_that("compute_shifted_exposures leaves infeasible rows unchanged", {
   ))
 
   expect_false(shifted$substituted[1])
-  expect_equal(shifted[1, ..comp_vars], dt[1, ..comp_vars])
+  expect_equal(shifted$n2_s2, dt$n2_s2 - c(7.5, 15, 15, 15))
+  expect_equal(shifted$n3_s2, dt$n3_s2 + c(7.5, 15, 15, 15))
+  expect_equal(shifted$applied_duration, c(7.5, 15, 15, 15))
+  expect_equal(comp_total(shifted), comp_total(dt))
   expect_true(all(shifted$substituted[-1]))
 })
 
@@ -175,6 +205,29 @@ test_that("compute_shifted_exposures handles negative durations as reverse shift
   expect_true(all(shifted$substituted))
 })
 
+test_that("compute_shifted_exposures clips negative durations in the same direction", {
+  dt <- make_test_comp_dt()
+  hull <- make_test_substitution_masks(
+    dt,
+    data.table::data.table(from = "n2_s2", to = "n3_s2", duration = -10L),
+    substituted = c(TRUE, FALSE, TRUE, TRUE),
+    applied_duration = c(-10, -4.25, -10, -10)
+  )
+
+  shifted <- suppressWarnings(compute_shifted_exposures(
+    dt,
+    "n2_s2",
+    "n3_s2",
+    -10,
+    hull
+  ))
+
+  expect_equal(shifted$n2_s2, dt$n2_s2 - c(-10, -4.25, -10, -10))
+  expect_equal(shifted$n3_s2, dt$n3_s2 + c(-10, -4.25, -10, -10))
+  expect_equal(shifted$applied_duration, c(-10, -4.25, -10, -10))
+  expect_equal(comp_total(shifted), comp_total(dt))
+})
+
 test_that("zero-duration substitutions mark every row as substituted", {
   dt <- make_test_comp_dt()
   hull <- make_test_comp_hull()
@@ -192,6 +245,7 @@ test_that("zero-duration substitutions mark every row as substituted", {
 
   expect_equal(shifted[, ..comp_vars], dt[, ..comp_vars])
   expect_true(all(shifted$substituted))
+  expect_equal(shifted$applied_duration, rep(0, nrow(dt)))
 })
 
 test_that("make_lmtp_shift matches shifted exposure treatment columns", {
@@ -242,7 +296,8 @@ test_that("summarize_substitution_coverage returns consistent counts and ratios"
   hull <- make_test_substitution_masks(
     dt,
     data.table::data.table(from = "n2_s2", to = "n3_s2", duration = 15L),
-    substituted = c(FALSE, TRUE, TRUE, TRUE)
+    substituted = c(FALSE, TRUE, TRUE, TRUE),
+    applied_duration = c(7.5, 15, 15, 15)
   )
   dt[1, n2_s2 := 125]
 
@@ -258,6 +313,7 @@ test_that("summarize_substitution_coverage returns consistent counts and ratios"
   expect_equal(coverage$n_intervened, 3)
   expect_equal(coverage$n_total, 4)
   expect_equal(coverage$ratio_substituted, 0.75)
+  expect_equal(coverage$mean_applied_duration, 13.125)
 })
 
 test_that("summarize_point_estimate_substitutions keeps final-time pooled estimates", {

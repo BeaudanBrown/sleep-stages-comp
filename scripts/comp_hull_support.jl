@@ -74,6 +74,44 @@ function shifted_mask(df, hull, vars, from, to, duration)
     mask
 end
 
+function clipped_duration(point, hull, from_idx, to_idx, duration; tolerance = 1e-6)
+    duration == 0 && return 0.0
+
+    candidate = copy(point)
+    candidate[from_idx] -= duration
+    candidate[to_idx] += duration
+    inside(hull, candidate) && return Float64(duration)
+
+    low = 0.0
+    high = 1.0
+    while abs(duration) * (high - low) > tolerance
+        mid = (low + high) / 2
+        candidate = copy(point)
+        candidate[from_idx] -= mid * duration
+        candidate[to_idx] += mid * duration
+        if inside(hull, candidate)
+            low = mid
+        else
+            high = mid
+        end
+    end
+
+    low * duration
+end
+
+function applied_durations(df, hull, vars, from, to, duration)
+    from_idx = findfirst(==(from), vars)
+    to_idx = findfirst(==(to), vars)
+    from_idx === nothing && error("Unknown from component: $from")
+    to_idx === nothing && error("Unknown to component: $to")
+
+    x = Matrix{Float64}(df[:, vars])
+    [
+        clipped_duration(vec(x[i, :]), hull, from_idx, to_idx, duration)
+        for i in axes(x, 1)
+    ]
+end
+
 function support_ratio(df, hull, vars, from, to, duration)
     mean(shifted_mask(df, hull, vars, from, to, duration))
 end
@@ -127,6 +165,7 @@ function write_masks(df, hull, vars, substitutions_path, masks_path)
         row_id = Int[],
         PID = String[],
         substituted = Bool[],
+        applied_duration = Float64[],
     )
 
     pid_values = string.(df.PID)
@@ -136,6 +175,7 @@ function write_masks(df, hull, vars, substitutions_path, masks_path)
         to = String(row.to)
         duration = Int(row.duration)
         mask = shifted_mask(df, hull, vars, from, to, duration)
+        realized = applied_durations(df, hull, vars, from, to, duration)
         append!(
             out,
             DataFrame(
@@ -145,6 +185,7 @@ function write_masks(df, hull, vars, substitutions_path, masks_path)
                 row_id = row_ids,
                 PID = pid_values,
                 substituted = mask,
+                applied_duration = realized,
             ),
         )
     end
@@ -172,4 +213,6 @@ function main()
     end
 end
 
-main()
+if abspath(PROGRAM_FILE) == abspath(@__FILE__)
+    main()
+end

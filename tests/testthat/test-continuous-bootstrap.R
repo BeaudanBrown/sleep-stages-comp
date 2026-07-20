@@ -1,4 +1,4 @@
-test_that("continuous bootstrap summaries cover both estimands by substitution", {
+test_that("continuous bootstrap summaries cover all estimands by substitution", {
   estimates <- data.table::CJ(
     duration = c(15L, 30L),
     B = 1:4,
@@ -9,19 +9,21 @@ test_that("continuous bootstrap summaries cover both estimands by substitution",
     to = "n3_s2",
     outcome = "outcome_value",
     pred = 10 + duration / 10 + B / 5 + as.integer(imputation_id) / 20,
-    mean_difference = duration / 100 + B / 50 - as.integer(imputation_id) / 100
+    mean_difference = duration / 100 + B / 50 - as.integer(imputation_id) / 100,
+    mean_applied_duration = duration - B / 10
   )]
   estimates[
     B == 4L,
     `:=`(
       pred = NA_real_,
-      mean_difference = NA_real_
+      mean_difference = NA_real_,
+      mean_applied_duration = NA_real_
     )
   ]
 
   summary_dt <- summary_bootstrap_intervals(estimates)
 
-  expect_equal(nrow(summary_dt), 4L)
+  expect_equal(nrow(summary_dt), 6L)
   expect_named(
     summary_dt,
     c(
@@ -40,11 +42,11 @@ test_that("continuous bootstrap summaries cover both estimands by substitution",
   expect_false("exposure" %in% names(summary_dt))
   expect_equal(
     sort(unique(summary_dt$parameter)),
-    c("mean_difference", "pred")
+    c("mean_applied_duration", "mean_difference", "pred")
   )
   expect_equal(
     summary_dt[, .N, by = .(from, to, duration, outcome)]$N,
-    rep(2L, 2L)
+    rep(3L, 2L)
   )
   expect_true(all(is.finite(summary_dt$estimate)))
   expect_true(all(summary_dt$lower < summary_dt$estimate))
