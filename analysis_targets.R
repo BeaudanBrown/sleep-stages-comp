@@ -115,8 +115,8 @@ analysis_targets <- list(
       dt = dt_train,
       comp_vars = paste0(comp_vars, "_s2"),
       ilr_base = ilr_base,
-      k = ideal_composition_settings$support_k,
-      support_quantile = ideal_composition_settings$support_quantile
+      k = ideal_composition_support_settings$k,
+      support_quantile = ideal_composition_support_settings$quantile
     )
   ),
   tar_target(
@@ -136,7 +136,7 @@ analysis_targets <- list(
       ratio_supported = nrow(supported_ideal_composition_grid) /
         nrow(ideal_composition_grid),
       k = ideal_composition_support$k,
-      support_quantile = ideal_composition_settings$support_quantile,
+      support_quantile = ideal_composition_support_settings$quantile,
       threshold = ideal_composition_support$threshold
     )
   ),
@@ -145,7 +145,7 @@ analysis_targets <- list(
     split(
       supported_ideal_composition_grid,
       (seq_len(nrow(supported_ideal_composition_grid)) - 1L) %/%
-        ideal_composition_settings$batch_size
+        ideal_composition_batch_size
     ),
     iteration = "list"
   ),
@@ -193,6 +193,83 @@ analysis_targets <- list(
       copy(best_comp)[, policy := "best"],
       copy(worst_comp)[, policy := "worst"]
     ))[, mean_cog_pred := NULL]
+  ),
+
+  ## Stability of selected compositions across repeated train/test splits
+  tar_target(
+    ideal_split_id,
+    seq_len(ideal_composition_stability_splits),
+    iteration = "vector"
+  ),
+  tar_target(
+    ideal_split_rows,
+    {
+      train_rows <- sample(seq_len(nrow(dt)), size = nrow(dt) %/% 2L)
+      list(
+        split_id = ideal_split_id,
+        train_rows = train_rows,
+        test_rows = setdiff(seq_len(nrow(dt)), train_rows)
+      )
+    },
+    pattern = map(ideal_split_id),
+    iteration = "list"
+  ),
+  tar_target(
+    ideal_split_fit,
+    fit_ideal_composition_split(
+      dt = dt[ideal_split_rows$train_rows],
+      split_id = ideal_split_rows$split_id,
+      comp_vars = paste0(comp_vars, "_s2"),
+      ilr_base = ilr_base,
+      support_k = ideal_composition_support_settings$k,
+      support_quantile = ideal_composition_support_settings$quantile
+    ),
+    pattern = map(ideal_split_rows),
+    iteration = "list"
+  ),
+  tar_target(
+    ideal_stability_grid_batches,
+    split(
+      ideal_composition_grid,
+      (seq_len(nrow(ideal_composition_grid)) - 1L) %/%
+        ideal_composition_batch_size
+    ),
+    iteration = "list"
+  ),
+  tar_target(
+    ideal_split_batch_extremes,
+    evaluate_ideal_composition_split_batch(
+      composition_grid = ideal_stability_grid_batches,
+      split_fit = ideal_split_fit,
+      comp_vars = paste0(comp_vars, "_s2"),
+      ilr_base = ilr_base
+    ),
+    pattern = cross(ideal_split_fit, ideal_stability_grid_batches),
+    iteration = "list"
+  ),
+  tar_target(
+    ideal_split_extreme_candidates,
+    rbindlist(ideal_split_batch_extremes)
+  ),
+  tar_target(
+    ideal_split_extreme_compositions,
+    {
+      out <- ideal_split_extreme_candidates[,
+        {
+          best <- copy(.SD[which.max(mean_cog_pred)])
+          worst <- copy(.SD[which.min(mean_cog_pred)])
+          best[, policy := "best"]
+          worst[, policy := "worst"]
+          rbindlist(list(best, worst))
+        },
+        by = split_id
+      ]
+      sleep_vars <- setdiff(paste0(comp_vars, "_s2"), "waso_s2")
+      all_comp_vars <- paste0(comp_vars, "_s2")
+      out[, tst_minutes := rowSums(.SD), .SDcols = sleep_vars]
+      out[, whole_minutes := rowSums(.SD), .SDcols = all_comp_vars]
+      out[]
+    }
   ),
 
   ## Evaluate the cognition-selected compositions in the testing data

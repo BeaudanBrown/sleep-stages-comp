@@ -13,13 +13,14 @@ constant_targets <- list(
   tar_target(event_var, "dem_or_mci_status"),
   tar_target(event_date, "dem_or_mci_date"),
   tar_target(ilr_base, get_sbp()),
+  tar_target(ideal_composition_grid_step, 10L),
+  tar_target(ideal_composition_batch_size, 1000L),
+  tar_target(ideal_composition_stability_splits, 10L),
   tar_target(
-    ideal_composition_settings,
+    ideal_composition_support_settings,
     list(
-      grid_step = 10L,
-      batch_size = 1000L,
-      support_k = 20L,
-      support_quantile = 0.95
+      k = 20L,
+      quantile = 0.95
     )
   ),
   tar_target(

@@ -47,4 +47,26 @@ test_that("kNN support retains clusters and rejects the gap between them", {
 
   expect_equal(supported$candidate, "cluster")
   expect_true(supported$knn_distance <= support$threshold)
+
+  ilr_names <- paste0("R", 1:4, "_s2")
+  dt[, (ilr_names) := make_ilrs(dt, comp_vars, get_sbp())]
+  dt[, outcome_value := R1_s2]
+  split_fit <- list(
+    split_id = 7L,
+    train_cog = dt,
+    model = list(
+      model = lm(outcome_value ~ R1_s2, data = dt),
+      outcome = "outcome_value"
+    ),
+    support = support
+  )
+  batch_extremes <- evaluate_ideal_composition_split_batch(
+    candidates,
+    split_fit,
+    comp_vars,
+    get_sbp()
+  )
+
+  expect_equal(batch_extremes$candidate, "cluster")
+  expect_equal(batch_extremes$split_id, 7L)
 })

@@ -17,7 +17,7 @@ hull_targets <- list(
     comp_hull_grid_solved_var,
     {
       vars <- paste0(comp_vars, "_s2")
-      step <- ideal_composition_settings$grid_step
+      step <- ideal_composition_grid_step
       range_sizes <- vapply(
         vars,
         function(var) {
@@ -36,7 +36,7 @@ hull_targets <- list(
       input_file = comp_hull_input_file,
       comp_vars = paste0(comp_vars, "_s2"),
       solved_var = comp_hull_grid_solved_var,
-      step = ideal_composition_settings$grid_step,
+      step = ideal_composition_grid_step,
       script = comp_hull_support_script
     ),
     format = "file"

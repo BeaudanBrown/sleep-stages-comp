@@ -131,6 +131,61 @@ evaluate_composition_grid <- function(
   }))
 }
 
+fit_ideal_composition_split <- function(
+  dt,
+  split_id,
+  comp_vars,
+  ilr_base,
+  support_k,
+  support_quantile
+) {
+  train_imp <- as.data.table(impute_data(dt, method = "cart", m = 1)[[1L]])
+  train_cog <- get_cog_score(train_imp)
+
+  list(
+    split_id = split_id,
+    train_cog = train_cog,
+    model = fit_models_cont(train_cog, outcome = "pc1_s2"),
+    support = fit_knn_composition_support(
+      dt,
+      comp_vars,
+      ilr_base,
+      support_k,
+      support_quantile
+    )
+  )
+}
+
+evaluate_ideal_composition_split_batch <- function(
+  composition_grid,
+  split_fit,
+  comp_vars,
+  ilr_base
+) {
+  supported_grid <- filter_knn_composition_support(
+    composition_grid,
+    split_fit$support,
+    comp_vars,
+    ilr_base
+  )
+  if (nrow(supported_grid) == 0L) {
+    return(data.table())
+  }
+
+  predictions <- evaluate_composition_grid(
+    split_fit$train_cog,
+    supported_grid,
+    split_fit$model,
+    comp_vars,
+    ilr_base
+  )
+  predictions[, split_id := split_fit$split_id]
+  predictions[unique(c(
+    which.max(mean_cog_pred),
+    which.min(mean_cog_pred)
+  ))]
+}
+
 compute_composition_table <- function(
   dt,
   compositions,
