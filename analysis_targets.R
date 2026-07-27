@@ -104,15 +104,19 @@ analysis_targets <- list(
   tar_target(dt_train, dt[train_rows]),
   tar_target(dt_test, dt[-train_rows]),
 
-  # Candidate policies are learned from training exposures only.
+  # Candidate policies are the synthetic compositions inside the whole-data hull.
   tar_target(
-    comp_grid,
-    unique(
-      dt_train[,
-        lapply(.SD, \(comp) comp / slp_time_s2),
-        .SDcols = paste0(comp_vars, "_s2")
-      ]
-    )
+    ideal_composition_grid,
+    fread(comp_hull_grid_file)
+  ),
+  tar_target(
+    ideal_composition_batches,
+    split(
+      ideal_composition_grid,
+      (seq_len(nrow(ideal_composition_grid)) - 1L) %/%
+        ideal_composition_settings$batch_size
+    ),
+    iteration = "list"
   ),
 
   # single imputation
@@ -131,16 +135,22 @@ analysis_targets <- list(
     fit_models_cont(dt_train_cog, outcome = "pc1_s2")
   ),
 
-  # generate predictions under each of the compositions in the comp_grid
+  # generate predictions from batches of synthetic compositions
   tar_target(
-    mean_cog_pred,
+    composition_batch_predictions,
     evaluate_composition_grid(
       dt = dt_train_cog,
-      composition_grid = comp_grid,
+      composition_grid = ideal_composition_batches,
       fitted_model = cog_model_train,
       comp_vars = paste0(comp_vars, "_s2"),
       ilr_base = ilr_base
-    )
+    ),
+    pattern = map(ideal_composition_batches),
+    iteration = "list"
+  ),
+  tar_target(
+    mean_cog_pred,
+    rbindlist(composition_batch_predictions)
   ),
 
   # return "best" and "worst" compositions W/R/T cognitive function

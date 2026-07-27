@@ -14,6 +14,13 @@ constant_targets <- list(
   tar_target(event_date, "dem_or_mci_date"),
   tar_target(ilr_base, get_sbp()),
   tar_target(
+    ideal_composition_settings,
+    list(
+      grid_step = 10L,
+      batch_size = 1000L
+    )
+  ),
+  tar_target(
     comparison_settings,
     list(
       substitution_durations = seq(-60, 60, by = 15),

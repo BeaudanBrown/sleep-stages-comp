@@ -50,6 +50,40 @@ compute_comp_hull_masks_for_dt <- function(
   read_comp_hull_masks(mask_file)
 }
 
+run_julia_comp_hull_grid <- function(
+  input_file,
+  comp_vars,
+  solved_var,
+  step,
+  script = file.path("scripts", "comp_hull_support.jl")
+) {
+  dir <- file.path("_targets", "user", "comp_hull")
+  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  output_file <- file.path(dir, "comp_hull_grid.csv")
+
+  run_julia_comp_hull_support(
+    c(
+      "--input",
+      input_file,
+      "--vars",
+      paste(comp_vars, collapse = ","),
+      "--grid",
+      output_file,
+      "--solved-var",
+      solved_var,
+      "--step",
+      as.character(step)
+    ),
+    script = script
+  )
+
+  output_file
+}
+
+read_comp_hull_grid <- function(grid_file) {
+  data.table::fread(grid_file)
+}
+
 run_julia_comp_hull_frontiers <- function(
   input_file,
   comparison_settings,

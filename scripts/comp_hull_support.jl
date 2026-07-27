@@ -53,6 +53,74 @@ function component_pairs(vars)
     pairs
 end
 
+function component_range(values, step)
+    lower = ceil(Int, minimum(values) / step) * step
+    upper = floor(Int, maximum(values) / step) * step
+    lower:step:upper
+end
+
+function component_ranges(df, vars, step)
+    [component_range(df[!, var], step) for var in vars]
+end
+
+function feasible_component_interval(
+    constraints,
+    point,
+    solved_idx,
+    solved_range;
+    tolerance = 1e-9,
+)
+    lower = Float64(first(solved_range))
+    upper = Float64(last(solved_range))
+
+    for constraint in constraints
+        coefficient = constraint.a[solved_idx]
+        residual = constraint.β - sum(constraint.a .* point)
+
+        if coefficient > tolerance
+            upper = min(upper, residual / coefficient)
+        elseif coefficient < -tolerance
+            lower = max(lower, residual / coefficient)
+        elseif residual < -tolerance
+            return (Inf, -Inf)
+        end
+    end
+
+    (lower, upper)
+end
+
+function write_grid(df, hull, vars, path, step, solved_var)
+    ranges = component_ranges(df, vars, step)
+    solved_idx = findfirst(==(solved_var), vars)
+    other_indices = filter(!=(solved_idx), eachindex(vars))
+    constraints = collect(allhalfspaces(hrep(hull.polytope)))
+    point = zeros(Int, length(vars))
+    tolerance = 1e-9
+
+    open(path, "w") do io
+        println(io, join(vars, ","))
+        for values in Iterators.product(ranges[other_indices]...)
+            point[other_indices] .= values
+            point[solved_idx] = 0
+            lower, upper = feasible_component_interval(
+                constraints,
+                point,
+                solved_idx,
+                ranges[solved_idx];
+                tolerance = tolerance,
+            )
+            lower > upper && continue
+
+            first_value = ceil(Int, (lower - tolerance) / step) * step
+            last_value = floor(Int, (upper + tolerance) / step) * step
+            for value in first_value:step:last_value
+                point[solved_idx] = value
+                println(io, join(point, ","))
+            end
+        end
+    end
+end
+
 function shifted_mask(df, hull, vars, from, to, duration)
     if duration == 0
         return trues(nrow(df))
@@ -200,6 +268,12 @@ function main()
     df = CSV.read(input_path, DataFrame)
     x = Matrix{Float64}(df[:, vars])
     hull = ConvexHull(x)
+
+    if haskey(args, "--grid")
+        step = parse(Int, get(args, "--step", "5"))
+        solved_var = required_arg(args, "--solved-var")
+        write_grid(df, hull, vars, args["--grid"], step, solved_var)
+    end
 
     if haskey(args, "--frontiers")
         ratio_threshold = parse(Float64, get(args, "--ratio-threshold", "0.75"))

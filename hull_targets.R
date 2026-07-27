@@ -14,6 +14,34 @@ hull_targets <- list(
     format = "file"
   ),
   tar_target(
+    comp_hull_grid_solved_var,
+    {
+      vars <- paste0(comp_vars, "_s2")
+      step <- ideal_composition_settings$grid_step
+      range_sizes <- vapply(
+        vars,
+        function(var) {
+          lower <- ceiling(min(dt[[var]]) / step) * step
+          upper <- floor(max(dt[[var]]) / step) * step
+          (upper - lower) / step + 1L
+        },
+        numeric(1)
+      )
+      vars[which.max(range_sizes)]
+    }
+  ),
+  tar_target(
+    comp_hull_grid_file,
+    run_julia_comp_hull_grid(
+      input_file = comp_hull_input_file,
+      comp_vars = paste0(comp_vars, "_s2"),
+      solved_var = comp_hull_grid_solved_var,
+      step = ideal_composition_settings$grid_step,
+      script = comp_hull_support_script
+    ),
+    format = "file"
+  ),
+  tar_target(
     comp_hull_frontier_file,
     run_julia_comp_hull_frontiers(
       input_file = comp_hull_input_file,
