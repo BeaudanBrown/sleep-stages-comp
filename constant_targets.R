@@ -17,7 +17,9 @@ constant_targets <- list(
     ideal_composition_settings,
     list(
       grid_step = 10L,
-      batch_size = 1000L
+      batch_size = 1000L,
+      support_k = 20L,
+      support_quantile = 0.95
     )
   ),
   tar_target(

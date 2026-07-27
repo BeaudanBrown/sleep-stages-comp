@@ -80,10 +80,6 @@ run_julia_comp_hull_grid <- function(
   output_file
 }
 
-read_comp_hull_grid <- function(grid_file) {
-  data.table::fread(grid_file)
-}
-
 run_julia_comp_hull_frontiers <- function(
   input_file,
   comparison_settings,

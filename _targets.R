@@ -28,7 +28,8 @@ tar_option_set(
     "ggplot2",
     "rms",
     "survival",
-    "mgcv"
+    "mgcv",
+    "RANN"
   ),
   controller = crew_controller_local(
     workers = ncpus
@@ -47,6 +48,7 @@ source("hull_targets.R")
 
 source("R/make_dataset_from_raw_files.R")
 source("R/composition_utils.R")
+source("R/composition_support_utils.R")
 source("R/prepare_dataset.R")
 source("R/comp_hull_julia_utils.R")
 source("R/substitution_utils.R")

@@ -110,10 +110,41 @@ analysis_targets <- list(
     fread(comp_hull_grid_file)
   ),
   tar_target(
+    ideal_composition_support,
+    fit_knn_composition_support(
+      dt = dt_train,
+      comp_vars = paste0(comp_vars, "_s2"),
+      ilr_base = ilr_base,
+      k = ideal_composition_settings$support_k,
+      support_quantile = ideal_composition_settings$support_quantile
+    )
+  ),
+  tar_target(
+    supported_ideal_composition_grid,
+    filter_knn_composition_support(
+      composition_grid = ideal_composition_grid,
+      support_model = ideal_composition_support,
+      comp_vars = paste0(comp_vars, "_s2"),
+      ilr_base = ilr_base
+    )
+  ),
+  tar_target(
+    ideal_composition_support_summary,
+    data.table(
+      n_hull_grid = nrow(ideal_composition_grid),
+      n_supported = nrow(supported_ideal_composition_grid),
+      ratio_supported = nrow(supported_ideal_composition_grid) /
+        nrow(ideal_composition_grid),
+      k = ideal_composition_support$k,
+      support_quantile = ideal_composition_settings$support_quantile,
+      threshold = ideal_composition_support$threshold
+    )
+  ),
+  tar_target(
     ideal_composition_batches,
     split(
-      ideal_composition_grid,
-      (seq_len(nrow(ideal_composition_grid)) - 1L) %/%
+      supported_ideal_composition_grid,
+      (seq_len(nrow(supported_ideal_composition_grid)) - 1L) %/%
         ideal_composition_settings$batch_size
     ),
     iteration = "list"

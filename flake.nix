@@ -70,6 +70,7 @@
               future
               survival
               data_table
+              RANN
               here
               Hmisc
               dotenv

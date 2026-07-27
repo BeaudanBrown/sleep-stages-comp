@@ -1,6 +1,7 @@
 library(data.table)
 library(compositions)
 library(Hmisc)
+library(RANN)
 library(survival)
 library(testthat)
 
