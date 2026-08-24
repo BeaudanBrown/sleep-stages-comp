@@ -313,6 +313,30 @@ analysis_targets <- list(
       out[]
     }
   ),
+  tar_target(
+    ideal_split_composition_heatmap,
+    plot_ideal_composition_heatmap(
+      extreme_compositions = ideal_split_extreme_compositions,
+      comp_vars = paste0(comp_vars, "_s2"),
+      labels = stage_labels
+    )
+  ),
+  tar_target(
+    ideal_split_composition_dumbbells,
+    plot_ideal_composition_dumbbells(
+      extreme_compositions = ideal_split_extreme_compositions,
+      comp_vars = paste0(comp_vars, "_s2"),
+      labels = stage_labels
+    )
+  ),
+  tar_target(
+    ideal_split_composition_ilr_map,
+    plot_ideal_composition_ilr_map(
+      extreme_compositions = ideal_split_extreme_compositions,
+      comp_vars = paste0(comp_vars, "_s2"),
+      ilr_base = ilr_base
+    )
+  ),
 
   ## Evaluate the cognition-selected compositions in the testing data
   # generate bootstrap samples
