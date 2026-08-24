@@ -60,13 +60,13 @@ test_that("kNN support retains clusters and rejects the gap between them", {
     ),
     support = support
   )
-  batch_extremes <- evaluate_ideal_composition_split_batch(
+  batch_predictions <- evaluate_ideal_composition_split_batch(
     candidates,
     split_fit,
     comp_vars,
     get_sbp()
   )
 
-  expect_equal(batch_extremes$candidate, "cluster")
-  expect_equal(batch_extremes$split_id, 7L)
+  expect_equal(batch_predictions$candidate, "cluster")
+  expect_equal(batch_predictions$split_id, 7L)
 })

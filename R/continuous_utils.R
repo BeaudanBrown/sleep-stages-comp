@@ -180,10 +180,7 @@ evaluate_ideal_composition_split_batch <- function(
     ilr_base
   )
   predictions[, split_id := split_fit$split_id]
-  predictions[unique(c(
-    which.max(mean_cog_pred),
-    which.min(mean_cog_pred)
-  ))]
+  predictions
 }
 
 compute_composition_table <- function(

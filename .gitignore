@@ -15,6 +15,7 @@ Analysis_plan/*.synctex.gz
 _targets
 _targets.yaml
 .Rprofile
+.pi
 
 data/
 

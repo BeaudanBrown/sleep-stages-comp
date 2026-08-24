@@ -237,7 +237,7 @@ analysis_targets <- list(
     iteration = "list"
   ),
   tar_target(
-    ideal_split_batch_extremes,
+    ideal_split_batch_predictions,
     evaluate_ideal_composition_split_batch(
       composition_grid = ideal_stability_grid_batches,
       split_fit = ideal_split_fit,
@@ -248,13 +248,13 @@ analysis_targets <- list(
     iteration = "list"
   ),
   tar_target(
-    ideal_split_extreme_candidates,
-    rbindlist(ideal_split_batch_extremes)
+    ideal_split_predictions,
+    rbindlist(ideal_split_batch_predictions)
   ),
   tar_target(
     ideal_split_extreme_compositions,
     {
-      out <- ideal_split_extreme_candidates[,
+      out <- ideal_split_predictions[,
         {
           best <- copy(.SD[which.max(mean_cog_pred)])
           worst <- copy(.SD[which.min(mean_cog_pred)])
