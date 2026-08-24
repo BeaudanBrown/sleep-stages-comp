@@ -53,7 +53,8 @@ test_that("kNN support retains clusters and rejects the gap between them", {
   dt[, outcome_value := R1_s2]
   split_fit <- list(
     split_id = 7L,
-    train_cog = dt,
+    outcome = "outcome_value",
+    train_data = dt,
     model = list(
       model = lm(outcome_value ~ R1_s2, data = dt),
       outcome = "outcome_value"

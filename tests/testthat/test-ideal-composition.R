@@ -57,8 +57,8 @@ test_that("composition-grid evaluation finds known best and worst policies", {
     get_sbp()
   )
 
-  expect_equal(predictions[which.max(mean_cog_pred)]$n3_s2, 100)
-  expect_equal(predictions[which.min(mean_cog_pred)]$n3_s2, 40)
+  expect_equal(predictions[which.max(mean_outcome_pred)]$n3_s2, 100)
+  expect_equal(predictions[which.min(mean_outcome_pred)]$n3_s2, 40)
 })
 
 test_that("fixed-composition estimates retain policy contrasts", {

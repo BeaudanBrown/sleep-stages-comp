@@ -180,19 +180,25 @@ analysis_targets <- list(
     iteration = "list"
   ),
   tar_target(
-    mean_cog_pred,
+    mean_outcome_pred,
     rbindlist(composition_batch_predictions)
   ),
 
   # return "best" and "worst" compositions W/R/T cognitive function
-  tar_target(best_comp, mean_cog_pred[which.max(mean_cog_pred)]),
-  tar_target(worst_comp, mean_cog_pred[which.min(mean_cog_pred)]),
+  tar_target(
+    best_comp,
+    mean_outcome_pred[which.max(mean_outcome_pred)]
+  ),
+  tar_target(
+    worst_comp,
+    mean_outcome_pred[which.min(mean_outcome_pred)]
+  ),
   tar_target(
     extreme_compositions,
     rbindlist(list(
       copy(best_comp)[, policy := "best"],
       copy(worst_comp)[, policy := "worst"]
-    ))[, mean_cog_pred := NULL]
+    ))[, mean_outcome_pred := NULL]
   ),
 
   ## Stability of selected compositions across repeated train/test splits
@@ -215,16 +221,52 @@ analysis_targets <- list(
     iteration = "list"
   ),
   tar_target(
-    ideal_split_fit,
-    fit_ideal_composition_split(
-      dt = dt[ideal_split_rows$train_rows],
+    ideal_split_train_imp,
+    as.data.table(
+      impute_data(dt[ideal_split_rows$train_rows], method = "cart", m = 1)[[1L]]
+    ),
+    pattern = map(ideal_split_rows)
+  ),
+  tar_target(
+    ideal_split_train_data,
+    list(
       split_id = ideal_split_rows$split_id,
-      comp_vars = paste0(comp_vars, "_s2"),
-      ilr_base = ilr_base,
-      support_k = ideal_composition_support_settings$k,
-      support_quantile = ideal_composition_support_settings$quantile
+      train_data = get_cog_score(copy(ideal_split_train_imp))
+    ),
+    pattern = map(ideal_split_rows, ideal_split_train_imp),
+    iteration = "list"
+  ),
+  tar_target(
+    ideal_split_support,
+    list(
+      split_id = ideal_split_rows$split_id,
+      support = fit_knn_composition_support(
+        dt = dt[ideal_split_rows$train_rows],
+        comp_vars = paste0(comp_vars, "_s2"),
+        ilr_base = ilr_base,
+        k = ideal_composition_support_settings$k,
+        support_quantile = ideal_composition_support_settings$quantile
+      )
     ),
     pattern = map(ideal_split_rows),
+    iteration = "list"
+  ),
+  tar_target(
+    ideal_split_outcome_model,
+    list(
+      split_id = ideal_split_train_data$split_id,
+      outcome = outcome_vars,
+      train_data = ideal_split_train_data$train_data,
+      model = fit_models_cont(
+        ideal_split_train_data$train_data,
+        outcome = outcome_vars
+      ),
+      support = ideal_split_support$support
+    ),
+    pattern = cross(
+      map(ideal_split_train_data, ideal_split_support),
+      outcome_vars
+    ),
     iteration = "list"
   ),
   tar_target(
@@ -240,11 +282,11 @@ analysis_targets <- list(
     ideal_split_batch_predictions,
     evaluate_ideal_composition_split_batch(
       composition_grid = ideal_stability_grid_batches,
-      split_fit = ideal_split_fit,
+      split_fit = ideal_split_outcome_model,
       comp_vars = paste0(comp_vars, "_s2"),
       ilr_base = ilr_base
     ),
-    pattern = cross(ideal_split_fit, ideal_stability_grid_batches),
+    pattern = cross(ideal_split_outcome_model, ideal_stability_grid_batches),
     iteration = "list"
   ),
   tar_target(
@@ -256,13 +298,13 @@ analysis_targets <- list(
     {
       out <- ideal_split_predictions[,
         {
-          best <- copy(.SD[which.max(mean_cog_pred)])
-          worst <- copy(.SD[which.min(mean_cog_pred)])
+          best <- copy(.SD[which.max(mean_outcome_pred)])
+          worst <- copy(.SD[which.min(mean_outcome_pred)])
           best[, policy := "best"]
           worst[, policy := "worst"]
           rbindlist(list(best, worst))
         },
-        by = split_id
+        by = .(split_id, outcome)
       ]
       sleep_vars <- setdiff(paste0(comp_vars, "_s2"), "waso_s2")
       all_comp_vars <- paste0(comp_vars, "_s2")

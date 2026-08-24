@@ -126,34 +126,9 @@ evaluate_composition_grid <- function(
 
     cbind(
       composition,
-      mean_cog_pred = gcomp(fitted_model, intervention_dt)$pred
+      mean_outcome_pred = gcomp(fitted_model, intervention_dt)$pred
     )
   }))
-}
-
-fit_ideal_composition_split <- function(
-  dt,
-  split_id,
-  comp_vars,
-  ilr_base,
-  support_k,
-  support_quantile
-) {
-  train_imp <- as.data.table(impute_data(dt, method = "cart", m = 1)[[1L]])
-  train_cog <- get_cog_score(train_imp)
-
-  list(
-    split_id = split_id,
-    train_cog = train_cog,
-    model = fit_models_cont(train_cog, outcome = "pc1_s2"),
-    support = fit_knn_composition_support(
-      dt,
-      comp_vars,
-      ilr_base,
-      support_k,
-      support_quantile
-    )
-  )
 }
 
 evaluate_ideal_composition_split_batch <- function(
@@ -173,13 +148,16 @@ evaluate_ideal_composition_split_batch <- function(
   }
 
   predictions <- evaluate_composition_grid(
-    split_fit$train_cog,
+    split_fit$train_data,
     supported_grid,
     split_fit$model,
     comp_vars,
     ilr_base
   )
-  predictions[, split_id := split_fit$split_id]
+  predictions[, `:=`(
+    split_id = split_fit$split_id,
+    outcome = split_fit$outcome
+  )]
   predictions
 }
 
