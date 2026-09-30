@@ -46,7 +46,6 @@ source("data_targets.R")
 source("analysis_targets.R")
 source("constant_targets.R")
 source("hull_targets.R")
-source("descriptive_targets.R")
 
 source("R/make_dataset_from_raw_files.R")
 source("R/composition_utils.R")
@@ -68,8 +67,12 @@ list(
   constant_targets,
   data_targets,
   hull_targets,
+  # descriptives
+  tar_target(comp_dist_plot, plot_composition_distribution(dt)),
+  tar_target(covariate_table, summarize_analysis_covariates(dt, outcome_vars)),
+  # main analysis
   analysis_targets,
-  descriptive_targets,
+  # quarto report
   tar_quarto(
     report,
     path = "report.qmd",

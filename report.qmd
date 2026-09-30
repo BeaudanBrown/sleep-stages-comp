@@ -73,3 +73,63 @@ Categorical codes are retained where descriptive labels have not been establishe
 targets::tar_read(covariate_table, store = params$targets_store) |>
   gtsummary::as_gt()
 ```
+
+## Sleep-stage reallocations
+
+Each plot shows the estimated mean difference as minutes shift between N3 and
+another sleep stage. Positive minutes shift time toward N3; negative minutes
+shift time away from N3. The shaded bands are 95% confidence intervals, and
+the dotted line marks no difference.
+
+```{r}
+#| label: setup-pair-plots
+#| include: false
+pair_plots <- targets::tar_read(
+  estimates_summary_pair_plot,
+  store = params$targets_store
+)
+show_pair_plots <- function(outcome) {
+  plots <- Filter(\(plot) plot$data$outcome[[1]] == outcome, pair_plots)
+  for (plot in plots) print(plot + ggplot2::labs(title = NULL))
+}
+```
+
+::: {.panel-tabset}
+
+### Cognitive summary score
+
+```{r}
+#| label: pair-plots-cognition
+#| layout-ncol: 2
+#| fig-width: 7
+#| fig-height: 5.5
+#| fig-cap: "Estimated mean differences in cognitive summary score."
+#| fig-subcap: ["N1 and N3", "N2 and N3", "WASO and N3", "REM and N3"]
+show_pair_plots("pc1_s2")
+```
+
+### Hippocampal volume
+
+```{r}
+#| label: pair-plots-hippocampus
+#| layout-ncol: 2
+#| fig-width: 7
+#| fig-height: 5.5
+#| fig-cap: "Estimated mean differences in hippocampal volume."
+#| fig-subcap: ["N1 and N3", "N2 and N3", "WASO and N3", "REM and N3"]
+show_pair_plots("Hippo_s2")
+```
+
+### Cerebral brain volume
+
+```{r}
+#| label: pair-plots-cerebrum
+#| layout-ncol: 2
+#| fig-width: 7
+#| fig-height: 5.5
+#| fig-cap: "Estimated mean differences in cerebral brain volume."
+#| fig-subcap: ["N1 and N3", "N2 and N3", "WASO and N3", "REM and N3"]
+show_pair_plots("Cerebrum_tcb_s2")
+```
+
+:::
