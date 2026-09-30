@@ -2,7 +2,7 @@ library(data.table)
 library(compositions)
 library(Hmisc)
 library(RANN)
-library(survival)
+library(ggplot2)
 library(testthat)
 
 project_root <- normalizePath(

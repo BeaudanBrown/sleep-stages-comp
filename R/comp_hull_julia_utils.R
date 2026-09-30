@@ -24,32 +24,6 @@ write_substitutions_file <- function(
   path
 }
 
-compute_comp_hull_masks_for_dt <- function(
-  dt,
-  substitutions,
-  imputation_id = "1",
-  dir = tempfile("comp_hull_runtime_", tmpdir = comp_hull_work_dir())
-) {
-  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  input_file <- write_comp_hull_input_file(
-    dt = dt,
-    imputation_id = imputation_id,
-    dir = dir
-  )
-  substitutions_file <- write_substitutions_file(
-    substitutions = substitutions,
-    dir = dir
-  )
-  mask_file <- run_julia_comp_hull_masks(
-    input_file = input_file,
-    substitutions_file = substitutions_file,
-    imputation_id = imputation_id,
-    dir = dir
-  )
-
-  read_comp_hull_masks(mask_file)
-}
-
 run_julia_comp_hull_grid <- function(
   input_file,
   comp_vars,
@@ -271,21 +245,6 @@ lookup_substitution_policy <- function(
   lookup
 }
 
-lookup_substitution_mask <- function(
-  dt,
-  substitution_masks,
-  from,
-  to,
-  duration
-) {
-  lookup_substitution_policy(
-    dt = dt,
-    substitution_masks = substitution_masks,
-    from = from,
-    to = to,
-    duration = duration
-  )[["substituted"]]
-}
 build_support_aware_substitution_grid <- function(
   support_frontiers,
   comparison_settings,

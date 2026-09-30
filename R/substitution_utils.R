@@ -36,16 +36,6 @@ compute_substitution_policy <- function(dt, from, to, duration, comp_hull) {
   )
 }
 
-compute_substitution_mask <- function(dt, from, to, duration, comp_hull) {
-  compute_substitution_policy(
-    dt,
-    from,
-    to,
-    duration,
-    comp_hull
-  )[["substituted"]]
-}
-
 compute_shifted_exposures <- function(
   dt,
   from,
@@ -77,13 +67,6 @@ compute_shifted_exposures <- function(
   shifted_dt
 }
 
-extract_shifted_treatment <- function(shifted_dt, trt_cols) {
-  as.data.frame(
-    as.data.table(shifted_dt)[, trt_cols, with = FALSE],
-    check.names = FALSE
-  )
-}
-
 summarize_substitution_coverage <- function(shifted_dt) {
   shifted_dt <- as.data.table(shifted_dt)
   substituted <- shifted_dt[["substituted"]]
@@ -93,91 +76,5 @@ summarize_substitution_coverage <- function(shifted_dt) {
     n_total = length(substituted),
     ratio_substituted = mean(substituted),
     mean_applied_duration = mean(shifted_dt[["applied_duration"]])
-  )
-}
-
-make_lmtp_shift <- function(
-  from,
-  to,
-  duration,
-  comp_hull,
-  comp_vars,
-  ilr_base
-) {
-  function(data, trt) {
-    shifted_dt <- compute_shifted_exposures(
-      dt = data,
-      from = from,
-      to = to,
-      duration = duration,
-      comp_hull = comp_hull,
-      comp_vars = comp_vars,
-      ilr_base = ilr_base
-    )
-
-    extract_shifted_treatment(shifted_dt, trt)
-  }
-}
-
-apply_substitution <- function(dt, from_var, to_var, duration, comp_hull) {
-  compute_shifted_exposures(
-    dt = dt,
-    from = from_var,
-    to = to_var,
-    duration = duration,
-    comp_hull = comp_hull
-  )
-}
-
-compute_substituted_risk <- function(
-  dt,
-  from,
-  to,
-  duration,
-  comp_hull,
-  fitted_models,
-  timegroup_cuts,
-  baseline_risk,
-  comp_vars,
-  ilr_base,
-  event_var,
-  event_date
-) {
-  sub_dt <- compute_shifted_exposures(
-    dt,
-    from,
-    to,
-    duration,
-    comp_hull,
-    comp_vars,
-    ilr_base
-  )
-
-  risk_dt <- predict_risks(
-    sub_dt,
-    fitted_models,
-    timegroup_cuts,
-    event_var,
-    event_date
-  )
-  setnames(risk_dt, "risk", "mean_risk_substituted")
-
-  baseline_dt <- copy(baseline_risk)
-  setnames(baseline_dt, "risk", "mean_risk_baseline")
-
-  coverage <- summarize_substitution_coverage(sub_dt)
-
-  risk_dt[, `:=`(
-    from = from,
-    to = to,
-    duration = duration,
-    n_intervened = coverage$n_intervened,
-    n_total = coverage$n_total
-  )]
-
-  merge(
-    baseline_dt,
-    risk_dt,
-    by = "timegroup"
   )
 }

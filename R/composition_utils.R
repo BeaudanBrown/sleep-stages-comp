@@ -11,17 +11,6 @@ make_ilrs <- function(dt, comp_vars, ilr_base) {
   ilr_vars
 }
 
-make_comp_limits <- function(dt) {
-  lapply(comp_vars, function(var) {
-    q_1_99 <- quantile(dt[[var]], probs = c(0.01, 0.99), na.rm = TRUE)
-    list(
-      lower = q_1_99[1],
-      upper = q_1_99[2]
-    )
-  }) |>
-    setNames(comp_vars)
-}
-
 # Component order is fixed: (N1, N2, N3, WASO, REM)
 get_sbp <- function() {
   sbp <- matrix(
