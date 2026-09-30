@@ -89,3 +89,8 @@ R-bak/
 sim.csv
 scratch.R
 *.png
+/descriptive_report.html
+/descriptive_report_files/
+/report.html
+/report_files/
+/.quarto/

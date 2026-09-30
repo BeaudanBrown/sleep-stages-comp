@@ -1,6 +1,7 @@
 library(targets)
 library(crew)
 library(tarchetypes)
+library(quarto)
 
 dotenv::load_dot_env()
 cache_dir <- Sys.getenv("CACHE_DIR")
@@ -45,6 +46,7 @@ source("data_targets.R")
 source("analysis_targets.R")
 source("constant_targets.R")
 source("hull_targets.R")
+source("descriptive_targets.R")
 
 source("R/make_dataset_from_raw_files.R")
 source("R/composition_utils.R")
@@ -58,11 +60,19 @@ source("R/cognitive_summary_score.R")
 source("R/continuous_utils.R")
 source("R/generic_utils.R")
 source("R/risk_summary_plot.R")
+source("R/descriptive_utils.R")
+source("R/descriptive_table.R")
 
 ## pipeline
 list(
   constant_targets,
   data_targets,
   hull_targets,
-  analysis_targets
+  analysis_targets,
+  descriptive_targets,
+  tar_quarto(
+    report,
+    path = "report.qmd",
+    execute_params = list(targets_store = targets::tar_config_get("store"))
+  )
 )

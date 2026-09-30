@@ -204,8 +204,8 @@ fit_models_cont <- function(dt, outcome) {
   list(model = model, outcome = outcome)
 }
 
-get_primary_formula_cont <- function(dt) {
-  model_vars <- c(
+continuous_model_vars <- function() {
+  c(
     "R1_s2",
     "R2_s2",
     "R3_s2",
@@ -228,12 +228,20 @@ get_primary_formula_cont <- function(dt) {
     "sleeping_pills",
     "hypertension"
   )
-  binary_vars <- c(
+}
+
+continuous_binary_vars <- function() {
+  c(
     "s1_incomplete",
     "gender",
     "sleeping_pills",
     "hypertension"
   )
+}
+
+get_primary_formula_cont <- function(dt) {
+  model_vars <- continuous_model_vars()
+  binary_vars <- continuous_binary_vars()
   spline_vars <- setdiff(model_vars, binary_vars)
 
   for (var in spline_vars) {

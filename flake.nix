@@ -67,6 +67,9 @@
 
               psych
               ggplot2
+              plotly
+              gtsummary
+              quarto
               future
               survival
               data_table

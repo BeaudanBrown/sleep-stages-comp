@@ -1,0 +1,75 @@
+---
+title: "Sleep stage composition & brain health"
+format:
+  html:
+    theme: cosmo
+    css: report.css
+    embed-resources: true
+    toc: true
+    toc-title: "In this report"
+    toc-depth: 2
+    title-block-banner: "#173f4f"
+    title-block-banner-color: "#ffffff"
+    smooth-scroll: true
+    page-layout: full
+    grid:
+      body-width: 1400px
+      sidebar-width: 220px
+execute:
+  echo: false
+  message: false
+  warning: false
+  cache: false
+params:
+  targets_store: "_targets"
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(plotly)
+library(gtsummary)
+```
+
+This report describes the eligible analysis cohort before imputation and the
+distribution of sleep stages at SHHS-2.
+
+## Sleep-stage composition
+
+The five panels show quintiles of REM as a proportion of total sleep time.
+N1, N2, N3, and REM sum to 100%; WASO is excluded from this descriptive view.
+The analysis itself uses a five-part composition that includes WASO.
+
+::: {.callout-tip appearance="simple"}
+Drag within a panel to rotate it, scroll to zoom, and hover over a marker to see
+its composition-bin ranges and participant count. Marker area represents count;
+the coloured triangles mark the REM-quintile boundaries.
+:::
+
+```{r}
+#| label: composition-distribution
+#| out-width: "100%"
+targets::tar_read(comp_dist_plot, store = params$targets_store)
+```
+
+The display aggregates compositions into two-percentage-point bins, shown at
+their lower corners. Tied REM proportions remain together, so panel sizes can
+differ. The four components have three independent dimensions: REM is the
+remainder after N1, N2, and N3.
+
+## Cohort characteristics
+
+The table describes the model covariates, presenting sleep stages and WASO in raw
+minutes at SHHS-1 and SHHS-2 in place of the ILR coordinates. It also includes the
+three follow-up outcomes: cognitive summary score, hippocampal volume, and cerebral
+brain volume. Continuous
+variables are summarised as mean (SD), and categorical variables as counts and
+percentages among non-missing observations. Missing counts are shown separately.
+The baseline and follow-up cognitive scores are derived from recorded assessments before imputation.
+Categorical codes are retained where descriptive labels have not been established.
+
+```{r}
+#| label: cohort-covariates
+targets::tar_read(covariate_table, store = params$targets_store) |>
+  gtsummary::as_gt()
+```
