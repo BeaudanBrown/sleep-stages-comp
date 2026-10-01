@@ -172,7 +172,10 @@ load_framingham_brain1 <- function(framingham_brain1_file) {
   brain1 <- dcast(
     brain1,
     IDTYPE + PID ~ mri_assessment,
-    value.var = list(setdiff(names(brain1), c("IDTYPE", "PID", "mri_assessment")))
+    value.var = list(setdiff(
+      names(brain1),
+      c("IDTYPE", "PID", "mri_assessment")
+    ))
   )
 
   # Need to rename special case because there is only a single measure
@@ -334,6 +337,9 @@ load_shhs_covars <- function(shhs_covar_file) {
     SLPILL15,
     educat
   )
+
+  # Set 8 (unsure) for sleeping pill use to missing
+  covs[, SLPILL15 := ifelse(SLPILL15 == 8, NA, SLPILL15)]
 
   covs <- covs[, ..vars]
   setnames(

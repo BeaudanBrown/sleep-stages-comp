@@ -43,6 +43,38 @@ test_that("continuous substitution estimates emit one tagged row per substitutio
   )
 })
 
+test_that("zero-minute substitution uses the exact reference prediction", {
+  comp_names <- c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
+  basis <- get_sbp()
+  dt <- make_test_comp_dt()
+  dt[, slp_time_s2 := n1_s2 + n2_s2 + n3_s2 + rem_s2]
+  model_ilr_names <- paste0("R", 1:4, "_s2")
+  dt[, (model_ilr_names) := make_ilrs(dt, comp_names, basis)]
+  dt[, outcome_value := 10 + 2 * R1_s2]
+  fitted_model <- list(
+    model = lm(outcome_value ~ R1_s2, data = dt),
+    outcome = "outcome_value"
+  )
+  reference <- gcomp(fitted_model, dt)
+  reference[, `:=`(pred = pred + 1e-12, imputation_id = "1")]
+
+  estimate <- compute_substituted_mean(
+    dt = dt,
+    from = "n2_s2",
+    to = "n3_s2",
+    duration = 0,
+    comp_hull = NULL,
+    fitted_models = fitted_model,
+    ref_dt = reference,
+    comp_vars = comp_names,
+    ilr_base = basis
+  )
+
+  expect_identical(estimate$pred, reference$pred)
+  expect_identical(estimate$mean_difference, 0)
+  expect_equal(estimate$mean_applied_duration, 0)
+})
+
 test_that("continuous WASO substitutions update TST by realized duration", {
   dt <- data.table::data.table(
     slp_time_s2 = c(380.5, 385, 391.5, 397),

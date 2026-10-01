@@ -48,10 +48,11 @@ compute_substituted_mean <- function(
   )
   sub_dt <- update_continuous_sleep_duration(sub_dt, from, to)
 
-  int_dt <- gcomp(
-    fitted_models,
-    sub_dt
-  )
+  int_dt <- if (duration == 0) {
+    copy(ref_dt[, .(outcome, pred)])
+  } else {
+    gcomp(fitted_models, sub_dt)
+  }
 
   coverage <- summarize_substitution_coverage(sub_dt)
 
