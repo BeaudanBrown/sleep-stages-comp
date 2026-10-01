@@ -141,6 +141,60 @@ analysis_targets <- list(
     )
   ),
   tar_target(
+    supported_ideal_composition_tst_distribution,
+    {
+      grid <- copy(supported_ideal_composition_grid)
+      grid[, tst_minutes := n1_s2 + n2_s2 + n3_s2 + rem_s2]
+      # Bins include the lower bound and exclude the upper bound.
+      grid[, tst_bin_start := 30 * floor(tst_minutes / 30)]
+      summary <- grid[, .(n_combinations = .N), by = tst_bin_start]
+      summary[, `:=`(
+        tst_bin_end = tst_bin_start + 30,
+        proportion = n_combinations / sum(n_combinations)
+      )]
+      setorder(summary, tst_bin_start)
+      summary[]
+    }
+  ),
+  tar_target(
+    supported_ideal_composition_tst_histogram,
+    ggplot(supported_ideal_composition_tst_distribution) +
+      geom_rect(
+        aes(
+          xmin = tst_bin_start,
+          xmax = tst_bin_end,
+          ymin = 0,
+          ymax = n_combinations
+        ),
+        fill = "#287C8E",
+        color = "white",
+        linewidth = 0.3
+      ) +
+      scale_x_continuous(
+        breaks = scales::breaks_width(60),
+        expand = expansion(mult = c(0.01, 0.01))
+      ) +
+      scale_y_continuous(
+        labels = scales::label_comma(),
+        expand = expansion(mult = c(0, 0.05))
+      ) +
+      labs(
+        title = "Supported sleep profiles by total sleep time",
+        subtitle = "Inside the observed convex hull and retained by training-sample kNN filtering",
+        x = "Total sleep time (minutes; excludes WASO)",
+        y = "Number of candidate profiles",
+        caption = "30-minute bins [lower, upper). Counts represent grid profiles, not participants."
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(),
+        plot.title = element_text(face = "bold"),
+        plot.subtitle = element_text(color = "grey35"),
+        plot.caption = element_text(color = "grey45", hjust = 0)
+      )
+  ),
+  tar_target(
     ideal_composition_batches,
     split(
       supported_ideal_composition_grid,
@@ -292,6 +346,25 @@ analysis_targets <- list(
   tar_target(
     ideal_split_predictions,
     rbindlist(ideal_split_batch_predictions)
+  ),
+  tar_target(
+    ideal_split_extremes_by_tst,
+    {
+      predictions <- copy(ideal_split_predictions)
+      predictions[, tst_minutes := n1_s2 + n2_s2 + n3_s2 + rem_s2]
+      # Exact TST matches only; unsupported split/outcome/TST groups are omitted.
+      predictions[
+        tst_minutes %in% ideal_composition_tst_values,
+        {
+          best <- copy(.SD[which.max(mean_outcome_pred)])
+          worst <- copy(.SD[which.min(mean_outcome_pred)])
+          best[, policy := "best"]
+          worst[, policy := "worst"]
+          rbindlist(list(best, worst))
+        },
+        by = .(split_id, outcome, tst_minutes)
+      ]
+    }
   ),
   tar_target(
     ideal_split_extreme_compositions,

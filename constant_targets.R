@@ -14,6 +14,21 @@ constant_targets <- list(
   tar_target(event_date, "dem_or_mci_date"),
   tar_target(ilr_base, get_sbp()),
   tar_target(ideal_composition_grid_step, 10L),
+  tar_target(
+    ideal_composition_tst_values,
+    {
+      tst_minutes <- dt$n1_s2 + dt$n2_s2 + dt$n3_s2 + dt$rem_s2
+      mean_tst <- c(
+        mean(tst_minutes[tst_minutes < 6 * 60], na.rm = TRUE),
+        mean(
+          tst_minutes[tst_minutes >= 6 * 60 & tst_minutes <= 8 * 60],
+          na.rm = TRUE
+        )
+      )
+      # Exact subset matching requires TST values on the synthetic grid.
+      round(mean_tst / ideal_composition_grid_step) * ideal_composition_grid_step
+    }
+  ),
   tar_target(ideal_composition_batch_size, 1000L),
   tar_target(ideal_composition_stability_splits, 10L),
   tar_target(
