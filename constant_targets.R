@@ -21,7 +21,7 @@ constant_targets <- list(
       mean_tst <- c(
         mean(tst_minutes[tst_minutes < 6 * 60], na.rm = TRUE),
         mean(
-          tst_minutes[tst_minutes >= 6 * 60 & tst_minutes <= 8 * 60],
+          tst_minutes[tst_minutes >= 6 * 60 & tst_minutes <= 9 * 60],
           na.rm = TRUE
         )
       )

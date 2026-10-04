@@ -74,7 +74,7 @@ targets::tar_read(covariate_table, store = params$targets_store) |>
   gtsummary::as_gt()
 ```
 
-## Sleep-stage reallocations
+## Sleep window reallocations
 
 Each plot shows the estimated mean difference as minutes shift between N3 and
 another sleep stage. Positive minutes shift time toward N3; negative minutes
@@ -130,6 +130,67 @@ show_pair_plots("Hippo_s2")
 #| fig-cap: "Estimated mean differences in cerebral brain volume."
 #| fig-subcap: ["N1 and N3", "N2 and N3", "WASO and N3", "REM and N3"]
 show_pair_plots("Cerebrum_tcb_s2")
+```
+
+:::
+
+## Best and worst compositions
+
+The process for getting best and worst comps was:
+
+* Divide the dataset into train (50%) and test (50%)
+* In training data, find best and worst compisition of stages w/r/t cognition
+- for a specific total sleep time (e.g., 7 hours)
+* In testing data, compare mean cognitive function under each of these compositions
+
+With 5 components, there is a lot of combinatorial complexity, probably too much for the volume of available data. We can see this because the best and worst compositions vary wildly when we repeat the cross-validation with different random data splits.
+
+Remove WASO?
+
+## Best and worst compositions by total sleep time
+
+Each table shows the best and worst composition selected in each training split
+at the specified total sleep time. All durations are in minutes.
+
+```{r}
+#| label: setup-extreme-compositions
+#| include: false
+extreme_compositions <- as.data.frame(targets::tar_read(
+  ideal_split_extremes_by_tst,
+  store = params$targets_store
+))
+show_extreme_compositions <- function(outcome_name) {
+  rows <- extreme_compositions[extreme_compositions$outcome == outcome_name, ]
+  rows <- rows[
+    order(match(rows$policy, c("best", "worst")), rows$tst_minutes, rows$split_id),
+    c("policy", "tst_minutes", "n1_s2", "n2_s2", "n3_s2", "rem_s2", "waso_s2")
+  ]
+  names(rows) <- c("policy", "tst_minutes", "n1", "n2", "n3", "rem", "waso")
+  knitr::kable(rows, row.names = FALSE)
+}
+```
+
+::: {.panel-tabset}
+
+### Cognitive summary score
+
+```{r}
+#| label: extreme-compositions-cognition
+show_extreme_compositions("pc1_s2")
+```
+
+### Hippocampal volume
+
+```{r}
+#| label: extreme-compositions-hippocampus
+show_extreme_compositions("Hippo_s2")
+```
+
+### Cerebral brain volume
+
+```{r}
+#| label: extreme-compositions-cerebrum
+show_extreme_compositions("Cerebrum_tcb_s2")
 ```
 
 :::

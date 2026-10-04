@@ -367,6 +367,46 @@ analysis_targets <- list(
     }
   ),
   tar_target(
+    ideal_split_test_data,
+    list(
+      split_id = ideal_split_rows$split_id,
+      test_data = get_cog_score(as.data.table(
+        impute_data(dt[ideal_split_rows$test_rows], method = "cart", m = 1)[[1L]]
+      ))
+    ),
+    pattern = map(ideal_split_rows),
+    iteration = "list"
+  ),
+  tar_target(
+    ideal_split_test_outcome_model,
+    list(
+      split_id = ideal_split_test_data$split_id,
+      outcome = outcome_vars,
+      test_data = ideal_split_test_data$test_data,
+      model = fit_models_cont(
+        ideal_split_test_data$test_data,
+        outcome = outcome_vars
+      )
+    ),
+    pattern = cross(ideal_split_test_data, outcome_vars),
+    iteration = "list"
+  ),
+  tar_target(
+    ideal_split_extremes_by_tst_test_branch,
+    evaluate_ideal_split_extremes_by_tst(
+      selections = ideal_split_extremes_by_tst,
+      split_fit = ideal_split_test_outcome_model,
+      comp_vars = paste0(comp_vars, "_s2"),
+      ilr_base = ilr_base
+    ),
+    pattern = map(ideal_split_test_outcome_model),
+    iteration = "list"
+  ),
+  tar_target(
+    ideal_split_extremes_by_tst_test,
+    rbindlist(ideal_split_extremes_by_tst_test_branch)
+  ),
+  tar_target(
     ideal_split_extreme_compositions,
     {
       out <- ideal_split_predictions[,

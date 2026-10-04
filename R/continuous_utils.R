@@ -162,6 +162,43 @@ evaluate_ideal_composition_split_batch <- function(
   predictions
 }
 
+evaluate_ideal_split_extremes_by_tst <- function(
+  selections,
+  split_fit,
+  comp_vars,
+  ilr_base
+) {
+  selected <- copy(selections[
+    split_id == split_fit$split_id & outcome == split_fit$outcome
+  ])
+  setnames(selected, "mean_outcome_pred", "mean_outcome_pred_train")
+  if (nrow(selected) == 0L) {
+    selected[, `:=`(
+      mean_outcome_pred_test = numeric(),
+      mean_outcome_pred_no_int_test = numeric(),
+      mean_difference_test = numeric()
+    )]
+    return(selected)
+  }
+
+  test_predictions <- evaluate_composition_grid(
+    dt = split_fit$test_data,
+    composition_grid = selected[, .SD, .SDcols = comp_vars],
+    fitted_model = split_fit$model,
+    comp_vars = comp_vars,
+    ilr_base = ilr_base
+  )
+  no_intervention_pred <- gcomp(split_fit$model, split_fit$test_data)$pred
+
+  selected[, `:=`(
+    mean_outcome_pred_test = test_predictions$mean_outcome_pred,
+    mean_outcome_pred_no_int_test = no_intervention_pred,
+    mean_difference_test = test_predictions$mean_outcome_pred -
+      no_intervention_pred
+  )]
+  selected
+}
+
 compute_composition_table <- function(
   dt,
   compositions,

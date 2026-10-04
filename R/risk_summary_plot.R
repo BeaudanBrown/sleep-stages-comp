@@ -31,24 +31,28 @@ make_risk_plot_direction <- function(from_label, to_label) {
     ),
     left_more_label = grid::textGrob(
       sprintf("More %s", from_label),
+      name = "left_more_label",
       x = 0.30,
       y = -0.26,
       gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif")
     ),
     left_less_label = grid::textGrob(
       sprintf("Less %s", to_label),
+      name = "left_less_label",
       x = 0.30,
       y = -0.17,
       gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif")
     ),
     right_less_label = grid::textGrob(
       sprintf("Less %s", from_label),
+      name = "right_less_label",
       x = 0.70,
       y = -0.26,
       gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif")
     ),
     right_more_label = grid::textGrob(
       sprintf("More %s", to_label),
+      name = "right_more_label",
       x = 0.70,
       y = -0.17,
       gp = grid::gpar(col = "grey20", fontsize = 14, fontfamily = "serif")
@@ -77,13 +81,24 @@ plot_continuous_summary_pair <- function(
   x_limits <- c(-x_limit, x_limit)
   x_breaks <- make_risk_summary_x_breaks(x_limit)
 
-  y_values <- c(dt$estimate, dt$lower, dt$upper, 0)
-  y_limits <- range(y_values[is.finite(y_values)])
-  y_span <- diff(y_limits)
-  if (y_span == 0) {
-    y_span <- max(abs(y_limits), 1)
-  }
-  y_limits <- y_limits + c(-0.05, 0.05) * y_span
+  y_axis <- switch(
+    outcome,
+    pc1_s2 = list(
+      limits = c(-0.05, 0.05),
+      breaks = seq(-0.05, 0.05, by = 0.025),
+      label = "Mean difference in cognitive summary score"
+    ),
+    Hippo_s2 = list(
+      limits = c(-0.025, 0.025),
+      breaks = seq(-0.025, 0.025, by = 0.0125),
+      label = "Mean difference (mL)"
+    ),
+    Cerebrum_tcb_s2 = list(
+      limits = c(-1, 1),
+      breaks = seq(-1, 1, by = 0.5),
+      label = "Mean difference (mL)"
+    )
+  )
 
   stage_label <- function(stage) {
     if (!is.null(labels) && stage %in% names(labels)) {
@@ -134,16 +149,17 @@ plot_continuous_summary_pair <- function(
       expand = expansion(mult = 0)
     ) +
     scale_y_continuous(
-      limits = y_limits,
-      breaks = pretty(y_limits),
+      limits = y_axis$limits,
+      breaks = y_axis$breaks,
       minor_breaks = NULL,
+      oob = scales::squish,
       expand = expansion(mult = 0)
     ) +
     coord_cartesian(clip = "off") +
     labs(
       title = outcome,
       x = "Minutes",
-      y = "Mean difference"
+      y = y_axis$label
     ) +
     theme_bw(base_family = "serif", base_size = 16) +
     theme(

@@ -52,7 +52,49 @@ test_that("continuous pair plot uses a zero null and mean-difference intervals",
   expect_true(file.exists(output_file))
   expect_equal(built$data[[1]]$yintercept, 0)
   expect_equal(built$data[[3]]$x, c(-30, 0, 30))
-  expect_equal(built$data[[3]]$y, c(0.3, 0, -0.2))
+  expect_equal(plot$data$estimate, c(0.3, 0, -0.2))
+  expect_equal(built$data[[3]]$y, c(0.025, 0, -0.025))
   expect_equal(plot$labels$title, "Hippo_s2")
-  expect_equal(plot$labels$y, "Mean difference")
+  expect_equal(plot$labels$y, "Mean difference (mL)")
+  expect_equal(plot$scales$get_scales("y")$limits, c(-0.025, 0.025))
+  expect_equal(
+    plot$scales$get_scales("y")$breaks,
+    seq(-0.025, 0.025, by = 0.0125)
+  )
+})
+
+test_that("continuous pair plots share fixed y axes within each outcome", {
+  dt <- data.table::data.table(
+    from = "n2_s2",
+    to = "n3_s2",
+    duration = c(-30, 0, 30),
+    estimate = c(-0.01, 0, 0.01),
+    lower = c(-0.02, 0, 0),
+    upper = c(0, 0, 0.02)
+  )
+  axes <- list(
+    pc1_s2 = list(
+      limits = c(-0.05, 0.05),
+      breaks = seq(-0.05, 0.05, by = 0.025),
+      label = "Mean difference in cognitive summary score"
+    ),
+    Cerebrum_tcb_s2 = list(
+      limits = c(-1, 1),
+      breaks = seq(-1, 1, by = 0.5),
+      label = "Mean difference (mL)"
+    )
+  )
+
+  for (outcome_name in names(axes)) {
+    dt[, outcome := outcome_name]
+    plot <- plot_continuous_summary_pair(
+      dt,
+      output_file = tempfile(fileext = ".png")
+    )
+    scale <- plot$scales$get_scales("y")
+
+    expect_equal(scale$limits, axes[[outcome_name]]$limits)
+    expect_equal(scale$breaks, axes[[outcome_name]]$breaks)
+    expect_equal(plot$labels$y, axes[[outcome_name]]$label)
+  }
 })
