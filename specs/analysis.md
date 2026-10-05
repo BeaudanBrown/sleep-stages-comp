@@ -36,8 +36,8 @@ This means the LMTP path must estimate:
 
 - The mapped substitutions target has been corrected, but the full LMTP branch still needs end-to-end validation after rebuild.
 - The survival-wide `Y_t` and `D_t` construction has been updated to use cumulative event coding, closer to the `lmtp` package examples.
-- The intended exposure composition is the 5-part SHHS-2 set `(N1, N2, N3, WASO, REM)`, so substitution grids and density checks should use 4 ILR coordinates.
-- SHHS-1 `slp_time` should not be adjusted for when SHHS-1 stage components are already included.
+- The exposure composition is the four SHHS-2 sleep stages `(N1, N2, N3, REM)`, giving three ILR coordinates. SHHS-2 WASO is a separate covariate held observed under interventions.
+- The current continuous model adjusts for SHHS-1 stage ILRs and `slp_time`; it does not include SHHS-1 WASO.
 - SHHS-2 `slp_time_s2` should be adjusted for explicitly because the ILR coordinates encode composition, not duration.
 - The current contract keeps `s1_incomplete` as a separate indicator and treats the broader non-sleep confounder set as additive-only until the final confounder sweep is done.
 - The `lmtp` package expects the only differences between `data` and `shifted` to be the treatment and censoring columns; when censoring is supplied, the shifted censoring columns should be all `1`.
@@ -93,11 +93,8 @@ An isotemporal substitution answers: "What would happen if we increased time in 
    
     e. **Predict counterfactual outcomes:**
    - Use ILRs recomputed from the fully shifted or boundary-clipped composition
-   - In the continuous g-computation path, keep sleep-period time fixed when a
-     policy reallocates time between WASO and a sleeping stage. Update
-     `slp_time_s2` by the realized row-specific duration before prediction:
-     sleep-to-WASO shifts reduce TST, WASO-to-sleep shifts increase TST, and
-     sleep-stage-to-sleep-stage shifts leave TST unchanged.
+   - In the continuous g-computation path, stage-to-stage shifts leave each
+     participant's `slp_time_s2` and `waso_s2` unchanged.
    
     f. **Calculate contrast:**
     - Risk difference: mean(risk_substituted) - mean(risk_baseline)
@@ -127,7 +124,7 @@ The intervention-specific mean risk from `psi_sub` may still be retained as meta
 
 For the intended dementia/MCI analysis:
 
-- **SHHS-1:** adjust for the component minutes (`n1`, `n2`, `n3`, `rem`) and do **not** also adjust for `slp_time`, since it is already determined by the components.
+- **SHHS-1:** adjust for stage ILRs (`R1_s1`, `R2_s1`, `R3_s1`) and `slp_time`. Do not include SHHS-1 WASO.
 - **SHHS-2:** adjust for `slp_time_s2` separately, because the SHHS-2 ILR coordinates encode the sleep-stage composition but not the total sleep duration.
 - **Missing SHHS-1 whole:** encode incomplete SHHS-1 stage history with `s1_incomplete` as a separate main-effect indicator rather than trying to spline a missing `slp_time`.
 
@@ -137,7 +134,7 @@ Default substitutions to evaluate:
 
 | Duration | All pairwise substitutions |
 |----------|---------------------------|
-| 15 min | All pairwise substitutions among N1, N2, N3, WASO, REM |
+| 15 min | All pairwise substitutions among N1, N2, N3, REM |
 | 30 min | Same pairs |
 | 60 min | Same pairs |
 
@@ -148,7 +145,7 @@ Default substitutions to evaluate:
 ```r
 # MVN density check
 threshold_quantile <- 0.05
-threshold <- qchisq(1 - threshold_quantile, df = 4)  # df = number of ILR coords
+threshold <- qchisq(1 - threshold_quantile, df = 3)  # df = number of ILR coords
 
 # Check if shifted composition is plausible
 d2 <- mahalanobis(ilr_sub, center = mu, cov = sigma)
@@ -160,25 +157,23 @@ is_plausible <- d2 <= threshold
 ## Ideal Composition Search
 
 ### Concept
-Find the composition (N1, N2, N3, WASO, REM) associated with the best (and worst) expected outcomes.
+Find the four-stage composition (N1, N2, N3, REM) associated with the best (and worst) expected outcomes.
 
 ### Algorithm
 
-### Primary analysis: constrain a fixed duration/whole definition
+### Fixed-TST and unrestricted searches
 
-Primary ideal-composition analysis still needs an explicit definition of the fixed "whole" under the 5-part composition. Before implementation, decide whether to constrain `slp_time_s2` or a derived sleep-period-time measure that includes `waso_s2`.
+The synthetic grid varies the four stage minutes. An unrestricted search selects extrema over all supported candidates; a fixed-TST search selects extrema within specified stage-sum totals. Both leave participant-level WASO observed.
 
-1. **Generate grid of compositions at a fixed duration/whole:**
+1. **Generate a grid of four-stage compositions:**
 
    a. Set `resolution <- 15` minutes.
 
    b. Define component bounds (default: 2.5th–97.5th percentiles for each stage).
 
-   c. Enumerate integer-minute (or `resolution`-grid) compositions `(n1, n2, n3, waso, rem)` such that:
-   - the chosen duration/whole definition is held fixed
-   - each component lies within its bounds
+   c. Enumerate grid compositions `(n1, n2, n3, rem)` within the observed four-stage hull and apply the kNN support screen using stage ILRs and TST.
 
-   Implementation note: once the fixed-whole definition is finalized, generate valid tuples directly (e.g., loop over 4 components and solve the 5th) instead of attempting a full 5D Cartesian grid.
+   For fixed-TST results, group supported candidates by the sum of their four stage minutes.
 
 2. **Filter by density:**
    

@@ -20,7 +20,7 @@ test_that("descriptive table reports raw stages, follow-up outcomes and missingn
   body <- table$table_body
 
   expect_s3_class(table, "tbl_summary")
-  expect_setequal(unique(body$variable), fixture_vars[!grepl("^R[1-4]_s[12]$", fixture_vars)])
+  expect_setequal(unique(body$variable), fixture_vars[!grepl("^R[1-3]_s[12]$", fixture_vars)])
   expect_false(any(grepl("ILR", body$label)))
   expect_equal(body[body$variable == "n1_s2" & body$row_type == "label", ]$stat_0, "10.50 (5.92)")
   expect_equal(body[body$variable == "age_s1" & body$row_type == "missing", ]$stat_0, "1")

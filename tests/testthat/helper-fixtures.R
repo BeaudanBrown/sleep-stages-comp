@@ -1,5 +1,5 @@
-comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
-ilr_names <- paste0("R", 1:4, "_s2")
+comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "rem_s2")
+ilr_names <- paste0("R", 1:3, "_s2")
 
 make_test_comp_dt <- function() {
   data.table::data.table(

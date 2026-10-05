@@ -1,6 +1,6 @@
 test_that("fixed compositions update duration and modeled ILR coordinates", {
-  comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
-  ilr_names <- paste0("R", 1:4, "_s2")
+  comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "rem_s2")
+  ilr_names <- paste0("R", 1:3, "_s2")
   dt <- make_test_comp_dt()
   dt[, slp_time_s2 := n1_s2 + n2_s2 + n3_s2 + rem_s2]
   dt[, (ilr_names) := make_ilrs(dt, comp_vars, get_sbp())]
@@ -8,7 +8,6 @@ test_that("fixed compositions update duration and modeled ILR coordinates", {
     n1_s2 = 30,
     n2_s2 = 180,
     n3_s2 = 90,
-    waso_s2 = 45,
     rem_s2 = 75
   )
 
@@ -20,6 +19,7 @@ test_that("fixed compositions update duration and modeled ILR coordinates", {
   )
 
   expect_equal(unique(shifted$slp_time_s2), 375)
+  expect_equal(shifted$waso_s2, dt$waso_s2)
   expect_equal(uniqueN(shifted[, ..ilr_names]), 1L)
   repeated_composition <- rbindlist(list(composition, composition))
   expected_ilrs <- make_ilrs(repeated_composition, comp_vars, get_sbp())
@@ -31,8 +31,8 @@ test_that("fixed compositions update duration and modeled ILR coordinates", {
 })
 
 test_that("composition-grid evaluation finds known best and worst policies", {
-  comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
-  ilr_names <- paste0("R", 1:4, "_s2")
+  comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "rem_s2")
+  ilr_names <- paste0("R", 1:3, "_s2")
   dt <- make_test_comp_dt()
   dt[, slp_time_s2 := n1_s2 + n2_s2 + n3_s2 + rem_s2]
   dt[, (ilr_names) := make_ilrs(dt, comp_vars, get_sbp())]
@@ -45,7 +45,6 @@ test_that("composition-grid evaluation finds known best and worst policies", {
     n1_s2 = c(60, 20),
     n2_s2 = c(180, 180),
     n3_s2 = c(40, 100),
-    waso_s2 = c(40, 40),
     rem_s2 = c(80, 80)
   )
 
@@ -59,11 +58,13 @@ test_that("composition-grid evaluation finds known best and worst policies", {
 
   expect_equal(predictions[which.max(mean_outcome_pred)]$n3_s2, 100)
   expect_equal(predictions[which.min(mean_outcome_pred)]$n3_s2, 40)
+  expect_false("waso_s2" %in% names(predictions))
+  expect_equal(rowSums(as.matrix(predictions[, ..comp_vars])), c(360, 380))
 })
 
 test_that("fixed-composition estimates retain policy contrasts", {
-  comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
-  ilr_names <- paste0("R", 1:4, "_s2")
+  comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "rem_s2")
+  ilr_names <- paste0("R", 1:3, "_s2")
   dt <- make_test_comp_dt()
   dt[, slp_time_s2 := n1_s2 + n2_s2 + n3_s2 + rem_s2]
   dt[, (ilr_names) := make_ilrs(dt, comp_vars, get_sbp())]
@@ -77,7 +78,6 @@ test_that("fixed-composition estimates retain policy contrasts", {
     n1_s2 = c(20, 60),
     n2_s2 = 180,
     n3_s2 = c(100, 40),
-    waso_s2 = 40,
     rem_s2 = 80
   )
   reference <- gcomp(fitted_model, dt)
@@ -95,11 +95,12 @@ test_that("fixed-composition estimates retain policy contrasts", {
   expect_equal(estimates$policy, c("best", "worst"))
   expect_equal(estimates$mean_difference, estimates$pred - reference$pred)
   expect_equal(estimates$imputation_id, rep("1", 2))
+  expect_false("waso_s2" %in% names(estimates))
 })
 
 test_that("split-specific TST extremes are evaluated on their held-out model", {
-  comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
-  ilr_names <- paste0("R", 1:4, "_s2")
+  comp_vars <- c("n1_s2", "n2_s2", "n3_s2", "rem_s2")
+  ilr_names <- paste0("R", 1:3, "_s2")
   test_data <- make_test_comp_dt()
   test_data[, slp_time_s2 := n1_s2 + n2_s2 + n3_s2 + rem_s2]
   test_data[, (ilr_names) := make_ilrs(test_data, comp_vars, get_sbp())]
@@ -116,7 +117,6 @@ test_that("split-specific TST extremes are evaluated on their held-out model", {
     n1_s2 = c(20, 60, 40, 40),
     n2_s2 = 180,
     n3_s2 = c(100, 60, 80, 80),
-    waso_s2 = 40,
     rem_s2 = 80,
     mean_outcome_pred = c(100, -100, 999, 999)
   )
@@ -167,4 +167,29 @@ test_that("split-specific TST extremes are evaluated on their held-out model", {
     ) %in%
       names(unsupported)
   ))
+})
+
+test_that("composition plots use four stages and three ILRs", {
+  stage_vars <- c("n1_s2", "n2_s2", "n3_s2", "rem_s2")
+  selections <- data.table(
+    outcome = "pc1_s2",
+    policy = c("best", "worst"),
+    split_id = 1L,
+    n1_s2 = c(30, 50),
+    n2_s2 = c(180, 160),
+    n3_s2 = c(90, 70),
+    rem_s2 = c(80, 100),
+    tst_minutes = 380
+  )
+  labels <- c(n1_s2 = "N1", n2_s2 = "N2", n3_s2 = "N3", rem_s2 = "REM")
+
+  heatmap <- plot_ideal_composition_heatmap(selections, stage_vars, labels)
+  ilr_map <- plot_ideal_composition_ilr_map(selections, stage_vars, get_sbp())
+
+  expect_setequal(as.character(unique(heatmap$data$component)), unname(labels))
+  expect_equal(
+    unique(heatmap$data$proportion[heatmap$data$component == "N1"]),
+    100 * selections$n1_s2 / 380
+  )
+  expect_setequal(as.character(unique(ilr_map$data$ilr_plane)), c("R1 vs R2", "R1 vs R3"))
 })

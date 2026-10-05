@@ -419,10 +419,7 @@ analysis_targets <- list(
         },
         by = .(split_id, outcome)
       ]
-      sleep_vars <- setdiff(paste0(comp_vars, "_s2"), "waso_s2")
-      all_comp_vars <- paste0(comp_vars, "_s2")
-      out[, tst_minutes := rowSums(.SD), .SDcols = sleep_vars]
-      out[, whole_minutes := rowSums(.SD), .SDcols = all_comp_vars]
+      out[, tst_minutes := rowSums(.SD), .SDcols = paste0(comp_vars, "_s2")]
       out[]
     }
   ),

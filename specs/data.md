@@ -37,9 +37,9 @@ All times in **minutes**.
 | `slp_time_s2` | Total sleep time | `slp_time_s2` |
 | `waso_s2` | Wake after sleep onset | `waso_s2` |
 
-**Note:** The exposure composition for ILR transformation uses **SHHS-2 N1, N2, N3, WASO, REM** (5 components → 4 ILR coordinates). Wake before sleep onset is not part of the composition.
+**Note:** The exposure composition for ILR transformation uses **SHHS-2 N1, N2, N3, REM** (4 components → 3 ILR coordinates). SHHS-2 WASO is a separate model covariate, held observed under interventions.
 
-`slp_time_s2` remains a separate duration covariate in the primary models because the ILR coordinates encode relative composition, not absolute sleep duration.
+`slp_time_s2` remains a separate duration covariate in the primary models because the ILR coordinates encode relative composition, not absolute sleep duration. SHHS-1 WASO is descriptive only.
 
 ---
 
@@ -199,7 +199,7 @@ Potential additional imputation targets (if missingness is non-trivial):
 
 ### Predictors in the imputation model
 Include:
-- Exposure composition variables (`n1_s2`, `n2_s2`, `n3_s2`, `waso_s2`, `rem_s2`) and `slp_time_s2`
+- Exposure composition variables (`n1_s2`, `n2_s2`, `n3_s2`, `rem_s2`), plus `slp_time_s2` and `waso_s2`
 - Outcome indicators/timing as appropriate (e.g., `dem_or_mci_status`, `dem_or_mci_surv_date`) to preserve associations
 - Core confounders (age, sex, BMI, education, etc.)
 - Auxiliary variables that improve missingness prediction without introducing post-exposure bias *(TBD)

@@ -1,12 +1,11 @@
 constant_targets <- list(
-  tar_target(comp_vars, c("n1", "n2", "n3", "waso", "rem")),
+  tar_target(comp_vars, c("n1", "n2", "n3", "rem")),
   tar_target(
     stage_labels,
     c(
       n1_s2 = "N1",
       n2_s2 = "N2",
       n3_s2 = "N3",
-      waso_s2 = "WASO",
       rem_s2 = "REM"
     )
   ),

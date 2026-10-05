@@ -59,6 +59,7 @@ source("R/cognitive_summary_score.R")
 source("R/continuous_utils.R")
 source("R/generic_utils.R")
 source("R/risk_summary_plot.R")
+source("R/plot_utils.R")
 source("R/descriptive_utils.R")
 source("R/descriptive_table.R")
 

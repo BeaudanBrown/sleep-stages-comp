@@ -46,7 +46,6 @@ compute_substituted_mean <- function(
     comp_vars,
     ilr_base
   )
-  sub_dt <- update_continuous_sleep_duration(sub_dt, from, to)
 
   int_dt <- if (duration == 0) {
     copy(ref_dt[, .(outcome, pred)])
@@ -74,16 +73,6 @@ compute_substituted_mean <- function(
   int_dt
 }
 
-update_continuous_sleep_duration <- function(dt, from, to) {
-  out <- copy(dt)
-  from_is_sleep <- as.integer(from != "waso_s2")
-  to_is_sleep <- as.integer(to != "waso_s2")
-  tst_delta <- out[["applied_duration"]] * (to_is_sleep - from_is_sleep)
-
-  out[["slp_time_s2"]] <- out[["slp_time_s2"]] + tst_delta
-  out
-}
-
 gcomp <- function(model, newdata) {
   pred <- mean(predict(model$model, newdata = newdata))
   outcome <- model$outcome
@@ -101,8 +90,7 @@ apply_fixed_composition <- function(
     set(out, j = var, value = composition[[var]][1L])
   }
 
-  sleep_stage_vars <- setdiff(comp_vars, "waso_s2")
-  out[, slp_time_s2 := rowSums(.SD), .SDcols = sleep_stage_vars]
+  out[, slp_time_s2 := rowSums(.SD), .SDcols = comp_vars]
 
   ilr_names <- paste0("R", seq_len(length(comp_vars) - 1L), "_s2")
   out[, (ilr_names) := make_ilrs(out, comp_vars, ilr_base)]
@@ -247,12 +235,11 @@ continuous_model_vars <- function() {
     "R1_s2",
     "R2_s2",
     "R3_s2",
-    "R4_s2",
+    "waso_s2",
     "slp_time_s2",
     "R1_s1",
     "R2_s1",
     "R3_s1",
-    "R4_s1",
     "slp_time",
     "s1_incomplete",
     "pc1_s1",

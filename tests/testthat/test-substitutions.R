@@ -24,7 +24,7 @@ test_that("compute_shifted_exposures preserves totals and changes targeted parts
 })
 
 test_that("compute_shifted_exposures updates modeled SHHS-2 ILR columns", {
-  comp_names <- c("n1_s2", "n2_s2", "n3_s2", "waso_s2", "rem_s2")
+  comp_names <- c("n1_s2", "n2_s2", "n3_s2", "rem_s2")
   model_ilr_names <- paste0("R", seq_len(length(comp_names) - 1L), "_s2")
   basis <- get_sbp()
   dt <- make_test_comp_dt()

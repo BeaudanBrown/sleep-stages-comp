@@ -27,14 +27,14 @@ glm(dem_or_mci ~ [formula], data = surv_dt[death == 0], family = binomial())
 
 The primary analysis uses a **reduced interaction** specification to avoid overfitting:
 
-1. **ILR coordinates** (R1, R2, R3, R4) with restricted cubic splines (RCS)
+1. **ILR coordinates** (R1, R2, R3) with restricted cubic splines (RCS)
 2. **Time** (`timegroup`) with RCS, interacted with ILR RCS terms (non-proportional hazards)
 3. **Age** (`age_s1`) with RCS, interacted with ILR RCS terms (effect modification by age)
 4. **Core baseline/main-effect contract**:
    - the current implementation locks in the sleep-history terms and a provisional additive confounder set
    - the final full confounder set is still subject to a later cleanup pass
-5. **SHHS-1 sleep adjustment** as *main effects* (raw minutes, RCS)
-6. **SHHS-2 total sleep time** as a separate covariate (RCS)
+5. **SHHS-1 sleep adjustment** as *main effects* (three stage ILRs and TST, RCS)
+6. **SHHS-2 total sleep time and WASO** as separate covariates (RCS)
 
 ### Proposed formula (schematic)
 
@@ -44,19 +44,16 @@ primary_formula <- ~
   rcs(R1, knots_R1) +
   rcs(R2, knots_R2) +
   rcs(R3, knots_R3) +
-  rcs(R4, knots_R4) +
 
   # Time-varying effects (non-proportional hazards): ILR × Time
   rcs(R1, knots_R1) * rcs(timegroup, knots_time) +
   rcs(R2, knots_R2) * rcs(timegroup, knots_time) +
   rcs(R3, knots_R3) * rcs(timegroup, knots_time) +
-  rcs(R4, knots_R4) * rcs(timegroup, knots_time) +
 
   # Effect modification by age: ILR × Age
   rcs(R1, knots_R1) * rcs(age_s1, knots_age) +
   rcs(R2, knots_R2) * rcs(age_s1, knots_age) +
   rcs(R3, knots_R3) * rcs(age_s1, knots_age) +
-  rcs(R4, knots_R4) * rcs(age_s1, knots_age) +
 
   # Provisional additive confounder main effects
   IDTYPE +
@@ -75,21 +72,22 @@ primary_formula <- ~
   sleeping_pill_use +
   antidepressant_use +
 
-  # SHHS-1 sleep adjustment (raw times; battery failures handled via recovered slp_time + indicator)
-  rcs(n1, knots_n1_s1) +
-  rcs(n2, knots_n2_s1) +
-  rcs(n3, knots_n3_s1) +
-  rcs(rem, knots_rem_s1) +
+  # SHHS-1 sleep adjustment (three stage ILRs and recovered TST)
+  rcs(R1_s1, knots_R1_s1) +
+  rcs(R2_s1, knots_R2_s1) +
+  rcs(R3_s1, knots_R3_s1) +
+  rcs(slp_time, knots_slp_time) +
   s1_incomplete +
 
-  # SHHS-2 total sleep time (TST) as separate covariate
-  rcs(slp_time_s2, knots_tst)
+  # SHHS-2 total sleep time (TST) and WASO as separate covariates
+  rcs(slp_time_s2, knots_tst) +
+  rcs(waso_s2, knots_waso)
 ```
 
 Notes:
-- `R1`, `R2`, `R3`, `R4` are ILR coordinates derived from the **SHHS-2** 5-part composition `(N1, N2, N3, WASO, REM)`.
-- Coordinate-specific interpretation follows the current SBP matrix in `R/constants.R`.
-- The sleep-history contract is already implemented in `R/survival_utils.R`: `n1`, `n2`, `n3`, `rem` enter as spline-adjusted SHHS-1 raw minutes, `slp_time_s2` enters separately as the SHHS-2 duration covariate, and `s1_incomplete` enters as an indicator main effect.
+- `R1`, `R2`, `R3` are ILR coordinates derived from the **SHHS-2** four-stage composition `(N1, N2, N3, REM)`.
+- Coordinate-specific interpretation follows the current SBP matrix in `R/composition_utils.R`.
+- The current continuous-outcome formula in `R/continuous_utils.R` includes SHHS-1 stage ILRs, SHHS-1 TST, `s1_incomplete`, SHHS-2 TST, and SHHS-2 WASO. It does not include SHHS-1 WASO.
 - The broader confounder list above is the current additive implementation contract, not the final scientific lock-down. Do not add reduced interactions beyond the current LMTP/pooled core until that later confounder pass is complete.
 
 ### Knot Placement

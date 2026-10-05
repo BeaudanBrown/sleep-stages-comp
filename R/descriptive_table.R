@@ -8,7 +8,7 @@ summarize_analysis_covariates <- function(dt, outcome_vars) {
     "slp_time",
     setdiff(
       model_vars,
-      c(grep("^R[1-4]_s[12]$", model_vars, value = TRUE), "slp_time_s2", "slp_time")
+      c(grep("^R[1-3]_s[12]$", model_vars, value = TRUE), "waso_s2", "slp_time_s2", "slp_time")
     ),
     outcome_vars
   )

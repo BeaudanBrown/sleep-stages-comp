@@ -37,8 +37,8 @@ distribution of sleep stages at SHHS-2.
 ## Sleep-stage composition
 
 The five panels show quintiles of REM as a proportion of total sleep time.
-N1, N2, N3, and REM sum to 100%; WASO is excluded from this descriptive view.
-The analysis itself uses a five-part composition that includes WASO.
+N1, N2, N3, and REM sum to 100%. The analysis uses these four sleep stages
+as the composition and adjusts for SHHS-2 WASO separately.
 
 ::: {.callout-tip appearance="simple"}
 Drag within a panel to rotate it, scroll to zoom, and hover over a marker to see
@@ -104,7 +104,7 @@ show_pair_plots <- function(outcome) {
 #| fig-width: 7
 #| fig-height: 5.5
 #| fig-cap: "Estimated mean differences in cognitive summary score."
-#| fig-subcap: ["N1 and N3", "N2 and N3", "WASO and N3", "REM and N3"]
+#| fig-subcap: ["N1 and N3", "N2 and N3", "REM and N3"]
 show_pair_plots("pc1_s2")
 ```
 
@@ -116,7 +116,7 @@ show_pair_plots("pc1_s2")
 #| fig-width: 7
 #| fig-height: 5.5
 #| fig-cap: "Estimated mean differences in hippocampal volume."
-#| fig-subcap: ["N1 and N3", "N2 and N3", "WASO and N3", "REM and N3"]
+#| fig-subcap: ["N1 and N3", "N2 and N3", "REM and N3"]
 show_pair_plots("Hippo_s2")
 ```
 
@@ -128,7 +128,7 @@ show_pair_plots("Hippo_s2")
 #| fig-width: 7
 #| fig-height: 5.5
 #| fig-cap: "Estimated mean differences in cerebral brain volume."
-#| fig-subcap: ["N1 and N3", "N2 and N3", "WASO and N3", "REM and N3"]
+#| fig-subcap: ["N1 and N3", "N2 and N3", "REM and N3"]
 show_pair_plots("Cerebrum_tcb_s2")
 ```
 
@@ -136,16 +136,11 @@ show_pair_plots("Cerebrum_tcb_s2")
 
 ## Best and worst compositions
 
-The process for getting best and worst comps was:
-
-* Divide the dataset into train (50%) and test (50%)
-* In training data, find best and worst compisition of stages w/r/t cognition
-- for a specific total sleep time (e.g., 7 hours)
-* In testing data, compare mean cognitive function under each of these compositions
-
-With 5 components, there is a lot of combinatorial complexity, probably too much for the volume of available data. We can see this because the best and worst compositions vary wildly when we repeat the cross-validation with different random data splits.
-
-Remove WASO?
+Training and test sets each contain half the participants. Within training
+data, the search selects the best and worst four-stage compositions, both
+without a TST restriction and at specified TST values. The selected fixed
+compositions are then evaluated in test data. SHHS-2 WASO remains at each
+participant's observed value throughout.
 
 ## Best and worst compositions by total sleep time
 
@@ -163,9 +158,9 @@ show_extreme_compositions <- function(outcome_name) {
   rows <- extreme_compositions[extreme_compositions$outcome == outcome_name, ]
   rows <- rows[
     order(match(rows$policy, c("best", "worst")), rows$tst_minutes, rows$split_id),
-    c("policy", "tst_minutes", "n1_s2", "n2_s2", "n3_s2", "rem_s2", "waso_s2")
+    c("policy", "tst_minutes", "n1_s2", "n2_s2", "n3_s2", "rem_s2")
   ]
-  names(rows) <- c("policy", "tst_minutes", "n1", "n2", "n3", "rem", "waso")
+  names(rows) <- c("policy", "tst_minutes", "n1", "n2", "n3", "rem")
   knitr::kable(rows, row.names = FALSE)
 }
 ```

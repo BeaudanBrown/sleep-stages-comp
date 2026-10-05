@@ -18,14 +18,13 @@ plot_ideal_composition_heatmap <- function(
       "outcome",
       "policy",
       "split_id",
-      "tst_minutes",
-      "whole_minutes"
+      "tst_minutes"
     ),
     measure.vars = comp_vars,
     variable.name = "component",
     value.name = "minutes"
   )
-  component_dt[, proportion := 100 * minutes / whole_minutes]
+  component_dt[, proportion := 100 * minutes / tst_minutes]
   component_dt[,
     component := factor(
       component,
@@ -35,10 +34,9 @@ plot_ideal_composition_heatmap <- function(
   ]
   component_dt[,
     split_label := sprintf(
-      "Split %02d\nTST %d; whole %d",
+      "Split %02d\nTST %d",
       split_id,
-      round(tst_minutes),
-      round(whole_minutes)
+      round(tst_minutes)
     )
   ]
   component_dt[,
@@ -73,7 +71,7 @@ plot_ideal_composition_heatmap <- function(
     ) +
     ggplot2::labs(
       title = "Selected best and worst sleep compositions across splits",
-      subtitle = "Tiles show each component as a percentage of the five-part whole",
+      subtitle = "Tiles show each stage as a percentage of total sleep time",
       x = "Sleep component"
     )
 }
@@ -149,12 +147,12 @@ plot_ideal_composition_ilr_map <- function(
       outcome,
       policy,
       split_id,
-      ilr_plane = "R3 vs R4",
-      x = R3,
-      y = R4
+      ilr_plane = "R1 vs R3",
+      x = R1,
+      y = R3
     )]
   ))
-  map_dt[, ilr_plane := factor(ilr_plane, levels = c("R1 vs R2", "R3 vs R4"))]
+  map_dt[, ilr_plane := factor(ilr_plane, levels = c("R1 vs R2", "R1 vs R3"))]
   data.table::setorderv(map_dt, c("outcome", "ilr_plane", "split_id", "policy"))
 
   ggplot2::ggplot(map_dt, ggplot2::aes(x = x, y = y)) +

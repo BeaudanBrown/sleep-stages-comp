@@ -1,7 +1,7 @@
 make_composition_support_features <- function(dt, comp_vars, ilr_base) {
   dt <- as.data.table(dt)
   features <- make_ilrs(dt, comp_vars, ilr_base)
-  features[, log_whole := log(rowSums(as.matrix(dt[, ..comp_vars])))]
+  features[, log_tst := log(rowSums(as.matrix(dt[, .SD, .SDcols = comp_vars])))]
   as.matrix(features)
 }
 
