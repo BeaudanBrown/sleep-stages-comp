@@ -1,7 +1,7 @@
 test_that("descriptive table reports raw stages, follow-up outcomes and missingness", {
   model_vars <- continuous_model_vars()
   stage_vars <- c("n1", "n2", "n3", "waso", "rem")
-  outcome_vars <- c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2")
+  outcome_vars <- c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2", "DSE_wmh_s2")
   fixture_vars <- c(model_vars, stage_vars, paste0(stage_vars, "_s2"), outcome_vars)
   dt <- as.data.table(setNames(
     rep(list(seq_len(20)), length(fixture_vars)),
@@ -24,13 +24,12 @@ test_that("descriptive table reports raw stages, follow-up outcomes and missingn
   expect_false(any(grepl("ILR", body$label)))
   expect_equal(body[body$variable == "n1_s2" & body$row_type == "label", ]$stat_0, "10.50 (5.92)")
   expect_equal(body[body$variable == "age_s1" & body$row_type == "missing", ]$stat_0, "1")
-  expect_equal(body[body$variable == "pc1_s1" & body$row_type == "missing", ]$stat_0, "1")
   expect_equal(body[body$variable == "pc1_s2" & body$row_type == "missing", ]$stat_0, "1")
   expect_equal(body[body$variable == "Hippo_s2" & body$row_type == "missing", ]$stat_0, "1")
   expect_equal(dt, original)
-  formula_vars <- all.vars(get_primary_formula_cont(dt))
+  formula_vars <- all.vars(get_primary_formula_cont(get_cog_score(copy(dt)), "pc1_s2"))
   expect_setequal(
     setdiff(formula_vars[!startsWith(formula_vars, "knots_")], "Y"),
-    model_vars
+    c(model_vars, "pc1_s1")
   )
 })

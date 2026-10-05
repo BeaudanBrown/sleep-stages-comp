@@ -31,6 +31,8 @@ test_that("make_ilrs is deterministic for identical input", {
 test_that("continuous model adjusts for SHHS-2 WASO with three ILRs", {
   vars <- continuous_model_vars()
   expect_true("waso_s2" %in% vars)
+  expect_true("edu_years" %in% vars)
+  expect_false("educat" %in% vars)
   expect_false(any(c("waso", "R4_s1", "R4_s2") %in% vars))
   expect_equal(intersect(vars, paste0("R", 1:3, "_s2")), paste0("R", 1:3, "_s2"))
 
@@ -38,8 +40,26 @@ test_that("continuous model adjusts for SHHS-2 WASO with three ILRs", {
     rep(list(seq_len(20)), length(vars)),
     vars
   ))
-  formula <- get_primary_formula_cont(dt)
+  dt[, pc1_s1 := seq_len(.N)]
+  formula <- get_primary_formula_cont(dt, "pc1_s2")
   terms <- attr(terms(formula), "term.labels")
   expect_true(any(grepl("rcs\\(waso_s2,", terms)))
+  expect_true(any(grepl("rcs\\(edu_years,", terms)))
   expect_false(any(grepl("R4|rcs\\(waso,", terms)))
+})
+
+test_that("continuous formulas adjust for the matching baseline outcome", {
+  vars <- continuous_model_vars()
+  outcomes <- c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2", "DSE_wmh_s2")
+  baselines <- sub("_s2", "_s1", outcomes)
+  dt <- as.data.table(setNames(
+    rep(list(seq_len(20)), length(c(vars, baselines))),
+    c(vars, baselines)
+  ))
+
+  for (i in seq_along(outcomes)) {
+    formula_vars <- all.vars(get_primary_formula_cont(dt, outcomes[i]))
+    formula_vars <- setdiff(formula_vars[!startsWith(formula_vars, "knots_")], "Y")
+    expect_setequal(formula_vars, c(vars, baselines[i]))
+  }
 })

@@ -82,7 +82,7 @@ make_test_raw_dataset <- function() {
     age_s1 = c(64, 71),
     bmi_s1 = c(24.5, 28.2),
     gender = c(0L, 1L),
-    educat = c(12L, 16L),
+    edu_years = c(12L, 16L),
     waso = c(20, 25),
     fram_cvd = c(0L, 0L),
     fram_cvd_date = c(3000, 3000),

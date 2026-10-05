@@ -1,4 +1,5 @@
 create_dataset <- function(
+  framingham_educ_file,
   framingham_dem_file,
   framingham_dem_surv_file,
   framingham_brain1_file,
@@ -13,6 +14,10 @@ create_dataset <- function(
   shhs_link_file
 ) {
   ### FOS data
+
+  # Read education variable
+  educ <- fread(framingham_educ_file)[, list(idtype, PID, B43)]
+  setnames(educ, c("idtype", "B43"), c("IDTYPE", "educ_years"))
   # Read raw dementia outcomes data
   dem <- load_framingham_dem(framingham_dem_file)
   # dem survival dataset
@@ -40,8 +45,9 @@ create_dataset <- function(
   framingham_surv_cvd <- load_framingham_surv_cvd(framingham_surv_cvd_file)
 
   ## Merge FOS data
-  # Merge the brain and dem datasets
-  fos <- merge(brain, dem, by = c("IDTYPE", "PID"), all = TRUE)
+  # Merge the brain, edu, and dem datasets
+  fos <- merge(educ, dem, by = c("IDTYPE", "PID"), all = TRUE)
+  fos <- merge(brain, fos, by = c("IDTYPE", "PID"), all = TRUE)
   fos <- merge(cog, fos, by = c("IDTYPE", "PID"), all = TRUE)
   fos <- merge(framingham_death, fos, by = c("IDTYPE", "PID"), all = TRUE)
   fos <- merge(framingham_surv_cvd, fos, by = c("IDTYPE", "PID"), all = TRUE)
@@ -334,8 +340,7 @@ load_shhs_covars <- function(shhs_covar_file) {
     HTNDerv_s1,
     ParRptDiab,
     Alcoh,
-    SLPILL15,
-    educat
+    SLPILL15
   )
 
   # Set 8 (unsure) for sleeping pill use to missing

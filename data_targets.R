@@ -30,6 +30,11 @@ data_targets <- list(
     format = "file"
   ),
   tar_target(
+    framingham_educ_file,
+    file.path(framingham_dir, "ex1_2d_v3.csv"),
+    format = "file"
+  ),
+  tar_target(
     shhs_death_file,
     file.path(shhs_dir, "CVD_Outcomes/shhs_status_08apr2014_5837.csv"),
     format = "file"
@@ -62,6 +67,7 @@ data_targets <- list(
   tar_target(
     dt_raw,
     create_dataset(
+      framingham_educ_file,
       framingham_dem_file,
       framingham_dem_surv_file,
       framingham_brain1_file,
