@@ -17,7 +17,7 @@ create_dataset <- function(
 
   # Read education variable
   educ <- fread(framingham_educ_file)[, list(idtype, PID, B43)]
-  setnames(educ, c("idtype", "B43"), c("IDTYPE", "educ_years"))
+  setnames(educ, c("idtype", "B43"), c("IDTYPE", "edu_years"))
   # Read raw dementia outcomes data
   dem <- load_framingham_dem(framingham_dem_file)
   # dem survival dataset

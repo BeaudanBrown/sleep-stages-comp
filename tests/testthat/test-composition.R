@@ -49,17 +49,19 @@ test_that("continuous model adjusts for SHHS-2 WASO with three ILRs", {
 })
 
 test_that("continuous formulas adjust for the matching baseline outcome", {
-  vars <- continuous_model_vars()
-  outcomes <- c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2", "DSE_wmh_s2")
+  cog_vars <- continuous_model_vars()
+  mri_vars <- continuous_model_vars_mri()
+  outcomes <- c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2")
   baselines <- sub("_s2", "_s1", outcomes)
   dt <- as.data.table(setNames(
-    rep(list(seq_len(20)), length(c(vars, baselines))),
-    c(vars, baselines)
+    rep(list(seq_len(20)), length(unique(c(cog_vars, mri_vars, baselines)))),
+    unique(c(cog_vars, mri_vars, baselines))
   ))
 
   for (i in seq_along(outcomes)) {
     formula_vars <- all.vars(get_primary_formula_cont(dt, outcomes[i]))
     formula_vars <- setdiff(formula_vars[!startsWith(formula_vars, "knots_")], "Y")
-    expect_setequal(formula_vars, c(vars, baselines[i]))
+    expected_vars <- if (outcomes[i] == "pc1_s2") cog_vars else mri_vars
+    expect_setequal(formula_vars, c(expected_vars, baselines[i]))
   }
 })

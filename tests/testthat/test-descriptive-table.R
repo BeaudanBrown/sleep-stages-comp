@@ -1,8 +1,26 @@
 test_that("descriptive table reports raw stages, follow-up outcomes and missingness", {
-  model_vars <- continuous_model_vars()
   stage_vars <- c("n1", "n2", "n3", "waso", "rem")
-  outcome_vars <- c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2", "DSE_wmh_s2")
-  fixture_vars <- c(model_vars, stage_vars, paste0(stage_vars, "_s2"), outcome_vars)
+  covariate_vars <- c(
+    "s1_incomplete",
+    "Cerebrum_tcv_s1",
+    "Cerebrum_tcb_s1",
+    "Hippo_s1",
+    "age_s1",
+    "gender",
+    "edu_years",
+    "bmi_s1",
+    "oahi",
+    "sleeping_pills"
+  )
+  outcome_vars <- c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2")
+  fixture_vars <- c(
+    covariate_vars,
+    stage_vars,
+    paste0(stage_vars, "_s2"),
+    "slp_time",
+    "slp_time_s2",
+    outcome_vars
+  )
   dt <- as.data.table(setNames(
     rep(list(seq_len(20)), length(fixture_vars)),
     fixture_vars
@@ -20,16 +38,21 @@ test_that("descriptive table reports raw stages, follow-up outcomes and missingn
   body <- table$table_body
 
   expect_s3_class(table, "tbl_summary")
-  expect_setequal(unique(body$variable), fixture_vars[!grepl("^R[1-3]_s[12]$", fixture_vars)])
+  expect_setequal(unique(body$variable), c(fixture_vars, "pc1_s1"))
   expect_false(any(grepl("ILR", body$label)))
   expect_equal(body[body$variable == "n1_s2" & body$row_type == "label", ]$stat_0, "10.50 (5.92)")
   expect_equal(body[body$variable == "age_s1" & body$row_type == "missing", ]$stat_0, "1")
+  expect_equal(body[body$variable == "pc1_s1" & body$row_type == "missing", ]$stat_0, "1")
   expect_equal(body[body$variable == "pc1_s2" & body$row_type == "missing", ]$stat_0, "1")
   expect_equal(body[body$variable == "Hippo_s2" & body$row_type == "missing", ]$stat_0, "1")
+  expect_equal(
+    body[body$variable == "Cerebrum_tcv_s1" & body$row_type == "label", ]$label,
+    "Baseline cerebral volume (Cerebrum_tcv)"
+  )
   expect_equal(dt, original)
   formula_vars <- all.vars(get_primary_formula_cont(get_cog_score(copy(dt)), "pc1_s2"))
   expect_setequal(
     setdiff(formula_vars[!startsWith(formula_vars, "knots_")], "Y"),
-    c(model_vars, "pc1_s1")
+    c(continuous_model_vars(), "pc1_s1")
   )
 })

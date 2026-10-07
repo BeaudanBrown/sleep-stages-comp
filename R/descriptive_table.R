@@ -1,15 +1,24 @@
 summarize_analysis_covariates <- function(dt, outcome_vars) {
-  model_vars <- continuous_model_vars()
   stage_vars <- c("n1", "n2", "n3", "waso", "rem")
+  covariate_vars <- c(
+    "s1_incomplete",
+    "pc1_s1",
+    "Cerebrum_tcv_s1",
+    "Cerebrum_tcb_s1",
+    "Hippo_s1",
+    "age_s1",
+    "gender",
+    "edu_years",
+    "bmi_s1",
+    "oahi",
+    "sleeping_pills"
+  )
   table_vars <- c(
     paste0(stage_vars, "_s2"),
     "slp_time_s2",
     stage_vars,
     "slp_time",
-    setdiff(
-      model_vars,
-      c(grep("^R[1-3]_s[12]$", model_vars, value = TRUE), "waso_s2", "slp_time_s2", "slp_time")
-    ),
+    covariate_vars,
     outcome_vars
   )
   binary_vars <- continuous_binary_vars()

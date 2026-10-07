@@ -1,5 +1,8 @@
 analysis_targets <- list(
-  tar_target(outcome_vars, c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2")),
+  tar_target(
+    outcome_vars,
+    c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2")
+  ),
 
   # generate bootstrap samples
   tar_rep(
@@ -371,7 +374,9 @@ analysis_targets <- list(
     list(
       split_id = ideal_split_rows$split_id,
       test_data = get_cog_score(as.data.table(
-        impute_data(dt[ideal_split_rows$test_rows], method = "cart", m = 1)[[1L]]
+        impute_data(dt[ideal_split_rows$test_rows], method = "cart", m = 1)[[
+          1L
+        ]]
       ))
     ),
     pattern = map(ideal_split_rows),

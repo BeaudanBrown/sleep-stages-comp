@@ -212,13 +212,15 @@ compute_composition_table <- function(
       mean_difference = pred - ref_dt$pred[reference_index],
       imputation_id = ref_dt$imputation_id[reference_index]
     )]
-    estimate[, (composition_vars) := composition[, .SD, .SDcols = composition_vars]]
+    estimate[,
+      (composition_vars) := composition[, .SD, .SDcols = composition_vars]
+    ]
     estimate
   }))
 }
 
 fit_models_cont <- function(dt, outcome) {
-  model_formula <- get_primary_formula_cont(dt)
+  model_formula <- get_primary_formula_cont(dt, outcome)
 
   outcome_model_formula <- update(
     model_formula,
@@ -242,30 +244,52 @@ continuous_model_vars <- function() {
     "R3_s1",
     "slp_time",
     "s1_incomplete",
-    "pc1_s1",
+    "age_s1",
+    "gender",
+    "edu_years",
+    "bmi_s1",
+    "oahi",
+    "sleeping_pills"
+  )
+}
+
+continuous_model_vars_mri <- function() {
+  c(
+    "R1_s2",
+    "R2_s2",
+    "R3_s2",
+    "waso_s2",
+    "slp_time_s2",
+    "R1_s1",
+    "R2_s1",
+    "R3_s1",
+    "slp_time",
+    "s1_incomplete",
     "Cerebrum_tcv_s1",
-    "Cerebrum_tcb_s1",
-    "Hippo_s1",
     "age_s1",
     "gender",
     "bmi_s1",
     "oahi",
-    "sleeping_pills",
-    "hypertension"
+    "sleeping_pills"
   )
 }
-
 continuous_binary_vars <- function() {
   c(
     "s1_incomplete",
     "gender",
-    "sleeping_pills",
-    "hypertension"
+    "sleeping_pills"
   )
 }
 
-get_primary_formula_cont <- function(dt) {
-  model_vars <- continuous_model_vars()
+get_primary_formula_cont <- function(dt, outcome) {
+  # Different covariates for MRI vs cog models
+  if (outcome == "pc1_s2") {
+    model_vars <- continuous_model_vars()
+  } else {
+    model_vars <- continuous_model_vars_mri()
+  }
+
+  model_vars <- c(model_vars, sub("_s2", "_s1", outcome)) # add SHHS1 outcome as covar
   binary_vars <- continuous_binary_vars()
   spline_vars <- setdiff(model_vars, binary_vars)
 
