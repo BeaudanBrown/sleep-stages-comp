@@ -1,7 +1,7 @@
 analysis_targets <- list(
   tar_target(
     outcome_vars,
-    c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2")
+    c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2", "FLAIR_wmh_s2")
   ),
 
   # generate bootstrap samples

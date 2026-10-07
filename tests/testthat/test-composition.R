@@ -48,11 +48,11 @@ test_that("continuous model adjusts for SHHS-2 WASO with three ILRs", {
   expect_false(any(grepl("R4|rcs\\(waso,", terms)))
 })
 
-test_that("continuous formulas adjust for the matching baseline outcome", {
+test_that("continuous formulas use DSE baseline WMH for the FLAIR outcome", {
   cog_vars <- continuous_model_vars()
   mri_vars <- continuous_model_vars_mri()
-  outcomes <- c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2")
-  baselines <- sub("_s2", "_s1", outcomes)
+  outcomes <- c("pc1_s2", "Hippo_s2", "Cerebrum_tcb_s2", "FLAIR_wmh_s2")
+  baselines <- c("pc1_s1", "Hippo_s1", "Cerebrum_tcb_s1", "DSE_wmh_s1")
   dt <- as.data.table(setNames(
     rep(list(seq_len(20)), length(unique(c(cog_vars, mri_vars, baselines)))),
     unique(c(cog_vars, mri_vars, baselines))

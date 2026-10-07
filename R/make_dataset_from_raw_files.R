@@ -168,7 +168,8 @@ load_framingham_brain1 <- function(framingham_brain1_file) {
   vars <- Cs(
     PID,
     IDTYPE,
-    DSE_wmh
+    DSE_wmh,
+    FLAIR_wmh
   )
   brain1 <- brain1[, ..vars]
 
@@ -184,13 +185,6 @@ load_framingham_brain1 <- function(framingham_brain1_file) {
     ))
   )
 
-  # Need to rename special case because there is only a single measure
-  assessment_cols <- setdiff(names(brain1), c("IDTYPE", "PID"))
-  setnames(
-    brain1,
-    assessment_cols,
-    paste("DSE_wmh", assessment_cols, sep = "_")
-  )
   brain1
 }
 

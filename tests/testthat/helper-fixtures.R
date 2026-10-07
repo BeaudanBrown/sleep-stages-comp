@@ -114,6 +114,7 @@ make_test_raw_dataset <- function() {
     dt[, (paste0("COG_DATE_", visit)) := c(100, 2125)[visit]]
     for (measure in c(
       "DSE_wmh",
+      "FLAIR_wmh",
       "Cerebrum_tcv",
       "Cerebrum_tcb",
       "Hippo",

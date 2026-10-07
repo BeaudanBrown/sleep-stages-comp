@@ -104,6 +104,7 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
 
   mri_value_prefixes <- c(
     "DSE_wmh",
+    "FLAIR_wmh",
     "Cerebrum_tcv",
     "Cerebrum_tcb",
     "Hippo"
@@ -123,7 +124,7 @@ prepare_dataset <- function(dt_raw, comp_vars, ilr_base) {
     value = TRUE
   )
   mri_date_cols <- grep("^mri_date_[0-9]+$", names(dt), value = TRUE)
-  dt[, c(mri_value_cols, mri_date_cols) := NULL]
+  dt[, c(mri_value_cols, mri_date_cols, "FLAIR_wmh_s1") := NULL]
 
   cog_value_prefixes <- c(
     "TRAILSB",

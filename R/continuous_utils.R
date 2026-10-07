@@ -289,7 +289,12 @@ get_primary_formula_cont <- function(dt, outcome) {
     model_vars <- continuous_model_vars_mri()
   }
 
-  model_vars <- c(model_vars, sub("_s2", "_s1", outcome)) # add SHHS1 outcome as covar
+  baseline_outcome <- if (outcome == "FLAIR_wmh_s2") {
+    "DSE_wmh_s1"
+  } else {
+    sub("_s2", "_s1", outcome)
+  }
+  model_vars <- c(model_vars, baseline_outcome)
   binary_vars <- continuous_binary_vars()
   spline_vars <- setdiff(model_vars, binary_vars)
 
