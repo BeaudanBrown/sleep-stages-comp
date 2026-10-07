@@ -44,7 +44,7 @@ test_that("continuous model adjusts for SHHS-2 WASO with three ILRs", {
   formula <- get_primary_formula_cont(dt, "pc1_s2")
   terms <- attr(terms(formula), "term.labels")
   expect_true(any(grepl("rcs\\(waso_s2,", terms)))
-  expect_true(any(grepl("rcs\\(edu_years,", terms)))
+  expect_true("edu_years" %in% terms)
   expect_false(any(grepl("R4|rcs\\(waso,", terms)))
 })
 

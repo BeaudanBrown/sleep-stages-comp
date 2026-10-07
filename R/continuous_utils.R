@@ -295,8 +295,8 @@ get_primary_formula_cont <- function(dt, outcome) {
     sub("_s2", "_s1", outcome)
   }
   model_vars <- c(model_vars, baseline_outcome)
-  binary_vars <- continuous_binary_vars()
-  spline_vars <- setdiff(model_vars, binary_vars)
+  linear_vars <- c(continuous_binary_vars(), "edu_years")
+  spline_vars <- setdiff(model_vars, linear_vars)
 
   for (var in spline_vars) {
     assign(
@@ -318,7 +318,7 @@ get_primary_formula_cont <- function(dt, outcome) {
   model_terms <- vapply(
     model_vars,
     \(var) {
-      if (var %in% binary_vars) var else spline_terms[[var]]
+      if (var %in% linear_vars) var else spline_terms[[var]]
     },
     character(1)
   )

@@ -175,6 +175,7 @@ plot_continuous_summary_pair <- function(
 
   if (is.null(output_file)) {
     output_file <- paste0(
+      "plots/",
       outcome,
       "_",
       file_from_label,
